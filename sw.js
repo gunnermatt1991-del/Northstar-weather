@@ -1,4 +1,4 @@
-const CACHE = "northstar-weather-v27";
+const CACHE = "northstar-weather-v28";
 const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./uk-map.html", "./uk-map-radar.html", "./Northstar-UK-Map-Fixed.html", "./Northstar-UK-Map-Fixed%202.html"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new Request(new URL(path, self.registration.scope), {cache:"reload"})))).then(() => self.skipWaiting()));
@@ -12,8 +12,8 @@ self.addEventListener("push", event => {
   const title = String(data.title || "Northstar Weather");
   const options = {
     body: String(data.body || "There is a new weather update for your location."),
-    icon: new URL("./icon-192.png", self.registration.scope).href,
-    badge: new URL("./icon-192.png", self.registration.scope).href,
+    icon: new URL("./icon.svg", self.registration.scope).href,
+    badge: new URL("./icon.svg", self.registration.scope).href,
     tag: String(data.tag || "northstar-weather-alert"),
     renotify: false,
     data: { url: data.url || "./" }
