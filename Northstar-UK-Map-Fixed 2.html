@@ -79,7 +79,7 @@ play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){s
 latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length-1)});
 function createLandTemperatureLayer(readings,features){
  const overlay=document.createElement("canvas");
- overlay.style.cssText="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:350";
+ overlay.style.cssText="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:350;display:none";
  overlay.setAttribute("aria-hidden","true");
  map.getContainer().appendChild(overlay);
  let frame=0;
@@ -103,7 +103,7 @@ function createLandTemperatureLayer(readings,features){
   });
  }
  map.on("moveend zoomend resize",draw);draw();
- return L.layerGroup([L.marker([0,0],{opacity:0,interactive:false})]);
+ const layer=new L.Layer();layer.onAdd=function(){overlay.style.display="block";draw()};layer.onRemove=function(){overlay.style.display="none"};return layer;
 }
 async function loadTemperatureShading(){tempToggle.disabled=true;tempToggle.textContent="🌡️ Loading temperatures…";try{const results=await Promise.all(cities.map(async city=>{const[name,lat,lon]=city;const u=new URL("https://api.open-meteo.com/v1/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m");u.searchParams.set("timezone","UTC");const response=await fetch(u);if(!response.ok)throw Error();const data=await response.json();const t=data.current&&data.current.temperature_2m;return Number.isFinite(t)?{name,lat,lon,t}:null}));const readings=results.filter(Boolean);if(readings.length<8)throw Error();const boundaryResponse=await fetch("https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson");if(!boundaryResponse.ok)throw Error("Land boundaries unavailable");const boundaryData=await boundaryResponse.json();const landFeatures=boundaryData.features.filter(feature=>["GB","IE"].includes(feature.properties&&feature.properties["ISO3166-1-Alpha-2"]));if(!landFeatures.length)throw Error("UK and Ireland land boundaries unavailable");tempLayer=createLandTemperatureLayer(readings,landFeatures);tempToggle.disabled=false;tempToggle.textContent="🌡️ Show temperature shading";document.getElementById("status").textContent="Temperature shading is ready, based on "+readings.length+" real town and city readings. Tap the button to show it."}catch(error){tempToggle.disabled=false;tempToggle.textContent="🌡️ Try temperature shading again";document.getElementById("status").textContent="Temperature shading couldn't load just now. Town markers and rain radar are still available."}}
 tempToggle.addEventListener("click",async()=>{if(!tempLayer){await loadTemperatureShading();if(!tempLayer)return}tempVisible=!tempVisible;if(tempVisible){tempLayer.addTo(map);tempToggle.textContent="🌡️ Hide temperature shading";tempToggle.classList.add("active");tempLegend.classList.add("show")}else{map.removeLayer(tempLayer);tempToggle.textContent="🌡️ Show temperature shading";tempToggle.classList.remove("active");tempLegend.classList.remove("show")}});
