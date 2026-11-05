@@ -65,7 +65,7 @@ const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast
 function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
 function tone(t){return t<8?"#78dfbd":t<17?"#86c4ff":"#ffd58a"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setView([54.2,-4.5],5);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:12,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
 const cityMarkers=L.markerClusterGroup({maxClusterRadius:42,showCoverageOnHover:false,spiderfyOnMaxZoom:true,zoomToBoundsOnClick:true,iconCreateFunction:cluster=>L.divIcon({html:"<div>"+cluster.getChildCount()+"</div>",className:"marker-cluster",iconSize:L.point(38,38)})}).addTo(map);
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false;
 const slider=document.getElementById("frameSlider"),timeLabel=document.getElementById("frameTime"),toggle=document.getElementById("radarToggle"),play=document.getElementById("playButton"),latest=document.getElementById("latestButton"),tempToggle=document.getElementById("tempToggle"),tempLegend=document.getElementById("tempLegend");
