@@ -1,3 +1,4 @@
+// Northstar Weather push notification Worker
 import webpush from "npm:web-push@3.6.7";
 
 const APP_ORIGIN = "https://gunnermatt1991-del.github.io";
