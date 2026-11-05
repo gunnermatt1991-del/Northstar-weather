@@ -1,4 +1,5 @@
 // Northstar Weather push notification Worker
+// Build trigger after correcting Cloudflare root directory
 import webpush from "npm:web-push@3.6.7";
 
 const APP_ORIGIN = "https://gunnermatt1991-del.github.io";
