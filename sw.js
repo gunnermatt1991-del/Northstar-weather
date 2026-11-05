@@ -1,5 +1,5 @@
-const CACHE = "northstar-weather-v2";
-const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png"];
+const CACHE = "northstar-weather-v3";
+const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./Northstar-UK-Map-Fixed%202.html"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
 });
