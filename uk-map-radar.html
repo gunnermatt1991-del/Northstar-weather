@@ -53,7 +53,7 @@ const cities=[
 ["London",51.5072,-.1276],["Birmingham",52.4862,-1.8904],["Manchester",53.4808,-2.2426],["Leeds",53.8008,-1.5491],["Newcastle",54.9783,-1.6178],["Edinburgh",55.9533,-3.1883],["Glasgow",55.8642,-4.2518],["Cardiff",51.4816,-3.1791],["Bristol",51.4545,-2.5879],["Norwich",52.6309,1.2974],["Southampton",50.9097,-1.4044],["Plymouth",50.3755,-4.1427],["Aberdeen",57.1497,-2.0943],["Belfast",54.5973,-5.9301],["Nottingham",52.9548,-1.1581],["Kettering",52.3984,-.7283],["Liverpool",53.4084,-2.9916],["Exeter",50.7184,-3.5339],["York",53.959,-1.0815],["Swansea",51.6214,-3.9436],["Inverness",57.4778,-4.2247],["Brighton",50.8225,-.1372]
 ];
 const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
-function weatherIcon(c){if(c===0)return"☀️";if(c<=2)return"🌤️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return"🌦️";if(c<=86)return"🌨️";return"⛈️"}
+function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
 function tone(t){return t<8?"#78dfbd":t<17?"#86c4ff":"#ffd58a"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:7}).setView([54.2,-2.7],5);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
@@ -81,13 +81,13 @@ slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.valu
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
 latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length-1)});
 async function getCity(city){
- const [name,lat,lon]=city;const u=new URL("https://api.open-meteo.com/v1/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m,weather_code,wind_speed_10m");u.searchParams.set("timezone","auto");
+ const [name,lat,lon]=city;const u=new URL("https://api.open-meteo.com/v1/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m,weather_code,wind_speed_10m,is_day");u.searchParams.set("timezone","auto");
  const r=await fetch(u);if(!r.ok)throw Error("Weather unavailable");const j=await r.json();return{name,lat,lon,current:j.current};
 }
 (async()=>{
  let count=0,failed=0;const bounds=[];
- await Promise.all(cities.map(async city=>{try{const x=await getCity(city);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c),color=tone(t);
- const marker=L.divIcon({className:"",html:'<div class="pin" style="border-color:'+color+'"><span>'+ico+'</span>'+t+'°</div>',iconSize:null,iconAnchor:[25,16]});
+ await Promise.all(cities.map(async city=>{try{const x=await getCity(city);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
+ const marker=L.divIcon({className:"",html:'<div class="pin" style="border-color:'+color+'">'+t+'°</div>',iconSize:null,iconAnchor:[25,16]});
  L.marker([x.lat,x.lon],{icon:marker}).addTo(map).bindPopup("<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+" · "+t+"°C<br>Wind "+Math.round(x.current.wind_speed_10m)+" km/h");
  bounds.push([x.lat,x.lon]);count++;
  }catch(e){failed++}}));
