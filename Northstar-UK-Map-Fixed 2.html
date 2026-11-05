@@ -64,7 +64,8 @@ const cities=[
 const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
 function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
 function tone(t){return t<8?"#78dfbd":t<17?"#86c4ff":"#ffd58a"}
-const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setView([54.2,-4.5],5);\nmap.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
+const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setView([54.2,-4.5],5);
+map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
 const cityMarkers=L.layerGroup().addTo(map);
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false;
