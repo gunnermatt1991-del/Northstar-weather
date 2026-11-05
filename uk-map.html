@@ -2,63 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081225">
-<title>Northstar Weather — UK Map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<style>
-:root{color-scheme:dark;--bg:#081225;--panel:#142440;--line:#ffffff20;--muted:#a8b7cf;--text:#f5f8ff;--blue:#86c4ff}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#344a70 0,#142443 34%,var(--bg) 75%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.wrap{max-width:1100px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px 35px}
-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.logo{width:44px;height:44px;border-radius:15px;background:linear-gradient(145deg,#a1d6ff,#5683e7);display:grid;place-items:center;color:#102344;font-size:25px}.brand{font-weight:750;font-size:18px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em}
-a.back{display:inline-block;color:#c7e2ff;text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:9px 14px;margin:0 0 14px}
-.card{background:linear-gradient(145deg,#192b4bef,#101c34f2);border:1px solid var(--line);border-radius:23px;padding:18px;box-shadow:0 18px 50px #0002}
-h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
-#map{height:min(66vh,650px);min-height:390px;border-radius:16px;overflow:hidden;border:1px solid #ffffff20;background:#0d1a30}
-.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff}.leaflet-popup-content{margin:11px 14px}.leaflet-control-attribution{font-size:9px!important}
-.pin{background:#172b49;border:2px solid #9bcfff;border-radius:999px;color:#fff;text-align:center;font-weight:750;box-shadow:0 3px 12px #0008;white-space:nowrap;padding:4px 7px;font-size:12px}.pin span{font-size:14px;margin-right:3px}
-.legend{display:flex;flex-wrap:wrap;gap:13px;margin-top:12px;color:var(--muted);font-size:11px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-.status{color:var(--muted);font-size:12px;margin:12px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
-@media(max-width:600px){.wrap{padding-left:12px;padding-right:12px}.card{padding:13px}h1{font-size:21px}#map{height:62vh;min-height:380px}}
-</style>
+<title>Northstar Weather — Latest UK & Ireland Map</title>
+<meta http-equiv="refresh" content="0;url=./Northstar-UK-Map-Fixed%202.html">
 </head>
-<body><div class="wrap">
-<header><div class="logo">✥</div><div class="brand">Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></header>
-<a class="back" href="./">← Back to Northstar Weather</a>
-<section class="card">
-<h1>UK weather map</h1>
-<p class="sub">Live conditions across selected UK towns and cities. Tap any temperature marker for details.</p>
-<div id="map" role="application" aria-label="Interactive map showing current weather across the United Kingdom"></div>
-<div class="legend"><span><i class="dot" style="background:#78dfbd"></i>Cooler · below 8°C</span><span><i class="dot" style="background:#86c4ff"></i>Mild · 8–16°C</span><span><i class="dot" style="background:#ffd58a"></i>Warmer · 17°C+</span></div>
-<div class="status" id="status">Loading live weather for UK locations…</div>
-</section>
-<footer class="footer">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</footer>
-</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script>
-const cities=[
-["London",51.5072,-.1276],["Birmingham",52.4862,-1.8904],["Manchester",53.4808,-2.2426],["Leeds",53.8008,-1.5491],["Newcastle",54.9783,-1.6178],["Edinburgh",55.9533,-3.1883],["Glasgow",55.8642,-4.2518],["Cardiff",51.4816,-3.1791],["Bristol",51.4545,-2.5879],["Norwich",52.6309,1.2974],["Southampton",50.9097,-1.4044],["Plymouth",50.3755,-4.1427],["Aberdeen",57.1497,-2.0943],["Belfast",54.5973,-5.9301],["Nottingham",52.9548,-1.1581],["Kettering",52.3984,-.7283],["Liverpool",53.4084,-2.9916],["Exeter",50.7184,-3.5339],["York",53.959,-1.0815],["Swansea",51.6214,-3.9436],["Inverness",57.4778,-4.2247],["Brighton",50.8225,-.1372]
-];
-const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
-function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
-function tone(t){return t<8?"#78dfbd":t<17?"#86c4ff":"#ffd58a"}
-const map=L.map("map",{scrollWheelZoom:false}).setView([54.2,-2.7],5);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
-async function getCity(city){
- const [name,lat,lon]=city;const u=new URL("https://api.open-meteo.com/v1/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m,weather_code,wind_speed_10m,is_day");u.searchParams.set("timezone","auto");
- const r=await fetch(u);if(!r.ok)throw Error("Weather unavailable");const j=await r.json();return{name,lat,lon,current:j.current};
-}
-(async()=>{
- let count=0,failed=0;const bounds=[];
- await Promise.all(cities.map(async city=>{try{const x=await getCity(city);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
- const marker=L.divIcon({className:"",html:'<div class="pin" style="border-color:'+color+'">'+t+'°</div>',iconSize:null,iconAnchor:[25,16]});
- L.marker([x.lat,x.lon],{icon:marker}).addTo(map).bindPopup("<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+" · "+t+"°C<br>Wind "+Math.round(x.current.wind_speed_10m)+" km/h");
- bounds.push([x.lat,x.lon]);count++;
- }catch(e){failed++}}));
- if(bounds.length)map.fitBounds(bounds,{padding:[22,22]});
- document.getElementById("status").textContent=count+" locations loaded"+(failed?", "+failed+" unavailable":"")+". Conditions refresh when you reload this map.";
- if(!count)document.getElementById("status").textContent="Weather couldn't load. Please check your connection and refresh.";
- setTimeout(()=>map.invalidateSize(),250);
-})();
-</script>
-</body></html>
+<body style="margin:0;background:#081225;color:#f5f8ff;font:16px -apple-system,BlinkMacSystemFont,sans-serif;padding:32px">
+<p>Opening the latest Northstar UK &amp; Ireland weather map…</p>
+<p><a style="color:#a9d5ff" href="./Northstar-UK-Map-Fixed%202.html">Tap here if the map does not open automatically.</a></p>
+</body>
+</html>
