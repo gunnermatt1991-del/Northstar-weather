@@ -1,4 +1,4 @@
-const CACHE = "northstar-weather-v23";
+const CACHE = "northstar-weather-v24";
 const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./uk-map.html", "./uk-map-radar.html", "./Northstar-UK-Map-Fixed.html", "./Northstar-UK-Map-Fixed%202.html"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new Request(new URL(path, self.registration.scope), {cache:"reload"})))).then(() => self.skipWaiting()));
