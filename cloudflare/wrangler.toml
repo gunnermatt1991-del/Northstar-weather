@@ -1,0 +1,12 @@
+name = "northstar-weather-alerts"
+main = "worker.js"
+compatibility_date = "2026-11-05"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "northstar-notifications"
+database_id = "SET_YOUR_EXISTING_D1_DATABASE_ID"
+
+[triggers]
+crons = ["*/30 * * * *"]
