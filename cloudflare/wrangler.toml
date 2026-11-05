@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "northstar-notifications"
-database_id = "SET_YOUR_EXISTING_D1_DATABASE_ID"
+database_id = "437a7b4b-85b0-4af8-8abc-a0e6b25249ce"
 
 [triggers]
 crons = ["*/30 * * * *"]
