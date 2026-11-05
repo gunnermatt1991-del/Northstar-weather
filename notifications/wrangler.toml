@@ -1,0 +1,14 @@
+name = "northstar-weather-notifications"
+main = "src/index.js"
+compatibility_date = "2026-11-05"
+
+[vars]
+APP_ORIGIN = "https://gunnermatt1991-del.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "northstar-notifications"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[triggers]
+crons = ["*/15 * * * *"]
