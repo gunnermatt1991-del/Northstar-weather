@@ -34,3 +34,6 @@ The Worker obtains a server-side PayPal OAuth token, retrieves the subscription 
 - The browser must send the subscription ID to this endpoint after checkout and re-check it before unlocking paid features.
 - A subscription ID is a bearer reference, not a full user identity system. For stronger account-level protection, add customer sign-in and bind the PayPal subscription to that account.
 - This deployment workflow cannot run until the four GitHub secrets and one Actions variable above are configured.
+
+
+The Premium page now uses the deployed `/verify` endpoint to check PayPal subscription status after checkout and on later visits.
