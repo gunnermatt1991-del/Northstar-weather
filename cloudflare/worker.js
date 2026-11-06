@@ -36,7 +36,7 @@ function validSubscription(s) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
       if (origin !== APP_ORIGIN) return new Response(null, { status: 403 });
@@ -92,10 +92,12 @@ export default {
         const storedHeaders = new Headers(response.headers);
         storedHeaders.delete("access-control-allow-origin");
         storedHeaders.delete("x-northstar-cache");
-        await ctxWaitUntilSafe(cache.put(cacheKey, new Response(response.clone().body, {
+        // Cache writes run in the background so a slow cache store cannot
+        // hold the user's live forecast response open.
+        ctx.waitUntil(cache.put(cacheKey, new Response(response.clone().body, {
           status: response.status,
           headers: storedHeaders
-        })));
+        })).catch(error => console.error("Weather cache write failed", error)));
         return response;
       } catch (error) {
         console.error("Weather proxy failed", error);
