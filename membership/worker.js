@@ -50,11 +50,24 @@ export default {
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
     if (url.pathname === "/owner/login") {
       if (!env.OWNER_ACCESS_CODE) return json({error:"Owner access is not configured yet"},503);
-      let loginBody;
-      try { loginBody = await request.json(); } catch { return json({error:"Invalid request"},400); }
-      if (typeof loginBody?.code !== "string" || loginBody.code.length > 256 || loginBody.code !== env.OWNER_ACCESS_CODE) {
+      let submittedCode = "";
+      const contentType = request.headers.get("content-type") || "";
+      try {
+        if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+          const form = await request.formData();
+          submittedCode = String(form.get("code") || "");
+        } else {
+          const loginBody = await request.json();
+          submittedCode = typeof loginBody?.code === "string" ? loginBody.code : "";
+        }
+      } catch { return json({error:"Invalid request"},400); }
+      const isForm = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
+      const html = (message, success) => new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Northstar Owner</title><style>body{margin:0;padding:28px;background:#081225;color:#f5f8ff;font:17px/1.5 -apple-system,BlinkMacSystemFont,sans-serif}.card{max-width:640px;margin:8vh auto;padding:28px;background:#142440;border:1px solid #ffffff24;border-radius:22px}h1{font-size:30px}a{display:block;padding:13px 0;color:#9ed0ff;border-bottom:1px solid #ffffff20}.error{color:#ffd58a}</style><main class="card"><div style="color:#78e0df;font-weight:800;letter-spacing:.15em">NORTHSTAR WEATHER · PRIVATE</div><h1>'+(success?'Welcome to your owner area':'Owner access')+'</h1><p class="'+(success?'':'error')+'">'+message+'</p>'+(success?'<a href="https://gunnermatt1991-del.github.io/Northstar-weather/">Open Northstar Weather</a><a href="https://gunnermatt1991-del.github.io/Northstar-weather/premium.html">Open Premium features</a><a href="https://gunnermatt1991-del.github.io/Northstar-weather/Northstar-UK-Map-Fixed%202.html">Open UK & Europe weather map</a><a href="https://www.paypal.com/myaccount/autopay/">Manage PayPal subscriptions</a><a href="https://dash.cloudflare.com/">Open Cloudflare controls</a>':'<a href="https://gunnermatt1991-del.github.io/Northstar-weather/owner.html">Return to owner login</a>')+'</main></html>',{status:success?200:401,headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store"}});
+      if (submittedCode.length > 256 || submittedCode !== env.OWNER_ACCESS_CODE) {
+        if (isForm) return html("That owner code wasn't recognised.",false);
         return json({error:"That owner code wasn't recognised."},401);
       }
+      if (isForm) return html("Owner access confirmed.",true);
       return json({token:await signOwnerSession(env.OWNER_ACCESS_CODE),email:OWNER_EMAIL,expiresIn:43200});
     }
     if (url.pathname !== "/verify") return json({ error: "Not found" }, 404);
