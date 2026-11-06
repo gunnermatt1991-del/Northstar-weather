@@ -1,11 +1,23 @@
 const ALLOWED_ORIGIN = "*";
 const OWNER_EMAIL = "gunnermatt1991@icloud.com";
+function b64url(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_"); }
+function unb64url(value) { const raw=value.replace(/-/g,"+").replace(/_/g,"/"); return Uint8Array.from(atob(raw+"=".repeat((4-raw.length%4)%4)),c=>c.charCodeAt(0)); }
+async function ownerKey(secret, usages) { return crypto.subtle.importKey("raw",new TextEncoder().encode(secret),{name:"HMAC",hash:"SHA-256"},false,usages); }
 async function signOwnerSession(secret) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), {name:"HMAC",hash:"SHA-256"}, false, ["sign"]);
-  const payload = btoa(JSON.stringify({email:OWNER_EMAIL,exp:Date.now()+12*60*60*1000})).replace(/=/g,"").replace(/\\+/g,"-").replace(/\\//g,"_");
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload)));
-  const encoded = btoa(String.fromCharCode(...sig)).replace(/=/g,"").replace(/\\+/g,"-").replace(/\\//g,"_");
-  return payload+"."+encoded;
+  const payload=b64url(new TextEncoder().encode(JSON.stringify({email:OWNER_EMAIL,exp:Date.now()+12*60*60*1000,scope:"northstar-owner-test"})));
+  const sig=await crypto.subtle.sign("HMAC",await ownerKey(secret,["sign"]),new TextEncoder().encode(payload));
+  return payload+"."+b64url(sig);
+}
+async function verifyOwnerSession(token,secret) {
+  if(typeof token!=="string"||token.length>2048)return false;
+  const parts=token.split(".");
+  if(parts.length!==2)return false;
+  try {
+    const valid=await crypto.subtle.verify("HMAC",await ownerKey(secret,["verify"]),unb64url(parts[1]),new TextEncoder().encode(parts[0]));
+    if(!valid)return false;
+    const payload=JSON.parse(new TextDecoder().decode(unb64url(parts[0])));
+    return payload.email===OWNER_EMAIL&&payload.scope==="northstar-owner-test"&&Number(payload.exp)>Date.now();
+  } catch { return false; }
 }
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -69,6 +81,12 @@ export default {
       }
       if (isForm) return html("Owner access confirmed.",true);
       return json({token:await signOwnerSession(env.OWNER_ACCESS_CODE),email:OWNER_EMAIL,expiresIn:43200});
+    }
+    if (url.pathname === "/owner/verify") {
+      if (!env.OWNER_ACCESS_CODE) return json({active:false,error:"Owner access is not configured"},503);
+      let body; try { body=await request.json(); } catch { return json({active:false,error:"Invalid request"},400); }
+      const active=await verifyOwnerSession(body?.token,env.OWNER_ACCESS_CODE);
+      return json({active,mode:active?"owner-test":null});
     }
     if (url.pathname !== "/verify") return json({ error: "Not found" }, 404);
     let body;
