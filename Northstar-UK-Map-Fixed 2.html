@@ -19,7 +19,7 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 .layer-menu{position:relative;margin:0 0 10px;z-index:700}.layer-menu-toggle{width:100%;display:flex;justify-content:space-between;border:1px solid #8bbfff55;border-radius:15px;padding:13px 15px;background:linear-gradient(145deg,#29466c,#142b49);color:#f5f8ff;font:inherit;font-weight:750;text-align:left}.layer-menu-toggle span{color:#b9c9df;font-size:11px;font-weight:500}.layer-menu-panel{position:absolute;top:calc(100% + 7px);left:0;width:min(100%,390px);max-height:65vh;overflow:auto;padding:10px;border:1px solid #8bbfff55;border-radius:17px;background:#09172af5;box-shadow:0 16px 42px #0009}.layer-menu-panel[hidden]{display:none}.layer-choice{display:block;width:100%;padding:12px;text-align:left;border:1px solid transparent;border-radius:11px;background:transparent;color:#f5f8ff;font:inherit}.layer-choice.active{background:#5c91c52c;border-color:#83c5ff66}.layer-choice.unavailable{opacity:.45}.controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px;padding:12px;border:1px solid #8bbfff30;border-radius:18px;background:linear-gradient(145deg,#ffffff12,#ffffff06);box-shadow:inset 0 1px #ffffff0b,0 10px 28px #0002;backdrop-filter:blur(14px)}
 .controls button{border:1px solid #a9cfff38;border-radius:999px;background:linear-gradient(145deg,#29466c,#192f50);color:#f5f8ff;padding:10px 14px;font:inherit;font-size:13px;font-weight:700;box-shadow:0 3px 10px #0003;transition:background .2s,border-color .2s,transform .2s}
 .controls button:active{transform:scale(.97)}.controls button:disabled{opacity:.45}.controls button.active{background:linear-gradient(145deg,#3b78aa,#244c79);border-color:#a9d8ff;box-shadow:0 0 0 2px #86c4ff20}
-.controls input{flex:1;min-width:110px;accent-color:#86c4ff}#frameTime{font-size:12px;color:#d4e6ff;min-width:125px;text-align:right}
+.controls input{flex:1;min-width:110px;accent-color:#86c4ff}#frameTime,#rainForecastTime{font-size:12px;color:#d4e6ff;min-width:125px;text-align:right}
 #map{height:min(78vh,850px);min-height:520px;border-radius:18px;overflow:hidden;border:1px solid #7fc9f0aa;background:#245a7e;box-shadow:0 14px 38px #0004}
 .leaflet-tile-pane{filter:saturate(1.12) contrast(1.02) brightness(.96)}#map.night-map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.65) brightness(.72) contrast(1.05)}.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#245a7e}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff;border:1px solid #8ebfff35;box-shadow:0 12px 32px #0008}.leaflet-popup-content{margin:12px 15px;line-height:1.6}.leaflet-popup-content strong{font-size:14px;color:#fff}.leaflet-control-attribution{font-size:9px!important;background:#0b1728d9!important;color:#9eafc7!important}.leaflet-control-attribution a{color:#a9d5ff!important}.leaflet-bar a{background:#142440!important;color:#eff7ff!important;border-color:#ffffff20!important}.leaflet-control-zoom{border:1px solid #ffffff20!important;box-shadow:0 5px 18px #0006!important;overflow:hidden;border-radius:12px!important}
 .pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}
@@ -42,7 +42,7 @@ body.day .layer-choice.active{background:#dcecff;border-color:#83a9d1}
 body.day .controls{background:linear-gradient(145deg,#ffffffd9,#e6eff9d9);border-color:#91abc755;box-shadow:inset 0 1px #fff,0 8px 22px #233b5515}
 body.day .controls button{background:linear-gradient(145deg,#e4f0fc,#cbdff2);color:#183451;border-color:#8eabc9;box-shadow:0 3px 10px #233b5520}
 body.day .controls button.active{background:linear-gradient(145deg,#b8d9f5,#8fbce5);border-color:#5488b8}
-body.day #frameTime{color:#405a77}body.day #map{border-color:#86a9c8}
+body.day #frameTime,body.day #rainForecastTime{color:#405a77}body.day #map{border-color:#86a9c8}
 body.day .leaflet-popup-content-wrapper,body.day .leaflet-popup-tip{background:#fff;color:#1b2c43;border-color:#9ab4d0;box-shadow:0 12px 32px #233b5530}
 body.day .leaflet-popup-content strong{color:#152a43}
 body.day .leaflet-control-attribution{background:#ffffffdf!important;color:#40536b!important}
@@ -119,7 +119,7 @@ latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length
 async function loadRainForecast(){
  rainForecastToggle.disabled=true;rainForecastToggle.textContent="🌦️ Loading rain forecast…";
  try{
-  const grid=[];for(let lat=36;lat<=66;lat+=6){for(let lon=-10;lon<=30;lon+=8){grid.push({lat,lon})}}
+  const grid=[];for(let lat=36;lat<=68;lat+=4){for(let lon=-10;lon<=30;lon+=5){grid.push({lat,lon})}}
   const url=new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude",grid.map(p=>p.lat).join(","));
   url.searchParams.set("longitude",grid.map(p=>p.lon).join(","));
@@ -139,7 +139,7 @@ function updateRainForecast(hour){
  if(!rainForecastData.length)return;const points=[];
  for(const p of rainForecastData){const probability=Number(p.probability[hour]),amount=Number(p.amount[hour]);if(!Number.isFinite(probability)||!Number.isFinite(amount)||probability<20||amount<0.05)continue;const intensity=Math.min(1,(probability/100)*(.45+Math.min(amount,3)/3*.55));points.push([p.lat,p.lon,intensity])}
  if(rainForecastLayer)map.removeLayer(rainForecastLayer);
- rainForecastLayer=L.heatLayer(points,{radius:48,blur:34,maxZoom:7,minOpacity:.24,gradient:{0.2:"#8bd7ff",0.45:"#258ee8",0.7:"#22c7b5",0.88:"#f2d34b",1:"#ed593e"}});
+ rainForecastLayer=L.heatLayer(points,{radius:38,blur:28,maxZoom:7,minOpacity:.24,gradient:{0.2:"#8bd7ff",0.45:"#258ee8",0.7:"#22c7b5",0.88:"#f2d34b",1:"#ed593e"}});
  if(rainForecastVisible)rainForecastLayer.addTo(map);
  const first=rainForecastData[0].times[hour];rainForecastTime.textContent=first?new Date(first).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":"Hour +"+hour;rainForecastSlider.value=String(hour);
 }
