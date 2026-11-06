@@ -19,7 +19,7 @@
 const API="https://northstar-premium-membership.gunnermatt1991.workers.dev/verify";
 const $=id=>document.getElementById(id);
 let place={name:"Kettering",country:"United Kingdom",lat:52.3984,lon:-0.7283},models=[],active="ECMWF";
-const configs=[{name:"ECMWF",id:"ecmwf_ifs025",color:"#86c4ff"},{name:"GFS",id:"gfs_seamless",color:"#78e0df"},{name:"ICON",id:"icon_seamless",color:"#ffd58a"}];
+const configs=[{name:"ECMWF",id:"ecmwf_ifs025",color:"#86c4ff"},{name:"GFS",id:"ncep_gfs_seamless",color:"#78e0df"},{name:"ICON",id:"icon_seamless",color:"#ffd58a"}];
 const fmt=(v,s="")=>Number.isFinite(Number(v))?Number(v).toFixed(1)+s:"—";
 function timeLabel(s){return new Date(s).toLocaleString([],{weekday:"short",hour:"2-digit"})}
 async function gate(){const id=localStorage.getItem("northstarPayPalSubscription");if(!id){$("status").textContent="A Premium subscription is needed to open these tools.";$("locked").hidden=false;return false}try{const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscriptionId:id})});const j=await r.json();if(!r.ok||!j.active)throw Error();$("status").textContent="Premium membership confirmed · forecast tools unlocked";$("tools").hidden=false;return true}catch(e){$("status").textContent="We couldn't confirm an active Premium membership.";$("locked").hidden=false;return false}}
