@@ -79,6 +79,7 @@ body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed 
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
+if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embed");else location.replace("./index.html#weather-map");
 const cities=[
 ["London",51.5072,-.1276],["Birmingham",52.4862,-1.8904],["Manchester",53.4808,-2.2426],["Leeds",53.8008,-1.5491],["Newcastle",54.9783,-1.6178],["Edinburgh",55.9533,-3.1883],["Glasgow",55.8642,-4.2518],["Cardiff",51.4816,-3.1791],["Bristol",51.4545,-2.5879],["Norwich",52.6309,1.2974],["Southampton",50.9097,-1.4044],["Plymouth",50.3755,-4.1427],["Aberdeen",57.1497,-2.0943],["Belfast",54.5973,-5.9301],["Nottingham",52.9548,-1.1581],["Kettering",52.3984,-.7283],["Liverpool",53.4084,-2.9916],["Exeter",50.7184,-3.5339],["York",53.959,-1.0815],["Swansea",51.6214,-3.9436],["Inverness",57.4778,-4.2247],["Brighton",50.8225,-.1372],
 ["Dublin",53.3498,-6.2603],["Cork",51.8985,-8.4756],["Galway",53.2707,-9.0568],["Limerick",52.6638,-8.6267],["Waterford",52.2593,-7.1101],["Derry",54.997,-7.309],["Sligo",54.2766,-8.4761],["Donegal",54.6538,-8.1096],
