@@ -92,7 +92,7 @@ export default {
         const storedHeaders = new Headers(response.headers);
         storedHeaders.delete("access-control-allow-origin");
         storedHeaders.delete("x-northstar-cache");
-        ctxWaitUntilSafe(cache.put(cacheKey, new Response(response.clone().body, {
+        await ctxWaitUntilSafe(cache.put(cacheKey, new Response(response.clone().body, {
           status: response.status,
           headers: storedHeaders
         })));
