@@ -67,7 +67,7 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
       createSubscription: function(data, actions) {
         return actions.subscription.create({ plan_id: PAYPAL_PLAN_ID });
       },
-      onApprove: function(data) {
+      onApprove: async function(data) {
         localStorage.setItem("northstarPayPalSubscription", data.subscriptionID);
         await verifyMembership(data.subscriptionID);
       },
