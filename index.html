@@ -65,6 +65,22 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 </main><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
 </div>
 <script>
+// Northstar shared Open-Meteo cache: reuse successful responses across page reloads
+// without changing the forecast fields, model choices, or displayed weather.
+(function(){
+ const nativeFetch=window.fetch.bind(window);
+ window.fetch=async function(input,init){
+  const raw=typeof input==="string"?input:(input&&input.url)||"";
+  let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}
+  if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);
+  const key="northstarOpenMeteo:"+url.href,ttl=15*60*1000;
+  try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved);if(item&&Date.now()-item.time<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json"}});localStorage.removeItem(key)}}catch(e){}
+  const response=await nativeFetch(input,init);
+  if(response.ok){try{const body=await response.clone().text();localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}}
+  return response;
+ };
+})();
+
 const $=id=>document.getElementById(id);let place={lat:52.3984,lon:-0.7283,name:"Kettering",country:"United Kingdom"},weather=null;
 const desc={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
 function icon(c,day=1){if(c===0)return day?"☀️":"🌙";if(c<=2)return day?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return"🌦️";if(c<=86)return"🌨️";return"⛈️"}function tm(s){return new Date(s).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}function dn(s,i){return i===0?"Today":i===1?"Tomorrow":new Date(s+"T12:00:00").toLocaleDateString([],{weekday:"short"})}function dir(n){return["N","NE","E","SE","S","SW","W","NW"][Math.round(n/45)%8]}function notice(t){$("notice").textContent=t;$("notice").style.display="block"}
