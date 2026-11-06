@@ -121,7 +121,8 @@ export default {
         rain: preferences?.rain !== false,
         wind: preferences?.wind !== false,
         snow: preferences?.snow !== false,
-        thunder: preferences?.thunder !== false
+        thunder: preferences?.thunder !== false,
+        fog: preferences?.fog !== false
       };
       const id = crypto.randomUUID();
       await env.DB.prepare(`
@@ -179,6 +180,8 @@ export default {
         forecastUrl.searchParams.set("latitude", sub.latitude);
         forecastUrl.searchParams.set("longitude", sub.longitude);
         forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max");
+        forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m");
+        forecastUrl.searchParams.set("forecast_hours", "36");
         forecastUrl.searchParams.set("forecast_days", "2");
         forecastUrl.searchParams.set("timezone", "auto");
         const response = await fetch(forecastUrl);
@@ -206,6 +209,28 @@ export default {
           }
           if (prefs.thunder !== false && [95,96,99].includes(code)) {
             alerts.push({ key: "thunder-" + day, title: "Thunderstorms possible", body: dayLabel + " near " + sub.location_name + ": thunderstorms appear in the forecast." });
+          }
+        }
+
+        if (prefs.fog !== false && forecast.hourly?.time && forecast.hourly?.visibility) {
+          const hours = forecast.hourly;
+          const fogRows = hours.time.map((time, i) => ({
+            time,
+            visibility: Number(hours.visibility[i]),
+            code: Number(hours.weather_code?.[i]),
+            temperature: Number(hours.temperature_2m?.[i])
+          })).filter(row => Number.isFinite(row.visibility) && row.visibility < 400);
+          if (fogRows.length) {
+            const worst = fogRows.reduce((a, b) => b.visibility < a.visibility ? b : a);
+            const severe = worst.visibility < 200;
+            const freezing = fogRows.some(row => row.temperature <= 0);
+            const when = new Date(worst.time).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+            const visibilityText = Math.round(worst.visibility) + " m";
+            alerts.push({
+              key: "fog-" + worst.time.slice(0, 10),
+              title: severe ? "Very poor visibility possible" : "Dense fog possible",
+              body: (severe ? "Very poor visibility" : "Dense fog") + " near " + sub.location_name + " around " + when + " (modelled minimum " + visibilityText + ")." + (freezing ? " Freezing temperatures overlap; icy surfaces are possible." : "")
+            });
           }
         }
 
