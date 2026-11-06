@@ -28,30 +28,62 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
 <p class="footer">Northstar Weather · Forecasts · Patterns · Perspective</p>
 </main>
 <script>
-/* Northstar Premium checkout is temporarily paused while forecast services are restored.
-   Existing subscriptions can still be verified; no new PayPal subscription is created here. */
+/* PayPal checkout uses the public client ID. Private credentials remain on the membership Worker. */
 (function(){
+  const PAYPAL_CLIENT_ID = "BAAwges3U9PE9x3JRo-jergb1ZoIGIlqc-MS0ikccOCEXk_mRq93-njc12br3ed2VjWn3ugcjyw5NM";
+  const PAYPAL_PLAN_ID = "P-7GD39424VB400635BNLW6GGY";
   const MEMBERSHIP_API = "https://northstar-premium-membership.gunnermatt1991.workers.dev/verify";
   const state = document.getElementById("paypal-checkout-state");
   const container = document.getElementById("paypal-button-container");
-  container.hidden = true;
+  const savedSubscription = localStorage.getItem("northstarPayPalSubscription");
   async function verifyMembership(subscriptionId) {
-    state.textContent = "Checking your existing Northstar Premium membership…";
+    state.textContent = "Checking your Northstar Premium membership…";
     try {
       const response = await fetch(MEMBERSHIP_API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subscriptionId }) });
       const result = await response.json();
       if (response.ok && result.active) {
         state.textContent = "Your Northstar Premium membership is active. Thank you!";
+        container.hidden = true;
         return true;
       }
-      state.textContent = "We could not confirm an active Premium subscription. Please contact Northstar support if you believe this is an error.";
+      state.textContent = "We could not confirm an active Premium subscription. If you have just subscribed, please refresh in a moment.";
     } catch (error) {
       state.textContent = "Membership checking is temporarily unavailable. Please try again shortly.";
     }
     return false;
   }
-  const savedSubscription = localStorage.getItem("northstarPayPalSubscription");
-  if (savedSubscription) verifyMembership(savedSubscription);
-  else state.textContent = "New subscriptions are temporarily paused while we restore and test live weather and storm forecasts. Existing memberships remain verifiable. Please check back soon.";
+  if (savedSubscription) {
+    verifyMembership(savedSubscription).then(active => { if (!active) loadCheckout(); });
+  } else { loadCheckout(); }
+  function loadCheckout() {
+  state.textContent = "Choose PayPal below to subscribe for £2.99 per month.";
+  container.hidden = false;
+  const sdk = document.createElement("script");
+  sdk.src = "https://www.paypal.com/sdk/js?client-id=" + encodeURIComponent(PAYPAL_CLIENT_ID) + "&vault=true&intent=subscription&currency=GBP";
+  sdk.onload = function(){
+    if (!window.paypal || !window.paypal.Buttons) {
+      state.textContent = "PayPal checkout could not load. Please refresh and try again.";
+      return;
+    }
+    window.paypal.Buttons({
+      style: { layout: "vertical", shape: "rect", label: "subscribe", color: "gold" },
+      createSubscription: function(data, actions) {
+        return actions.subscription.create({ plan_id: PAYPAL_PLAN_ID });
+      },
+      onApprove: async function(data) {
+        localStorage.setItem("northstarPayPalSubscription", data.subscriptionID);
+        await verifyMembership(data.subscriptionID);
+      },
+      onCancel: function() {
+        state.textContent = "Checkout was cancelled. No subscription was started.";
+      },
+      onError: function() {
+        state.textContent = "PayPal checkout encountered an error. No confirmation has been received; please try again later.";
+      }
+    }).render("#paypal-button-container");
+  };
+  sdk.onerror = function(){ state.textContent = "PayPal checkout could not load. Please try again later."; };
+  document.head.appendChild(sdk);
+  }
 })();
 </script></body></html>
