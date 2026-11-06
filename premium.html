@@ -15,8 +15,8 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
 </head>
 <body><main class="wrap">
 <nav class="top"><div class="brand">✦ Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div><a class="back" href="./index.html">← Back to weather</a></nav>
-<section class="hero"><div class="eyebrow">A clearer view of what’s coming</div><h1>Northstar <span style="color:var(--blue)">Premium</span></h1><p>Go beyond the everyday forecast with advanced storm tracking and professional forecast model comparisons — designed for curious weather watchers and serious enthusiasts alike.</p><div class="price"><strong>£2.99</strong><span>/ month</span></div><div class="status">◷ PayPal plan saved · awaiting activation</div><p class="note">Northstar Premium is being prepared. The monthly price is £2.99. Checkout will appear once the PayPal plan is switched on.</p></section>
-<section class="panel checkout" aria-labelledby="checkout-title"><div class="eyebrow">Secure subscription</div><h2 id="checkout-title">Join Northstar Premium</h2><p>£2.99 per month, billed by PayPal. You can manage or cancel your subscription through your PayPal account.</p><div id="paypal-checkout-state" class="checkout-state" role="status">PayPal checkout is connected to the Northstar Premium plan, but the plan is currently saved as a draft. No payments can be taken yet.</div><div id="paypal-button-container" class="paypal-button-wrap" hidden></div><p class="checkout-note">Please review the recurring price and billing terms in PayPal before approving any subscription.</p></section>
+<section class="hero"><div class="eyebrow">A clearer view of what’s coming</div><h1>Northstar <span style="color:var(--blue)">Premium</span></h1><p>Go beyond the everyday forecast with advanced storm tracking and professional forecast model comparisons — designed for curious weather watchers and serious enthusiasts alike.</p><div class="price"><strong>£2.99</strong><span>/ month</span></div><div class="status">✦ PayPal subscription · £2.99/month</div><p class="note">Subscribe securely with PayPal. Your membership is checked against the active Northstar Premium plan.</p></section>
+<section class="panel checkout" aria-labelledby="checkout-title"><div class="eyebrow">Secure subscription</div><h2 id="checkout-title">Join Northstar Premium</h2><p>£2.99 per month, billed by PayPal. You can manage or cancel your subscription through your PayPal account.</p><div id="paypal-checkout-state" class="checkout-state" role="status">Loading secure PayPal checkout…</div><div id="paypal-button-container" class="paypal-button-wrap" hidden></div><p class="checkout-note">Please review the recurring price and billing terms in PayPal before approving any subscription.</p></section>
 <section class="grid">
 <article class="panel"><div class="icon">🌀</div><div class="eyebrow">Premium feature 01</div><h2>Advanced storm tracking</h2><p>Follow developing weather systems with more context than a standard forecast.</p><ul class="feature-list"><li>Storm position and movement history</li><li>Projected track and timing when supported by reliable data</li><li>Rainfall intensity and accumulation views</li><li>Wind gust and pressure context</li><li>Clear confidence and data-time labels</li></ul><div class="preview"><div class="preview-title"><span>Storm track preview</span><span class="chip">Illustrative only</span></div><div class="stormline"></div><p class="note">A visual example only — not a live storm, warning or forecast.</p></div></article>
 <article class="panel"><div class="icon">🌐</div><div class="eyebrow">Premium feature 02</div><h2>Professional forecast models</h2><p>Compare respected numerical weather prediction models and see where their forecasts agree — or differ.</p><ul class="feature-list"><li>ECMWF, GFS and UK Met Office models where licensed and available</li><li>Side-by-side temperature and rainfall outlooks</li><li>Wind and pressure comparisons</li><li>Model agreement and disagreement indicators</li><li>Model run time and update information</li></ul><div class="preview"><div class="preview-title"><span>Model comparison preview</span><span class="chip">Illustrative only</span></div><div class="modelrow"><span>ECMWF</span><div class="bar"><i style="width:72%"></i></div><b>12°</b></div><div class="modelrow"><span>GFS</span><div class="bar"><i style="width:58%"></i></div><b>10°</b></div><div class="modelrow"><span>UKMO</span><div class="bar"><i style="width:65%"></i></div><b>11°</b></div><p class="note">Sample values for layout demonstration only — not actual model output.</p></div></article>
@@ -25,16 +25,34 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
 <p class="footer">Northstar Weather · Forecasts · Patterns · Perspective</p>
 </main>
 <script>
-/* Public PayPal Client ID and Northstar Premium Plan ID.
-   The PayPal plan remains in DRAFT until the account owner activates it.
-   No secret key is used or exposed on this static website. */
+/* PayPal checkout uses the public client ID. Private credentials remain on the membership Worker. */
 (function(){
   const PAYPAL_CLIENT_ID = "BAAwges3U9PE9x3JRo-jergb1ZoIGIlqc-MS0ikccOCEXk_mRq93-njc12bj37br3ed2VjWn3ugcjyw5NM";
   const PAYPAL_PLAN_ID = "P-7GD39424VB400635BNLW6GGY";
-  const PAYPAL_PLAN_STATUS = "DRAFT";
+  const MEMBERSHIP_API = "https://northstar-premium-membership.gunnermatt1991.workers.dev/verify";
   const state = document.getElementById("paypal-checkout-state");
   const container = document.getElementById("paypal-button-container");
-  if (PAYPAL_PLAN_STATUS !== "ACTIVE") return;
+  const savedSubscription = localStorage.getItem("northstarPayPalSubscription");
+  async function verifyMembership(subscriptionId) {
+    state.textContent = "Checking your Northstar Premium membership…";
+    try {
+      const response = await fetch(MEMBERSHIP_API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subscriptionId }) });
+      const result = await response.json();
+      if (response.ok && result.active) {
+        state.textContent = "Your Northstar Premium membership is active. Thank you!";
+        container.hidden = true;
+        return true;
+      }
+      state.textContent = "We could not confirm an active Premium subscription. If you have just subscribed, please refresh in a moment.";
+    } catch (error) {
+      state.textContent = "Membership checking is temporarily unavailable. Please try again shortly.";
+    }
+    return false;
+  }
+  if (savedSubscription) {
+    verifyMembership(savedSubscription).then(active => { if (!active) loadCheckout(); });
+  } else { loadCheckout(); }
+  function loadCheckout() {
   state.textContent = "Choose PayPal below to subscribe for £2.99 per month.";
   container.hidden = false;
   const sdk = document.createElement("script");
@@ -50,8 +68,8 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
         return actions.subscription.create({ plan_id: PAYPAL_PLAN_ID });
       },
       onApprove: function(data) {
-        state.textContent = "Thank you. PayPal has approved your subscription (reference: " + data.subscriptionID + ").";
-        container.hidden = true;
+        localStorage.setItem("northstarPayPalSubscription", data.subscriptionID);
+        await verifyMembership(data.subscriptionID);
       },
       onCancel: function() {
         state.textContent = "Checkout was cancelled. No subscription was started.";
@@ -63,5 +81,6 @@ a{color:#c9e3ff}.top{display:flex;align-items:center;justify-content:space-betwe
   };
   sdk.onerror = function(){ state.textContent = "PayPal checkout could not load. Please try again later."; };
   document.head.appendChild(sdk);
+  }
 })();
 </script></body></html>
