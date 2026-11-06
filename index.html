@@ -42,6 +42,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 
 @media(max-width:720px){.wrap{padding-left:14px;padding-right:14px}header{align-items:flex-start;flex-direction:column}.search{width:100%}.hero,.chart-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.card{padding:17px}.temp{font-size:82px}.day{grid-template-columns:1fr 32px 58px 64px 48px;gap:6px;padding:9px 8px}.range{height:5px}}
 @media(min-width:900px){.forecast{grid-template-columns:repeat(7,1fr)}.day{display:flex;flex-direction:column;gap:5px;text-align:center}.day .range{width:100%}}
+
+.integrated-weather{margin:22px 0}.integrated-weather .section-head{align-items:flex-start}.integrated-frame{display:block;width:100%;border:1px solid #ffffff20;border-radius:18px;background:#081225;overflow:hidden}.map-frame{height:1080px}.storm-frame{height:1780px}@media(max-width:650px){.map-frame{height:1120px}.storm-frame{height:1900px}}
 </style>
 </head>
 <body><div class="wrap">
@@ -58,6 +60,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 <section class="section card"><div class="section-head"><h2>Next 24 hours</h2><span class="tag">Hourly outlook</span></div><div class="hours" id="hours"></div></section>
 <section class="section card"><div class="section-head"><h2>7-day forecast</h2><span class="muted">Daily highs · lows · rain</span></div><div class="forecast" id="forecast"></div></section>
 <section class="section chart-grid"><article class="card chart-card"><div class="section-head"><h2>Temperature</h2><div class="switch"><button class="active" data-chart="temp" data-range="24">24h</button><button data-chart="temp" data-range="7">7 days</button></div></div><div class="chart" id="tempChart"></div><div class="chart-labels" id="tempLabels"></div><div class="chart-tip" id="tempTip">Tap a point to inspect temperature.</div></article><article class="card chart-card"><div class="section-head"><h2>Rainfall</h2><div class="switch"><button class="active" data-chart="rain" data-range="24">24h</button><button data-chart="rain" data-range="7">7 days</button></div></div><div class="chart" id="rainChart"></div><div class="chart-labels" id="rainLabels"></div><div class="chart-tip" id="rainTip">Tap a point to inspect rainfall.</div></article></section>
+
+<section class="section card integrated-weather" id="weather-map"><div class="section-head"><div><h2>Northstar Weather Map</h2><p class="muted" style="margin:5px 0 0;font-size:13px">The UK, Ireland and Europe map now lives inside Northstar. Switch weather layers, explore temperatures, radar, precipitation, snowfall, pressure, cloud and wind without leaving the main app.</p></div><span class="tag">Unified map</span></div><iframe class="integrated-frame map-frame" src="./Northstar-UK-Map-Fixed%202.html?embed=1" title="Northstar interactive UK, Ireland and Europe weather map" loading="lazy"></iframe></section>
+<section class="section card integrated-weather" id="storm-intelligence"><div class="section-head"><div><h2>Storm Intelligence</h2><p class="muted" style="margin:5px 0 0;font-size:13px">Compare ECMWF, GFS and ICON guidance, step through the forecast timeline and inspect Atlantic pressure, low centres, strong winds, rain and wintry signals — all within Northstar.</p></div><span class="tag">Premium tools</span></div><iframe class="integrated-frame storm-frame" src="./premium-storm-analysis.html?embed=1" title="Northstar premium storm analysis" loading="lazy"></iframe></section>
 </main><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
 </div>
 <script>
