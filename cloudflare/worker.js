@@ -1,4 +1,4 @@
-// Northstar Weather push notification Worker
+// Northstar Weather push notification Worker + shared Open-Meteo edge cache
 // Build trigger after correcting Cloudflare root directory
 import webpush from "web-push";
 
