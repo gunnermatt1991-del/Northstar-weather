@@ -31,7 +31,40 @@ const centres=[];for(let i=0;i<Math.min(48,times.length);i+=3){const group=data.
 $("summary").innerHTML=active.length?'<div class="signal '+(storms.length||peakRain>=5||peakGust>=75?"high":"warn")+'"><strong>'+active.length+' of '+data.length+' sample locations flagged</strong><br><span class="muted">'+storms.length+' thunderstorm-code locations; '+active.filter(p=>p.rain>=1).length+' with at least 1 mm/hour rain; '+active.filter(p=>p.gust>=55).length+' with gusts of 55 km/h or more.</span></div>':'<div class="signal">No locations crossed the current signal thresholds at this forecast time. This does not rule out local hazards.';
 const other=Object.entries(modelData).filter(([id])=>id!==activeModel);if(!other.length){$("agreement").innerHTML='<div class="signal">Only one model is currently loaded. Agreement cannot yet be assessed.</div>'}else{const otherSets=other.map(([id,arr])=>({name:modelNames[id],cells:arr.map((p,i)=>({...p,...risk(p,hour)})).filter(p=>p.flag)}));const counts=[active.length,...otherSets.map(x=>x.cells.length)];const max=Math.max(...counts),min=Math.min(...counts);const spread=max?Math.round((1-min/max)*100):0;$("agreement").innerHTML='<div class="signal"><strong>'+ (spread<30?"Broad signal agreement":spread<65?"Mixed model guidance":"Substantial model disagreement")+'</strong><br><span class="muted">Flagged grid points: '+modelNames[activeModel]+' '+active.length+'; '+otherSets.map(x=>x.name+" "+x.cells.length).join("; ")+'.</span><br><span class="muted">This is a simple comparison of threshold counts, not a calibrated confidence score.</span></div>'}}
 async function load(){ $("status").textContent="Loading forecast grid for UK sample locations…";$("workspace").hidden=false;try{const ids=[activeModel,...["ecmwf_ifs025","ncep_gfs_seamless","icon_seamless"].filter(x=>x!==activeModel)];const results=await Promise.allSettled(ids.map(fetchModel));results.forEach((r,i)=>{if(r.status==="fulfilled")modelData[ids[i]]=r.value});if(!modelData[activeModel]){activeModel=Object.keys(modelData)[0];if(!activeModel)throw Error("No forecast models returned data");$("model").value=activeModel}const len=modelData[activeModel][0].hourly.time.length;$("hour").max=Math.min(47,len-1);$("hour").value=0;makeMap();update();$("status").textContent="Forecast grid loaded · "+Object.keys(modelData).map(x=>modelNames[x]).join(", ")+" · "+locs.length+" sample locations"}catch(e){$("status").textContent="Unable to load storm analysis: "+e.message}}
-async function gate(){let owner=false;const ownerToken=localStorage.getItem("northstarOwnerTestToken");if(ownerToken){try{const check=await fetch("https://northstar-premium-membership.gunnermatt1991.workers.dev/owner/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token:ownerToken})});const access=await check.json();owner=!!(check.ok&&access.active);if(!owner)localStorage.removeItem("northstarOwnerTestToken")}catch(e){}}if(!owner){const id=localStorage.getItem("northstarPayPalSubscription");if(!id){$("status").textContent="An active Premium subscription or verified owner test session is required for storm analysis.";$("locked").hidden=false;return}try{const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscriptionId:id})});const j=await r.json();if(!r.ok||!j.active)throw Error()}catch(e){$("status").textContent="Premium membership could not be confirmed. Please return to Premium or sign in through Owner Test Mode.";$("locked").hidden=false;return}}$("locked").hidden=true;$("status").textContent=owner?"Owner Test Mode · loading forecast grid…":"Premium membership confirmed · loading forecast grid…";await load();if(owner&&Object.keys(modelData).length)$("status").textContent="Owner Test Mode · "+$("status").textContent}
+async function gate(){
+  const ownerToken=localStorage.getItem("northstarOwnerTestToken");
+  if(ownerToken){
+    $("status").textContent="Owner session found · verifying with Northstar…";
+    try{
+      const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);
+      let check;try{check=await fetch("https://northstar-premium-membership.gunnermatt1991.workers.dev/owner/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token:ownerToken}),signal:controller.signal})}finally{clearTimeout(timeout)}
+      const access=await check.json();
+      if(check.ok&&access.active){
+        $("locked").hidden=true;$("status").textContent="Owner Test Mode confirmed · loading forecast grid…";
+        await load();return;
+      }
+      $("status").textContent="Owner session was found, but verification was rejected ("+(access.error||check.status)+"). Please sign out and sign in again from Owner Portal.";
+      $("locked").hidden=false;return;
+    }catch(e){
+      $("status").textContent=e.name==="AbortError"?"Owner verification timed out. Please refresh and try again.":"Owner verification could not reach the membership service. Please refresh and try again.";
+      $("locked").hidden=false;return;
+    }
+  }
+  const id=localStorage.getItem("northstarPayPalSubscription");
+  if(!id){
+    $("status").textContent="No owner test session was found in this browser. Open Owner Portal, sign in, then use its Test storm analysis link.";
+    $("locked").hidden=false;return;
+  }
+  $("status").textContent="Checking Premium membership…";
+  try{
+    const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscriptionId:id})});
+    const j=await r.json();if(!r.ok||!j.active)throw Error(j.error||"Membership inactive");
+    $("locked").hidden=true;$("status").textContent="Premium membership confirmed · loading forecast grid…";await load();
+  }catch(e){
+    $("status").textContent="Premium membership could not be confirmed. "+(e.message||"Please return to Premium.");
+    $("locked").hidden=false;
+  }
+}
 
 $("hour").addEventListener("input",update);
 $("model").addEventListener("change",e=>{activeModel=e.target.value;if(modelData[activeModel])update();else load()});
