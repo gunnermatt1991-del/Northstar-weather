@@ -50,9 +50,17 @@ export default {
     }
     if (origin !== ALLOWED_ORIGIN) return json({ active: false, error: "Origin not allowed" }, 403);
     const url = new URL(request.url);
-    if (request.method !== "POST" || url.pathname !== "/verify") {
-      return json({ error: "Not found" }, 404);
+    if (request.method !== "POST") return json({ error: "Not found" }, 404);
+    if (url.pathname === "/owner/login") {
+      if (!env.OWNER_ACCESS_CODE) return json({error:"Owner access is not configured yet"},503);
+      let loginBody;
+      try { loginBody = await request.json(); } catch { return json({error:"Invalid request"},400); }
+      if (typeof loginBody?.code !== "string" || loginBody.code.length > 256 || loginBody.code !== env.OWNER_ACCESS_CODE) {
+        return json({error:"That owner code wasn't recognised."},401);
+      }
+      return json({token:await signOwnerSession(env.OWNER_ACCESS_CODE),email:OWNER_EMAIL,expiresIn:43200});
     }
+    if (url.pathname !== "/verify") return json({ error: "Not found" }, 404);
     let body;
     try { body = await request.json(); } catch {
       return json({ active: false, error: "Invalid request" }, 400);
