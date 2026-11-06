@@ -28,6 +28,27 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 .legend{display:flex;flex-wrap:wrap;gap:13px;margin-top:12px;color:var(--muted);font-size:11px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .status{color:var(--muted);font-size:12px;margin:12px 2px 0}.note{color:#b9c9df;font-size:11px;margin:8px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
 @media(max-width:600px){.wrap{padding-left:12px;padding-right:12px}.card{padding:13px}h1{font-size:21px}#map{height:70vh;min-height:440px}.controls{gap:7px;padding:10px}.controls button{padding:9px 11px;font-size:12px}#frameTime{width:100%;text-align:left}}
+
+/* Automatic day/night presentation */
+body.day{color:#17263d;background:radial-gradient(ellipse at 50% -18%,#e8f4ff 0,#dceaf7 38%,#cbd9e8 100%)}
+body.day .card{background:linear-gradient(145deg,#ffffffef,#edf4fbf5);border-color:#7895b555;box-shadow:0 14px 38px #233b5520}
+body.day .brand small,body.day .sub,body.day .status,body.day .legend,body.day .note{color:#52657d}
+body.day a.back{color:#24558a;border-color:#6686aa55}
+body.day .layer-menu-toggle{background:linear-gradient(145deg,#e5f1fc,#cbdff2);color:#183451;border-color:#86a9ca}
+body.day .layer-menu-toggle span{color:#506985}
+body.day .layer-menu-panel{background:#f5f9ff;border-color:#9bb6d2;box-shadow:0 16px 42px #233b5530}
+body.day .layer-choice{color:#203852}
+body.day .layer-choice.active{background:#dcecff;border-color:#83a9d1}
+body.day .controls{background:linear-gradient(145deg,#ffffffd9,#e6eff9d9);border-color:#91abc755;box-shadow:inset 0 1px #fff,0 8px 22px #233b5515}
+body.day .controls button{background:linear-gradient(145deg,#e4f0fc,#cbdff2);color:#183451;border-color:#8eabc9;box-shadow:0 3px 10px #233b5520}
+body.day .controls button.active{background:linear-gradient(145deg,#b8d9f5,#8fbce5);border-color:#5488b8}
+body.day #frameTime{color:#405a77}body.day #map{border-color:#86a9c8}
+body.day .leaflet-popup-content-wrapper,body.day .leaflet-popup-tip{background:#fff;color:#1b2c43;border-color:#9ab4d0;box-shadow:0 12px 32px #233b5530}
+body.day .leaflet-popup-content strong{color:#152a43}
+body.day .leaflet-control-attribution{background:#ffffffdf!important;color:#40536b!important}
+body.day .leaflet-control-attribution a{color:#245f9b!important}
+body.day .leaflet-bar a{background:#fff!important;color:#1b3551!important;border-color:#c5d3e2!important}
+#modeToggle{margin-left:auto}@media(max-width:600px){#modeToggle{margin-left:0}}
 </style>
 </head>
 <body><div class="wrap">
@@ -39,7 +60,7 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 <div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose what to display</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice active" data-layer="temperature" type="button">🌡️ Temperature</button><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><div class="layer-choice unavailable">⚡ Lightning strikes — data source not connected yet</div></div></div><div class="controls" aria-label="Weather map controls">
 <button id="tempToggle" type="button">🌡️ Show temperature shading</button>
 <button id="radarToggle" type="button">🌧️ Show rain radar</button>
-<button id="playButton" type="button" disabled>▶ Play</button>
+<button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
 <button id="latestButton" type="button" disabled>Latest</button>
 <input id="frameSlider" type="range" min="0" max="0" value="0" disabled aria-label="Radar time">
 <span id="frameTime">Radar loading…</span>
@@ -68,7 +89,19 @@ function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)re
 function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73":t<20?"#bedc37":t<25?"#faa523":"#eb412d"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setView([51,10],4);
 map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+let baseLayer;
+const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+const nightTiles=L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'});
+let mapMode="auto",nightMode=false,solarLocation=null;
+const modeToggle=document.getElementById("modeToggle");
+function applyMapTheme(night){nightMode=night;document.body.classList.toggle("day",!night);const next=night?nightTiles:dayTiles;if(baseLayer&&map.hasLayer(baseLayer))map.removeLayer(baseLayer);baseLayer=next;map.addLayer(baseLayer);modeToggle.textContent=mapMode==="auto"?"🌗 Auto day/night":mapMode==="day"?"☀️ Day mode":"🌙 Night mode";}
+function solarEvent(date,lat,lon,isSunrise){const n=Math.floor((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())-Date.UTC(date.getFullYear(),0,0))/86400000);const lngHour=lon/15,t=n+((isSunrise?6:18)-lngHour)/24,m=.9856*t-3.289;let l=m+1.916*Math.sin(m*Math.PI/180)+.020*Math.sin(2*m*Math.PI/180)+282.634;l=(l+360)%360;let ra=Math.atan(.91764*Math.tan(l*Math.PI/180))*180/Math.PI;ra=(ra+360)%360;ra+=(Math.floor(l/90)*90-Math.floor(ra/90)*90);ra/=15;const sinDec=.39782*Math.sin(l*Math.PI/180),cosDec=Math.cos(Math.asin(sinDec)),cosH=(Math.cos(90.833*Math.PI/180)-sinDec*Math.sin(lat*Math.PI/180))/(cosDec*Math.cos(lat*Math.PI/180));if(cosH>1||cosH< -1)return null;const h=(isSunrise?360-Math.acos(cosH)*180/Math.PI:Math.acos(cosH)*180/Math.PI)/15;let utc=h+ra-.06571*t-6.622-lngHour;utc=((utc%24)+24)%24;return Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())+utc*3600000;}
+function updateAutomaticTheme(){if(mapMode!=="auto")return;let night;if(solarLocation){const now=new Date(),rise=solarEvent(now,solarLocation.lat,solarLocation.lon,true),set=solarEvent(now,solarLocation.lat,solarLocation.lon,false);night=rise===null||set===null?now.getHours()<7||now.getHours()>=19:Date.now()<rise||Date.now()>=set;}else{const h=new Date().getHours();night=h<7||h>=19;}if(night!==nightMode)applyMapTheme(night);else modeToggle.textContent="🌗 Auto day/night";}
+try{const saved=localStorage.getItem("northstar-map-mode");if(["auto","day","night"].includes(saved))mapMode=saved;}catch(e){}
+applyMapTheme(mapMode==="night");
+modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
+if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
+updateAutomaticTheme();setInterval(updateAutomaticTheme,60000);
 const cityMarkers=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,maxClusterRadius:34,disableClusteringAtZoom:7}).addTo(map);
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});function showMetricLayer(k){if(k==="temperature"){document.getElementById("status").textContent="Showing current temperatures. Use the temperature shading button for the colour surface.";return}const cfg={snow:["snowfall"," cm","Snowfall"],precipitation:["precipitation"," mm","Precipitation"],pressure:["pressure_msl"," hPa","Pressure"],cloud:["cloud_cover","%","Cloud cover"],wind:["wind_speed_10m"," km/h","Wind speed"]}[k];if(!cfg)return;cityMarkers.clearLayers();cityWeather.forEach(x=>{const v=x.current[cfg[0]];if(!Number.isFinite(v))return;const n=k==="pressure"||k==="cloud"?Math.round(v):Number(v).toFixed(1);const label=n+(k==="cloud"?"%":"");const color=k==="snow"?(v>0?"#d9f3ff":"#b5c9db"):k==="precipitation"?(v>0?"#45c8dd":"#b5c9db"):k==="pressure"?(v>=1020?"#f3d27b":v<=1000?"#e89a82":"#a9d6ff"):k==="cloud"?"#c5d5e8":v>=40?"#f3a36f":v>=20?"#f2d27b":"#9bd7c7";const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+label+'</div>',iconSize:[54,30],iconAnchor:[27,15]});const extra=k==="wind"?"<br>Direction: "+Math.round(x.current.wind_direction_10m)+"°":"";L.marker([x.lat,x.lon],{icon:marker}).bindPopup("<strong>"+x.name+"</strong><br>"+cfg[2]+": "+n+cfg[1]+extra).addTo(cityMarkers)});document.getElementById("status").textContent="Showing "+cfg[2].toLowerCase()+" at the mapped towns and cities. Tap a marker for details."}document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="temperature"){location.reload()}else showMetricLayer(k)}}));
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
