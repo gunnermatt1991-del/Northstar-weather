@@ -51,6 +51,9 @@ body.day .leaflet-bar a{background:#fff!important;color:#1b3551!important;border
 #modeToggle{margin-left:auto}@media(max-width:600px){#modeToggle{margin-left:0}}
 
 body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed .back,body.embed footer{display:none!important}body.embed .card{padding:10px;margin:0;border:0;box-shadow:none;background:transparent}body.embed h1,body.embed .sub{display:none!important}body.embed #map{height:64vh;min-height:470px;max-height:720px}body.embed .controls{gap:6px}body.embed .layer-menu-panel{z-index:1200}
+
+.storm-panel{margin:14px 0 12px;padding:14px;border:1px solid #a78bfa55;border-radius:18px;background:linear-gradient(145deg,#172844f2,#0d1b31f5);box-shadow:0 12px 30px #0003}.storm-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.storm-head strong{font-size:17px}.storm-head p{margin:4px 0 0;color:#a8b7cf;font-size:12px}.storm-eyebrow{font-size:10px;letter-spacing:.16em;color:#c4a5ff;font-weight:800;margin-bottom:3px}.storm-pill{font-size:9px;letter-spacing:.12em;border:1px solid #a78bfa77;border-radius:99px;padding:5px 8px;color:#d9caff;white-space:nowrap}.storm-controls{display:grid;grid-template-columns:1fr 1.4fr;gap:9px;margin:12px 0}.storm-controls label{display:flex;flex-direction:column;gap:5px;color:#a8b7cf;font-size:11px}.storm-controls select{width:100%;border:1px solid #a9cfff38;border-radius:10px;background:#193252;color:#f5f8ff;padding:9px;font:inherit;font-size:12px}.storm-time{grid-column:1/-1;display:grid!important;grid-template-columns:1fr auto;align-items:center}.storm-time input{grid-column:1/-1;width:100%;accent-color:#c4a5ff}.storm-time strong{color:#f5f8ff;font-size:12px}.storm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.storm-stats>div{padding:8px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff12}.storm-stats small{display:block;color:#a8b7cf;font-size:9px;line-height:1.3}.storm-stats strong{display:block;font-size:16px;margin-top:2px}.storm-status,.storm-summary{font-size:11px;color:#b9c9df;margin-top:10px}.storm-summary{padding:9px;border-left:3px solid #a78bfa;background:#ffffff08;border-radius:8px;line-height:1.5}.storm-locked{margin-top:9px;padding:10px;border-radius:10px;border:1px solid #ffd58a55;background:#a66b2018;color:#ffe1aa;font-size:12px}.storm-locked a{color:#fff}.storm-foot{font-size:10px;line-height:1.5;color:#91a3bd;margin:10px 0 0}@media(max-width:600px){.storm-stats{grid-template-columns:repeat(2,1fr)}.storm-controls{grid-template-columns:1fr}.storm-time{grid-column:1}}
+body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-color:#a7a0d5}.storm-panel .storm-stats>div{background:#ffffff09}body.day .storm-head p,body.day .storm-controls label,body.day .storm-stats small,body.day .storm-status,body.day .storm-summary,body.day .storm-foot{color:#52657d}body.day .storm-controls select{background:#fff;color:#203852;border-color:#9bb6d2}body.day .storm-time strong{color:#203852}body.day .storm-summary{background:#eaf0fa}
 </style>
 </head>
 <body><div class="wrap">
@@ -68,6 +71,21 @@ body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed 
 <span id="frameTime">Radar loading…</span>
 </div>
 <div class="temp-legend" id="tempLegend"><span>Colder</span><div class="temp-gradient"></div><span>Warmer</span></div>
+<section class="storm-panel" id="stormPanel" aria-label="Storm intelligence map controls">
+ <div class="storm-head"><div><div class="storm-eyebrow">Premium · Storm intelligence</div><strong>Storm systems on this map</strong><p>Switch between model guidance and forecast layers without opening a second map.</p></div><span class="storm-pill">ONE MAP</span></div>
+ <div class="storm-controls">
+  <label>Model <select id="stormModel"><option value="ecmwf_ifs025">ECMWF</option><option value="ncep_gfs_seamless">GFS</option><option value="icon_seamless">ICON</option></select></label>
+  <label>Storm layer <select id="stormOverlay"><option value="storm">Storm signals + pressure</option><option value="pressure">Atlantic low pressure</option><option value="wind">Wind strength</option><option value="snow">Snow & wintry weather</option></select></label>
+  <label class="storm-time">Forecast time <strong id="stormTimeLabel">—</strong><input id="stormHour" type="range" min="0" max="47" value="0" disabled></label>
+ </div>
+ <div class="storm-stats">
+  <div><small>Low pressure points</small><strong id="stormLows">—</strong></div><div><small>Lowest pressure</small><strong id="stormMinPressure">—</strong></div><div><small>Storm-force sites</small><strong id="stormWinds">—</strong></div><div><small>Snow / sleet sites</small><strong id="stormSnow">—</strong></div>
+  <div><small>Active signals</small><strong id="stormCells">—</strong></div><div><small>Peak hourly rain</small><strong id="stormRain">—</strong></div><div><small>Peak gust</small><strong id="stormGust">—</strong></div><div><small>Thunderstorm cells</small><strong id="stormThunder">—</strong></div>
+ </div>
+ <div id="stormStatus" class="storm-status">Checking Premium access…</div><div id="stormSummary" class="storm-summary">Storm overlays will appear on the main map when access is confirmed.</div>
+ <div id="stormLocked" class="storm-locked" hidden>Storm intelligence is a Premium feature. <a href="./premium.html">View Northstar Premium</a> or sign in through the Owner Portal to test it.</div>
+ <p class="storm-foot">Forecast model output, not live radar or official warnings. Low centres and pressure contours are estimated from sampled forecast points; signal tracks are indicative only. Always follow the Met Office and local authorities for warnings.</p>
+</section>
 <div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
 <div class="legend"><span><i class="dot" style="background:#2636b8"></i>Cold</span><span><i class="dot" style="background:#21c7b5"></i>Cool</span><span><i class="dot" style="background:#69d34b"></i>Mild</span><span><i class="dot" style="background:#f0e442"></i>Warm</span><span><i class="dot" style="background:#e52b27"></i>Hot</span></div>
 <div class="status" id="status">Loading live weather across the UK, Ireland and Europe…</div>
@@ -76,6 +94,7 @@ body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed 
 <footer class="footer">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Radar imagery by <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">RainViewer</a>. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
