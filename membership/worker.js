@@ -1,4 +1,4 @@
-const ALLOWED_ORIGIN = "https://gunnermatt1991-del.github.io";
+const ALLOWED_ORIGIN = "*";
 const OWNER_EMAIL = "gunnermatt1991@icloud.com";
 async function signOwnerSession(secret) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), {name:"HMAC",hash:"SHA-256"}, false, ["sign"]);
