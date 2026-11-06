@@ -28,7 +28,8 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .weather-icon.weather-storm{animation:stormFlash 4.5s ease-in-out infinite}
 .weather-icon.weather-cloud{animation:weatherFloat 4s ease-in-out infinite}
 @keyframes weatherFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-@keyframes rainFall{from{background-position:0 0}to{background-position:-8px 30px}}\n@keyframes rainDrops{from{background-position:0 -29px,11px -35px}to{background-position:7px 29px,3px 35px}}
+@keyframes rainFall{from{background-position:0 0}to{background-position:-8px 30px}}
+@keyframes rainDrops{from{background-position:0 -29px,11px -35px}to{background-position:7px 29px,3px 35px}}
 @keyframes snowFall{from{background-position:0 -8px,8px -15px}to{background-position:8px 25px,0 28px}}
 @keyframes fogDrift{0%,100%{transform:translateX(-5px);opacity:.45}50%{transform:translateX(6px);opacity:.95}}
 @keyframes stormFlash{0%,88%,92%,100%{filter:drop-shadow(0 5px 9px #0003)}90%{filter:drop-shadow(0 0 13px #fff7b8) brightness(1.7)}}
