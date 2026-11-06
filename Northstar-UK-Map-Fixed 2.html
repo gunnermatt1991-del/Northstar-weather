@@ -55,6 +55,7 @@ body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed 
 .storm-panel{margin:14px 0 12px;padding:14px;border:1px solid #a78bfa55;border-radius:18px;background:linear-gradient(145deg,#172844f2,#0d1b31f5);box-shadow:0 12px 30px #0003}.storm-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.storm-head strong{font-size:17px}.storm-head p{margin:4px 0 0;color:#a8b7cf;font-size:12px}.storm-eyebrow{font-size:10px;letter-spacing:.16em;color:#c4a5ff;font-weight:800;margin-bottom:3px}.storm-pill{font-size:9px;letter-spacing:.12em;border:1px solid #a78bfa77;border-radius:99px;padding:5px 8px;color:#d9caff;white-space:nowrap}.storm-controls{display:grid;grid-template-columns:1fr 1.4fr;gap:9px;margin:12px 0}.storm-controls label{display:flex;flex-direction:column;gap:5px;color:#a8b7cf;font-size:11px}.storm-controls select{width:100%;border:1px solid #a9cfff38;border-radius:10px;background:#193252;color:#f5f8ff;padding:9px;font:inherit;font-size:12px}.storm-time{grid-column:1/-1;display:grid!important;grid-template-columns:1fr auto;align-items:center}.storm-time input{grid-column:1/-1;width:100%;accent-color:#c4a5ff}.storm-time strong{color:#f5f8ff;font-size:12px}.storm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.storm-stats>div{padding:8px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff12}.storm-stats small{display:block;color:#a8b7cf;font-size:9px;line-height:1.3}.storm-stats strong{display:block;font-size:16px;margin-top:2px}.storm-status,.storm-summary{font-size:11px;color:#b9c9df;margin-top:10px}.storm-summary{padding:9px;border-left:3px solid #a78bfa;background:#ffffff08;border-radius:8px;line-height:1.5}.storm-locked{margin-top:9px;padding:10px;border-radius:10px;border:1px solid #ffd58a55;background:#a66b2018;color:#ffe1aa;font-size:12px}.storm-locked a{color:#fff}.storm-foot{font-size:10px;line-height:1.5;color:#91a3bd;margin:10px 0 0}@media(max-width:600px){.storm-stats{grid-template-columns:repeat(2,1fr)}.storm-controls{grid-template-columns:1fr}.storm-time{grid-column:1}}
 body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-color:#a7a0d5}.storm-panel .storm-stats>div{background:#ffffff09}body.day .storm-head p,body.day .storm-controls label,body.day .storm-stats small,body.day .storm-status,body.day .storm-summary,body.day .storm-foot{color:#52657d}body.day .storm-controls select{background:#fff;color:#203852;border-color:#9bb6d2}body.day .storm-time strong{color:#203852}body.day .storm-summary{background:#eaf0fa}
 .storm-map-alert{background:#142440f2;border:1px solid #a78bfa;border-left:4px solid #a78bfa;border-radius:12px;padding:10px 14px;color:#f5f8ff;font:700 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px #0008;max-width:240px;text-align:center}.storm-map-alert.active{border-color:#ff9a82;border-left-color:#ff9a82}body.day .storm-map-alert{background:#fff;color:#203852;box-shadow:0 8px 24px #233b5530}
+ .map-save-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px}.map-save-btn{border:1px solid #8fc7ff;border-radius:999px;background:linear-gradient(145deg,#3478ad,#1d4c78);color:#fff;padding:12px 18px;font:700 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 5px 16px #0003}.map-save-btn:disabled{opacity:.6}.map-save-help{color:var(--muted);font-size:11px}body.embed .map-save-row{padding:0 4px}
 </style>
 </head>
 <body><div class="wrap">
@@ -88,6 +89,7 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
  <p class="storm-foot">Forecast model output, not live radar or official warnings. Low centres and pressure contours are estimated from sampled forecast points; signal tracks are indicative only. Always follow the Met Office and local authorities for warnings.</p>
 </section>
 <div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
+ <div class="map-save-row"><button id="saveMapButton" class="map-save-btn" type="button">📸 Save Map Image</button><span id="saveMapStatus" class="map-save-help" role="status">Save the current map view as an image for your Facebook weather posts.</span></div>
 <div class="legend"><span><i class="dot" style="background:#2636b8"></i>Cold</span><span><i class="dot" style="background:#21c7b5"></i>Cool</span><span><i class="dot" style="background:#69d34b"></i>Mild</span><span><i class="dot" style="background:#f0e442"></i>Warm</span><span><i class="dot" style="background:#e52b27"></i>Hot</span></div>
 <div class="status" id="status">Loading live weather across the UK, Ireland and Europe…</div>
 <p class="note">Temperature shading blends current Open-Meteo readings from the marked towns and cities across Europe. Rain radar shows recent observed precipitation. The separate “Rain on the way” layer uses hourly forecast data to show where rain is expected over the next 6 hours. Forecasts are estimates, not live radar, and can change.</p>
@@ -98,6 +100,7 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script>
  // Northstar shared Open-Meteo cache: reuse successful responses across page reloads.
  (function(){const nativeFetch=window.fetch.bind(window);window.fetch=async function(input,init){const raw=typeof input==="string"?input:(input&&input.url)||"";let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);const key="northstarOpenMeteo:"+url.href,ttl=15*60*1000;try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved);if(item&&Date.now()-item.time<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json"}});localStorage.removeItem(key)}}catch(e){}const response=await nativeFetch(input,init);if(response.ok){try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body:await response.clone().text()}))}catch(e){}}return response}})();
@@ -116,7 +119,7 @@ function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setView([51,10],4);
 map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
 let baseLayer;
-const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
 
 let mapMode="auto",nightMode=false,solarLocation=null;
 const modeToggle=document.getElementById("modeToggle");
@@ -137,7 +140,7 @@ const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForec
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
 function stopPlayback(){if(playTimer){clearInterval(playTimer);playTimer=null}play.textContent="▶ Play"}
 function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/2/1_1.png")}
-async function loadRadar(){try{const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});if(!response.ok)throw Error();const data=await response.json();radarHost=data.host;const past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-8).map(frame=>({...frame,forecast:false}));radarFrames=past;if(!radarFrames.length)throw Error();slider.min="0";slider.max=String(radarFrames.length-1);slider.value=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;radarLayer=L.tileLayer(radarHost+radarFrames[radarFrames.length-1].path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.72,maxNativeZoom:7,maxZoom:8,attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});showFrame(radarFrames.length-1);timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time)}catch(e){timeLabel.textContent="Radar unavailable"}}
+async function loadRadar(){try{const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});if(!response.ok)throw Error();const data=await response.json();radarHost=data.host;const past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-8).map(frame=>({...frame,forecast:false}));radarFrames=past;if(!radarFrames.length)throw Error();slider.min="0";slider.max=String(radarFrames.length-1);slider.value=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;radarLayer=L.tileLayer(radarHost+radarFrames[radarFrames.length-1].path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.72,maxNativeZoom:7,maxZoom:8,crossOrigin:"anonymous",attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});showFrame(radarFrames.length-1);timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time)}catch(e){timeLabel.textContent="Radar unavailable"}}
 toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVisible;if(radarVisible){radarLayer.addTo(map);toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}else{map.removeLayer(radarLayer);toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}});
 slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.value))});
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
@@ -248,6 +251,34 @@ function setStormControlsEnabled(enabled){["stormModel","stormOverlay","stormHou
 const id=localStorage.getItem("northstarPayPalSubscription");if(!id){se("stormStatus").textContent="Premium access is required for storm overlays. Your regular weather map remains available.";se("stormLocked").hidden=false;setStormControlsEnabled(false);return}
 se("stormStatus").textContent="Checking Premium membership…";try{const r=await fetch("https://northstar-premium-membership.gunnermatt1991.workers.dev/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscriptionId:id})}),j=await r.json();if(!r.ok||!j.active)throw Error();stormAccess=true;setStormControlsEnabled(true);se("stormLocked").hidden=true;await stormLoad()}catch(e){se("stormStatus").textContent="Premium membership could not be confirmed.";se("stormLocked").hidden=false;setStormControlsEnabled(false)}}
 se("stormHour").addEventListener("input",()=>{if(stormReady)stormDraw()});se("stormOverlay").addEventListener("change",()=>{if(stormReady)stormDraw()});se("stormModel").addEventListener("change",e=>{stormModel=e.target.value;if(stormData[stormModel])stormDraw();else stormLoad()});stormGate();
+
+
+/* Save the actual visible Leaflet map as a post-ready image. */
+(function(){
+ const btn=document.getElementById("saveMapButton"),status=document.getElementById("saveMapStatus"),mapEl=document.getElementById("map");
+ if(!btn||!mapEl)return;
+ btn.addEventListener("click",async()=>{
+  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  let preview=null;
+  if(ios)preview=window.open("about:blank","_blank");
+  btn.disabled=true;btn.textContent="⏳ Creating map image…";
+  status.textContent="Preparing the map image. Please keep this page open…";
+  try{
+   if(!window.html2canvas)throw new Error("The image capture library did not load. Please refresh and try again.");
+   await new Promise(resolve=>setTimeout(resolve,900));
+   const canvas=await html2canvas(mapEl,{useCORS:true,allowTaint:false,backgroundColor:"#245a7e",scale:2,logging:false});
+   const ctx=canvas.getContext("2d"),pad=Math.max(18,canvas.width*.018);
+   ctx.save();ctx.font="700 "+Math.max(18,canvas.width*.022)+"px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif";
+   ctx.textAlign="right";ctx.textBaseline="bottom";ctx.shadowColor="#061326";ctx.shadowBlur=7;ctx.fillStyle="#ffffff";
+   ctx.fillText("NORTHSTAR WEATHER",canvas.width-pad,canvas.height-pad);ctx.restore();
+   const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("The image could not be created.")),"image/png"));
+   const url=URL.createObjectURL(blob),a=document.createElement("a"),stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+   if(ios&&preview){preview.location.href=url;status.textContent="Image opened in a new tab. Press and hold it, then choose Save to Photos.";btn.textContent="📸 Save Map Image";}
+   else{a.href=url;a.download="northstar-weather-map-"+stamp+".png";document.body.appendChild(a);a.click();a.remove();status.textContent="Map image saved to your downloads. You can now attach it to a Facebook post.";btn.textContent="📸 Save Map Image";setTimeout(()=>URL.revokeObjectURL(url),60000);}
+  }catch(error){if(preview)preview.close();status.textContent=error&&error.message?error.message:"Could not save the map image. Please try again.";btn.textContent="📸 Try Save Map Image";}
+  finally{btn.disabled=false;}
+ });
+})();
 
 </script>
 </body></html>
