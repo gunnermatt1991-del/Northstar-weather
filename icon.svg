@@ -1,6 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a7dcff"/><stop offset="1" stop-color="#527de0"/></linearGradient><linearGradient id="n" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17325b"/><stop offset="1" stop-color="#09172f"/></linearGradient></defs>
-<rect width="512" height="512" rx="116" fill="url(#n)"/><circle cx="256" cy="256" r="180" fill="url(#b)"/><circle cx="256" cy="256" r="132" fill="#14294a" opacity=".92"/>
-<path d="M256 88v54m0 228v54M88 256h54m228 0h54M137 137l38 38m162 162 38 38m0-238-38 38M175 337l-38 38" stroke="#bfe8ff" stroke-width="18" stroke-linecap="round"/>
-<path d="m256 148 29 79 79 29-79 29-29 79-29-79-79-29 79-29z" fill="#eaf7ff"/><circle cx="256" cy="256" r="24" fill="#79c7ff"/>
+<defs>
+ <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#203d5d"/><stop offset="1" stop-color="#102943"/></linearGradient>
+ <linearGradient id="sun" x1=".18" y1="0" x2=".82" y2="1"><stop stop-color="#ffe45b"/><stop offset=".55" stop-color="#ffb51f"/><stop offset="1" stop-color="#ff792c"/></linearGradient>
+ <linearGradient id="cloud" x1=".15" y1="0" x2=".9" y2="1"><stop stop-color="#91b5d4" stop-opacity=".82"/><stop offset="1" stop-color="#456a8c" stop-opacity=".88"/></linearGradient>
+ <linearGradient id="star" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8372ff"/><stop offset="1" stop-color="#5143d8"/></linearGradient>
+</defs>
+<rect width="512" height="512" rx="116" fill="url(#navy)"/>
+<g stroke="#ffd34b" stroke-width="18" stroke-linecap="round"><path d="M338 65l12 25M432 86l-10 25M469 174l-27 8M462 268l-25-9"/></g>
+<circle cx="385" cy="202" r="58" fill="url(#sun)"/>
+<path d="M150 420l64-150 58 94 39 102-92-37-91 37z" fill="url(#star)"/>
+<path d="M105 303c-29-8-49-34-49-64 0-34 26-62 60-65 10-51 55-88 108-88 47 0 88 29 103 72 37 2 67 33 67 71 0 40-32 73-73 73H105z" fill="#071b30" opacity=".65" transform="translate(9 10)"/>
+<path d="M105 303c-29-8-49-34-49-64 0-34 26-62 60-65 10-51 55-88 108-88 47 0 88 29 103 72 37 2 67 33 67 71 0 40-32 73-73 73H105z" fill="url(#cloud)" stroke="#0b223b" stroke-width="5"/>
 </svg>
