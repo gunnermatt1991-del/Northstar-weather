@@ -1,0 +1,4 @@
+name = "northstar-premium-membership"
+main = "worker.js"
+compatibility_date = "2026-11-06"
+workers_dev = true

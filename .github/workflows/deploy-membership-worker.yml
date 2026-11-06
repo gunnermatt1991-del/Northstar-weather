@@ -1,0 +1,42 @@
+name: Deploy Premium Membership Verifier
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "membership/**"
+      - ".github/workflows/deploy-membership-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Deploy membership Worker
+        working-directory: membership
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler deploy
+
+      - name: Configure PayPal credentials on Worker
+        working-directory: membership
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_PLAN_ID: ${{ vars.PAYPAL_PLAN_ID }}
+        run: |
+          printf '%s' "$PAYPAL_CLIENT_ID" | wrangler secret put PAYPAL_CLIENT_ID
+          printf '%s' "$PAYPAL_CLIENT_SECRET" | wrangler secret put PAYPAL_CLIENT_SECRET
+          printf '%s' "$PAYPAL_PLAN_ID" | wrangler secret put PAYPAL_PLAN_ID
