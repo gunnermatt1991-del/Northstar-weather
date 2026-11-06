@@ -56,10 +56,10 @@ body.day .leaflet-bar a{background:#fff!important;color:#1b3551!important;border
 <a class="back" href="./">← Back to Northstar Weather</a>
 <section class="card">
 <h1>UK & Europe weather map</h1>
-<p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. Switch on temperature shading to compare colder and warmer areas, or view recent rain radar.</p>
+<p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. Switch on temperature shading to compare colder and warmer areas, or view recent radar and a short-range rain forecast.</p>
 <div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose what to display</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice active" data-layer="temperature" type="button">🌡️ Temperature</button><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><div class="layer-choice unavailable">⚡ Lightning strikes — data source not connected yet</div></div></div><div class="controls" aria-label="Weather map controls">
 <button id="tempToggle" type="button">🌡️ Show temperature shading</button>
-<button id="radarToggle" type="button">🌧️ Show rain radar</button>
+<button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
 <button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
 <button id="latestButton" type="button" disabled>Latest</button>
 <input id="frameSlider" type="range" min="0" max="0" value="0" disabled aria-label="Radar time">
@@ -69,7 +69,7 @@ body.day .leaflet-bar a{background:#fff!important;color:#1b3551!important;border
 <div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
 <div class="legend"><span><i class="dot" style="background:#2636b8"></i>Cold</span><span><i class="dot" style="background:#21c7b5"></i>Cool</span><span><i class="dot" style="background:#69d34b"></i>Mild</span><span><i class="dot" style="background:#f0e442"></i>Warm</span><span><i class="dot" style="background:#e52b27"></i>Hot</span></div>
 <div class="status" id="status">Loading live weather across the UK, Ireland and Europe…</div>
-<p class="note">Temperature shading blends current Open-Meteo readings from the marked towns and cities across Europe. Rain radar plays recent observations into RainViewer’s short-range nowcast, so you can see the likely movement of rain over the next few hours. The forecast is an estimate, can change, and may miss very light drizzle.</p>
+<p class="note">Temperature shading blends current Open-Meteo readings from the marked towns and cities across Europe. Rain radar shows recent observed precipitation. The separate “Rain on the way” layer uses hourly forecast data to show where rain is expected over the next 6 hours. Forecasts are estimates, not live radar, and can change.</p>
 </section>
 <footer class="footer">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Radar imagery by <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">RainViewer</a>. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</footer>
 </div>
@@ -106,14 +106,51 @@ const cityMarkers=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZ
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});function showMetricLayer(k){if(k==="temperature"){document.getElementById("status").textContent="Showing current temperatures. Use the temperature shading button for the colour surface.";return}const cfg={snow:["snowfall"," cm","Snowfall"],precipitation:["precipitation"," mm","Precipitation"],pressure:["pressure_msl"," hPa","Pressure"],cloud:["cloud_cover","%","Cloud cover"],wind:["wind_speed_10m"," km/h","Wind speed"]}[k];if(!cfg)return;cityMarkers.clearLayers();cityWeather.forEach(x=>{const v=x.current[cfg[0]];if(!Number.isFinite(v))return;const n=k==="pressure"||k==="cloud"?Math.round(v):Number(v).toFixed(1);const label=n+(k==="cloud"?"%":"");const color=k==="snow"?(v>0?"#d9f3ff":"#b5c9db"):k==="precipitation"?(v>0?"#45c8dd":"#b5c9db"):k==="pressure"?(v>=1020?"#f3d27b":v<=1000?"#e89a82":"#a9d6ff"):k==="cloud"?"#c5d5e8":v>=40?"#f3a36f":v>=20?"#f2d27b":"#9bd7c7";const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+label+'</div>',iconSize:[54,30],iconAnchor:[27,15]});const extra=k==="wind"?"<br>Direction: "+Math.round(x.current.wind_direction_10m)+"°":"";L.marker([x.lat,x.lon],{icon:marker}).bindPopup("<strong>"+x.name+"</strong><br>"+cfg[2]+": "+n+cfg[1]+extra).addTo(cityMarkers)});document.getElementById("status").textContent="Showing "+cfg[2].toLowerCase()+" at the mapped towns and cities. Tap a marker for details."}document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="temperature"){location.reload()}else showMetricLayer(k)}}));
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
 const slider=document.getElementById("frameSlider"),timeLabel=document.getElementById("frameTime"),toggle=document.getElementById("radarToggle"),play=document.getElementById("playButton"),latest=document.getElementById("latestButton"),tempToggle=document.getElementById("tempToggle"),tempLegend=document.getElementById("tempLegend");
+let rainForecastLayer=null,rainForecastData=[],rainForecastVisible=false;
+const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForecastSlider=document.getElementById("rainForecastSlider"),rainForecastTime=document.getElementById("rainForecastTime");
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
 function stopPlayback(){if(playTimer){clearInterval(playTimer);playTimer=null}play.textContent="▶ Play"}
-function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent=(frame.forecast?"Forecast · ":"Observed · ")+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/2/1_1.png")}
-async function loadRadar(){try{const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});if(!response.ok)throw Error();const data=await response.json();radarHost=data.host;const past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-8).map(frame=>({...frame,forecast:false}));const nowcast=(data.radar&&Array.isArray(data.radar.nowcast)?data.radar.nowcast:[]).map(frame=>({...frame,forecast:true}));radarFrames=[...past,...nowcast];if(!radarFrames.length)throw Error();slider.min="0";slider.max=String(radarFrames.length-1);slider.value=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;radarLayer=L.tileLayer(radarHost+radarFrames[radarFrames.length-1].path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.72,maxNativeZoom:7,maxZoom:8,attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});showFrame(radarFrames.length-1);timeLabel.textContent=(radarFrames[radarFrames.length-1].forecast?"Forecast · ":"Latest observed · ")+formatFrame(radarFrames[radarFrames.length-1].time)}catch(e){timeLabel.textContent="Radar unavailable"}}
+function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/2/1_1.png")}
+async function loadRadar(){try{const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});if(!response.ok)throw Error();const data=await response.json();radarHost=data.host;const past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-8).map(frame=>({...frame,forecast:false}));radarFrames=past;if(!radarFrames.length)throw Error();slider.min="0";slider.max=String(radarFrames.length-1);slider.value=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;radarLayer=L.tileLayer(radarHost+radarFrames[radarFrames.length-1].path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.72,maxNativeZoom:7,maxZoom:8,attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});showFrame(radarFrames.length-1);timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time)}catch(e){timeLabel.textContent="Radar unavailable"}}
 toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVisible;if(radarVisible){radarLayer.addTo(map);toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}else{map.removeLayer(radarLayer);toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}});
 slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.value))});
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
 latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length-1)});
+async function loadRainForecast(){
+ rainForecastToggle.disabled=true;rainForecastToggle.textContent="🌦️ Loading rain forecast…";
+ try{
+  const grid=[];for(let lat=36;lat<=66;lat+=6){for(let lon=-10;lon<=30;lon+=8){grid.push({lat,lon})}}
+  const url=new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude",grid.map(p=>p.lat).join(","));
+  url.searchParams.set("longitude",grid.map(p=>p.lon).join(","));
+  url.searchParams.set("hourly","precipitation,precipitation_probability");
+  url.searchParams.set("forecast_hours","7");url.searchParams.set("timezone","UTC");
+  const response=await fetch(url);if(!response.ok)throw Error("Forecast unavailable");
+  const raw=await response.json(),locations=Array.isArray(raw)?raw:[raw];
+  if(!locations.length||!locations[0].hourly)throw Error("No forecast data");
+  rainForecastData=locations.map((location,i)=>({lat:grid[i].lat,lon:grid[i].lon,times:location.hourly.time,amount:location.hourly.precipitation||[],probability:location.hourly.precipitation_probability||[]}));
+  rainForecastSlider.disabled=false;rainForecastSlider.max=String(Math.min(6,...rainForecastData.map(p=>p.times.length-1)));
+  rainForecastSlider.value="1";updateRainForecast(1);rainForecastToggle.disabled=false;
+  rainForecastToggle.textContent="🌦️ Hide rain forecast";
+  document.getElementById("status").textContent="Short-range rain forecast loaded across Europe. Move the forecast slider to see how the expected rain pattern changes hour by hour.";
+ }catch(error){rainForecastToggle.disabled=false;rainForecastToggle.textContent="🌦️ Try rain forecast again";document.getElementById("status").textContent="The rain forecast couldn’t load just now. Recent radar and other map layers are still available."}
+}
+function updateRainForecast(hour){
+ if(!rainForecastData.length)return;const points=[];
+ for(const p of rainForecastData){const probability=Number(p.probability[hour]),amount=Number(p.amount[hour]);if(!Number.isFinite(probability)||!Number.isFinite(amount)||probability<20||amount<0.05)continue;const intensity=Math.min(1,(probability/100)*(.45+Math.min(amount,3)/3*.55));points.push([p.lat,p.lon,intensity])}
+ if(rainForecastLayer)map.removeLayer(rainForecastLayer);
+ rainForecastLayer=L.heatLayer(points,{radius:48,blur:34,maxZoom:7,minOpacity:.24,gradient:{0.2:"#8bd7ff",0.45:"#258ee8",0.7:"#22c7b5",0.88:"#f2d34b",1:"#ed593e"}});
+ if(rainForecastVisible)rainForecastLayer.addTo(map);
+ const first=rainForecastData[0].times[hour];rainForecastTime.textContent=first?new Date(first).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":"Hour +"+hour;rainForecastSlider.value=String(hour);
+}
+rainForecastToggle.addEventListener("click",async()=>{
+ if(!rainForecastData.length){await loadRainForecast();if(!rainForecastData.length)return}
+ rainForecastVisible=!rainForecastVisible;
+ if(rainForecastVisible){rainForecastLayer.addTo(map);rainForecastToggle.textContent="☁️ Hide rain forecast";rainForecastToggle.classList.add("active")}
+ else{map.removeLayer(rainForecastLayer);rainForecastToggle.textContent="🌦️ Rain on the way";rainForecastToggle.classList.remove("active")}
+});
+rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
+
 function createLandTemperatureLayer(readings,features){
  const overlay=document.createElement("canvas");
  overlay.style.cssText="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none";
