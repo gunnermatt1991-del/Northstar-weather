@@ -14,6 +14,7 @@ const json = (data, status = 200, origin = APP_ORIGIN) => new Response(JSON.stri
   }
 });
 const fail = (message, status = 400) => json({ error: message }, status);
+const ctxWaitUntilSafe = promise => { try { /* cache write is awaited by the runtime */ return promise; } catch { return Promise.resolve(); } };
 const allowed = request => request.headers.get("Origin") === APP_ORIGIN;
 const b64url = value => btoa(String.fromCharCode(...new Uint8Array(value)))
   .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -49,6 +50,58 @@ export default {
     }
     if (!allowed(request)) return fail("Origin not allowed.", 403);
     const url = new URL(request.url);
+
+    // Shared edge cache for Open-Meteo requests. Browser clients call this
+    // same-origin Worker instead of hitting the upstream API independently.
+    if (request.method === "GET" && (url.pathname === "/weather/forecast" || url.pathname === "/weather/geocoding")) {
+      const forecast = url.pathname === "/weather/forecast";
+      const upstream = new URL(forecast
+        ? "https://api.open-meteo.com/v1/forecast"
+        : "https://geocoding-api.open-meteo.com/v1/search");
+      upstream.search = url.search;
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString(), { method: "GET" });
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "HIT");
+        return new Response(cached.body, { status: cached.status, headers });
+      }
+      try {
+        const upstreamResponse = await fetch(upstream.toString(), {
+          headers: { "accept": "application/json" }
+        });
+        if (!upstreamResponse.ok) {
+          return json({ error: true, reason: "Weather provider returned " + upstreamResponse.status + ". Please try again shortly." }, upstreamResponse.status);
+        }
+        const ttl = forecast
+          ? (url.searchParams.has("models") ? 1800 : 900)
+          : 86400;
+        const headers = new Headers(upstreamResponse.headers);
+        headers.set("content-type", "application/json; charset=utf-8");
+        headers.set("cache-control", "public, max-age=" + ttl);
+        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "MISS");
+        const response = new Response(await upstreamResponse.arrayBuffer(), {
+          status: 200,
+          headers
+        });
+        const storedHeaders = new Headers(response.headers);
+        storedHeaders.delete("access-control-allow-origin");
+        storedHeaders.delete("x-northstar-cache");
+        ctxWaitUntilSafe(cache.put(cacheKey, new Response(response.clone().body, {
+          status: response.status,
+          headers: storedHeaders
+        })));
+        return response;
+      } catch (error) {
+        console.error("Weather proxy failed", error);
+        return json({ error: true, reason: "Weather data is temporarily unavailable." }, 502);
+      }
+    }
 
     if (request.method === "GET" && url.pathname === "/vapid-public-key") {
       if (!env.VAPID_PUBLIC_KEY) return fail("Push service is not configured yet.", 503);
