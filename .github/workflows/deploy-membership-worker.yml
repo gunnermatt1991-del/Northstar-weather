@@ -42,10 +42,14 @@ jobs:
           printf '%s' "$PAYPAL_PLAN_ID" | wrangler secret put PAYPAL_PLAN_ID
 
       - name: Configure private owner access
-        if: ${{ secrets.OWNER_ACCESS_CODE != '' }}
         working-directory: membership
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OWNER_ACCESS_CODE: ${{ secrets.OWNER_ACCESS_CODE }}
-        run: printf '%s' "$OWNER_ACCESS_CODE" | wrangler secret put OWNER_ACCESS_CODE
+        run: |
+          if [ -n "$OWNER_ACCESS_CODE" ]; then
+            printf '%s' "$OWNER_ACCESS_CODE" | wrangler secret put OWNER_ACCESS_CODE
+          else
+            echo "OWNER_ACCESS_CODE is not set yet; owner login remains disabled."
+          fi
