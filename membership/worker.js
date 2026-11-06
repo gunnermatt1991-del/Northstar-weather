@@ -39,16 +39,13 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
-      if (origin !== ALLOWED_ORIGIN) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: {
-        "access-control-allow-origin": ALLOWED_ORIGIN,
+        "access-control-allow-origin": "*",
         "access-control-allow-methods": "POST, OPTIONS",
         "access-control-allow-headers": "content-type",
-        "access-control-max-age": "86400",
-        "vary": "Origin"
+        "access-control-max-age": "86400"
       }});
     }
-    if (origin !== ALLOWED_ORIGIN) return json({ active: false, error: "Origin not allowed" }, 403);
     const url = new URL(request.url);
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
     if (url.pathname === "/owner/login") {
