@@ -169,8 +169,10 @@ async function loadOfficialWarnings(){
  // Match the selected place against its full geocoded administrative hierarchy.
  // Open-Meteo returns admin1–admin4 where available; admin2–admin4 usually
  // identify the county, unitary authority, district or local authority.
- const terms=[place.name,place.admin2,place.admin3,place.admin4]
-  .filter(Boolean).map(normalizeWarningArea).filter(term=>term.length>2);
+ const areaAliases={"north northamptonshire":["northamptonshire"],"west northamptonshire":["northamptonshire"]};
+ const rawTerms=[place.name,place.admin2,place.admin3,place.admin4].filter(Boolean);
+ const terms=[...rawTerms,...rawTerms.flatMap(value=>areaAliases[normalizeWarningArea(value)]||[])]
+  .map(normalizeWarningArea).filter(term=>term.length>2);
  const matchesPlace=item=>{
   const hay=normalizeWarningArea((item.title||"")+" "+(item.description||""));
   return terms.some(term=>(" "+hay+" ").includes(" "+term+" "));
