@@ -55,6 +55,16 @@ body{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 :root[data-theme="light"] .weather-hero{background:radial-gradient(ellipse at 82% 8%,#6aa8e855,transparent 42%),linear-gradient(145deg,#e6f3ff,#d4e5f7 72%)}
 @media(min-width:900px){.northstar-dock{bottom:18px}}
 @media(prefers-reduced-motion:no-preference){.dock-item{transition:background .18s ease,transform .18s ease}.dock-item:active{transform:scale(.96)}}
+/* Keep every daily forecast value visible on narrow phone screens */
+.forecast{width:100%;min-width:0;max-width:100%;overflow:hidden}
+.day{width:100%;min-width:0;grid-template-columns:minmax(0,1fr) 28px minmax(64px,auto) minmax(20px,1fr) auto;gap:6px;padding:10px 8px;overflow:hidden}
+.day>*{min-width:0}
+.day .d{font-size:13px;white-space:nowrap}
+.day .ico{font-size:19px}
+.day>strong{font-size:12px;white-space:nowrap;text-align:center}
+.day .range{min-width:0;width:100%}
+.day .rain{font-size:10px;white-space:nowrap}
+@media(max-width:720px){.day{grid-template-columns:minmax(0,1fr) 24px minmax(62px,auto) minmax(12px,1fr) auto;gap:5px;padding:9px 7px}.day .d{font-size:12px}.day>strong{font-size:11px}.day .rain{font-size:10px}}
 @media(min-width:900px){.forecast{grid-template-columns:repeat(7,1fr)}.day{display:flex;flex-direction:column;gap:5px;text-align:center}.day .range{width:100%}}
 :root[data-theme="light"]{color-scheme:light;--bg:#edf3fb;--panel:#fff;--line:#1b35551c;--muted:#62738d;--text:#17263d;--blue:#1767ad;--cyan:#087e83;--gold:#9b6500}
 :root[data-theme="light"] body{background:radial-gradient(ellipse at 50% -18%,#fff 0,#e8f0fa 48%,#dfe8f5 100%);color:var(--text)}
