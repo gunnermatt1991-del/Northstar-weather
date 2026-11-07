@@ -173,7 +173,7 @@ async function loadOfficialWarnings(){
   .filter(Boolean).map(normalizeWarningArea).filter(term=>term.length>2);
  const matchesPlace=item=>{
   const hay=normalizeWarningArea((item.title||"")+" "+(item.description||""));
-  return terms.some(term=>hay.includes(term));
+  return terms.some(term=>(" "+hay+" ").includes(" "+term+" "));
  };
  try{
   const feed="https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
