@@ -1,4 +1,4 @@
-const CACHE = "northstar-weather-v44";
+const CACHE = "northstar-weather-v45";
 const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png", "./uk-map.html", "./uk-map-radar.html", "./Northstar-UK-Map-Fixed.html", "./Northstar-UK-Map-Fixed%202.html", "./premium-storm-analysis.html"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new Request(new URL(path, self.registration.scope), {cache:"reload"})))).then(() => self.skipWaiting()));
@@ -42,7 +42,7 @@ self.addEventListener("fetch", event => {
     event.respondWith(fetch(new Request(event.request, {cache:"no-store"})));
     return;
   }
-  event.respondWith(fetch(event.request).then(response => {
+  event.respondWith(fetch(event.request.mode === "navigate" ? new Request(event.request, {cache:"no-store"}) : event.request).then(response => {
     const copy = response.clone();
     caches.open(CACHE).then(cache => cache.put(event.request, copy));
     return response;
