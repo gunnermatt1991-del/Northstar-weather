@@ -55,6 +55,14 @@ body{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 :root[data-theme="light"] .weather-hero{background:radial-gradient(ellipse at 82% 8%,#6aa8e855,transparent 42%),linear-gradient(145deg,#e6f3ff,#d4e5f7 72%)}
 @media(min-width:900px){.northstar-dock{bottom:18px}}
 @media(prefers-reduced-motion:no-preference){.dock-item{transition:background .18s ease,transform .18s ease}.dock-item:active{transform:scale(.96)}}
+/* Northstar daily forecast: compact, explicit mobile row layout */
+#forecast{display:flex!important;flex-direction:column!important;gap:8px!important;width:100%!important;max-width:100%!important;overflow:visible!important}
+#forecast .day{box-sizing:border-box!important;display:grid!important;width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:minmax(0,1fr) 26px auto!important;grid-template-rows:auto auto!important;align-items:center!important;column-gap:9px!important;row-gap:5px!important;padding:11px 12px!important;overflow:visible!important}
+#forecast .day .d{grid-column:1!important;grid-row:1!important;font-size:14px!important;line-height:1.3!important;white-space:nowrap!important;font-weight:700!important}
+#forecast .day .ico{grid-column:2!important;grid-row:1!important;font-size:20px!important;line-height:1!important;text-align:center!important}
+#forecast .day>strong{grid-column:3!important;grid-row:1!important;font-size:13px!important;line-height:1.3!important;white-space:nowrap!important;text-align:right!important}
+#forecast .day .range{grid-column:1 / 3!important;grid-row:2!important;width:100%!important;min-width:0!important;height:5px!important}
+#forecast .day .rain{grid-column:3!important;grid-row:2!important;font-size:11px!important;line-height:1.2!important;white-space:nowrap!important;text-align:right!important}
 /* Keep every daily forecast value visible on narrow phone screens */
 .forecast{width:100%;min-width:0;max-width:100%;overflow:hidden}
 .day{width:100%;min-width:0;grid-template-columns:minmax(0,1fr) 28px minmax(64px,auto) minmax(20px,1fr) auto;gap:6px;padding:10px 8px;overflow:hidden}
