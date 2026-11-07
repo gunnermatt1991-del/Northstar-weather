@@ -166,17 +166,9 @@ function renderFog(d){const box=$("fogStatus"),details=$("fogDetails"),h=d.hourl
 async function loadOfficialWarnings(){
  const box=$("officialWarnings");if(!box)return;
  const officialUrl="https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings";
- // Match the selected place against its full geocoded administrative hierarchy.
- // Open-Meteo returns admin1–admin4 where available; admin2–admin4 usually
- // identify the county, unitary authority, district or local authority.
- const areaAliases={"north northamptonshire":["northamptonshire"],"west northamptonshire":["northamptonshire"]};
- const rawTerms=[place.name,place.admin2,place.admin3,place.admin4].filter(Boolean);
- const terms=[...rawTerms,...rawTerms.flatMap(value=>areaAliases[normalizeWarningArea(value)]||[])]
-  .map(normalizeWarningArea).filter(term=>term.length>2);
- const matchesPlace=item=>{
-  const hay=normalizeWarningArea((item.title||"")+" "+(item.description||""));
-  return terms.some(term=>(" "+hay+" ").includes(" "+term+" "));
- };
+ // Official warnings are UK-wide, not filtered to the developer's or
+ // current visitor's location. Each warning retains its Met Office area details.
+
  try{
   const feed="https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
   const endpoint="https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(feed);
@@ -184,8 +176,8 @@ async function loadOfficialWarnings(){
   let response;try{response=await fetch(endpoint,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Feed unavailable");
   const payload=await response.json();if(payload.status!=="ok"||!Array.isArray(payload.items))throw Error("No warning feed data");
-  const items=payload.items.filter(matchesPlace);
-  if(!items.length){box.innerHTML='<div class="official-warning-empty">✓ No current Met Office warnings matched '+escapeWarningText(place.name)+'. <span style="display:block;margin-top:5px"><a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Check all UK warnings ↗</a></span></div>';return}
+  const items=payload.items;
+  if(!items.length){box.innerHTML='<div class="official-warning-empty">✓ No current Met Office warnings are in force anywhere in the UK. <span style="display:block;margin-top:5px"><a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Check all UK warnings ↗</a></span></div>';return}
   box.innerHTML=items.map(item=>{
    const title=escapeWarningText((item.title||"Met Office weather warning").replace(/<[^>]*>/g,""));
    const desc=escapeWarningText((item.description||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").slice(0,420));
@@ -229,5 +221,5 @@ function draw(kind,range){const x=data(kind,range),id=kind==="temp"?"temp":"rain
 function charts(r){draw("temp",r);draw("rain",r)}
 document.querySelectorAll("[data-chart]").forEach(b=>b.addEventListener("click",()=>{b.parentElement.querySelectorAll("button").forEach(z=>z.classList.toggle("active",z===b));draw(b.dataset.chart,b.dataset.range)}));
 $("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$("locationInput").value.trim();if(!q)return;notice("Finding "+q+"…");try{if(/\bhenlow\b/i.test(q)){place={lat:52.03231,lon:-0.28925,name:"Henlow",country:"United Kingdom",admin2:"Central Bedfordshire"};await load();return;}const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/geocoding");u.searchParams.set("name",q);u.searchParams.set("count","10");u.searchParams.set("language","en");u.searchParams.set("countryCode","GB");const r=await fetch(u);if(!r.ok)throw Error("Location search is temporarily unavailable. Please try again.");const g=await r.json();if(!g.results?.length)throw Error("No UK match found. Try another spelling.");const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
-const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});load();if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=72",{updateViaCache:"none"});await registration.update()}catch(e){}})}
+const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});load();if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=73",{updateViaCache:"none"});await registration.update()}catch(e){}})}
 </script></body></html>
