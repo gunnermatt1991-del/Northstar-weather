@@ -6,7 +6,15 @@
 </style></head><body><main class="wrap">
 <header><div class="brand">✦ Northstar Weather<small>PREMIUM WEATHER INTELLIGENCE</small></div><a class="back" href="./premium.html">← Premium</a></header>
 <section class="hero"><div class="eyebrow">Live forecast data · beta</div><h1>Professional weather tools</h1><p class="muted">Compare independent forecast models, inspect rainfall and wind signals, and see where the outlook becomes unsettled. Data availability varies by location and model.</p><div class="search"><input id="place" value="Kettering" aria-label="Town or city" placeholder="Search a town or city"><button class="btn" id="search">Update location</button></div><div id="status" class="status" role="status" style="margin-top:12px">Checking Premium membership…</div><div class="statgrid"><div class="stat"><span>Location</span><strong id="locationName">Kettering</strong></div><div class="stat"><span>Forecast updated</span><strong id="updated">—</strong></div><div class="stat"><span>Model spread now</span><strong id="spread">—</strong></div><div class="stat"><span>Highest rain signal</span><strong id="maxRain">—</strong></div></div></section>
-<div id="locked" class="locked" hidden>Premium membership could not be confirmed. <a href="./premium.html" style="color:#fff">Return to Premium</a> to subscribe or try again.</div>
+<div id="locked" class="locked" hidden>
+<p><strong>Owner access</strong> · Sign in here to unlock your testing tools without purchasing a customer subscription.</p>
+<form id="ownerLogin" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+<input id="ownerCode" type="password" autocomplete="current-password" aria-label="Owner access code" placeholder="Private owner access code" required style="flex:1;min-width:180px;background:#081629;color:white;border:1px solid #ffffff35;border-radius:10px;padding:12px">
+<button class="btn" type="submit">Unlock owner tools</button>
+</form>
+<div id="ownerLoginStatus" role="status" aria-live="polite" class="foot">Your owner code is sent securely to Northstar's membership service and is not stored on this page.</div>
+<p class="foot">Customer Premium access still requires a genuine active subscription. <a href="./premium.html" style="color:#fff">Return to Premium</a>.</p>
+</div>
 
 <section class="card"><div class="eyebrow">Severe weather outlook · next 48 hours</div><h2>Potential hazards</h2><p class="muted">Threshold-based signals from the available forecast models. These are not official warnings.</p><div id="severeOutlook">Waiting for forecast data…</div></section>
 <section class="card"><div class="eyebrow">Your location · 48 hours</div><h2>Detailed local forecast</h2><p class="muted">A six-hourly view of temperature, rain, wind and gusts for the selected town.</p><div id="local48" class="scroll">Waiting for forecast data…</div></section>
@@ -63,6 +71,41 @@ function renderPremiumOutlook(){
  $("eventTimeline").innerHTML=timeline.length?timeline.sort((a,b)=>a.run[0]-b.run[0]).map(({ev,run})=>{const peak=run.reduce((a,b)=>(Number(val(chosen,ev.key,b))||0)>(Number(val(chosen,ev.key,a))||0)?b:a,run[0]);return '<div class="risk"><strong>'+ev.name+'</strong><br><span class="muted">May begin: '+new Date(chosen.hourly.time[run[0]]).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})+' · Peak signal: '+new Date(chosen.hourly.time[peak]).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})+' · May ease: '+new Date(chosen.hourly.time[run[run.length-1]]).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})+'</span></div>'}).join(""):'<div class="risk">No notable rain, gust, snow or thunderstorm event windows identified by '+chosen.name+' in the next 48 hours.</div>';
 }
 async function start(){if(!await gate())return;await load()}
-$("search").onclick=async()=>{const q=$("place").value.trim();if(!q)return;try{place=await geocode(q);await load()}catch(e){$("status").textContent=e.message}};
+$("ownerLogin").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const status=$("ownerLoginStatus"),code=$("ownerCode"),button=e.submitter||$("ownerLogin").querySelector("button");
+ if(!code||!code.value.trim()){if(status)status.textContent="Enter your private owner access code.";return}
+ if(status)status.textContent="Verifying owner access…";
+ if(button)button.disabled=true;
+ try{
+  const response=await fetch("https://northstar-premium-membership.gunnermatt1991.workers.dev/owner/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({code:code.value})});
+  const result=await response.json();
+  if(!response.ok||!result.token)throw new Error(result.error||"Owner sign-in could not be confirmed.");
+  localStorage.setItem("northstarOwnerTestToken",result.token);
+  code.value="";
+  $("locked").hidden=true;
+  $("status").textContent="Owner Test Mode · live forecast tools unlocked";
+  $("tools").hidden=false;
+  if(status)status.textContent="Owner access confirmed. Loading forecast tools…";
+  await load();
+ }catch(error){if(status)status.textContent=error.message||"Owner sign-in failed. Please try again."}
+ finally{if(button)button.disabled=false}
+});
+$("search").onclick=async()=>{
+ const field=$("place"),status=$("status");
+ const q=field?.value?.trim();
+ if(!q)return;
+ const button=$("search");
+ if(button)button.disabled=true;
+ if(status)status.textContent="Searching for "+q+"…";
+ try{
+  const found=await geocode(q);
+  place=found;
+  if($("locationName"))$("locationName").textContent=place.name;
+  await load();
+ }catch(error){if(status)status.textContent=error.message||"Location search failed. Please try another town."}
+ finally{if(button)button.disabled=false}
+};
+$("place").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();$("search").click()}});
 start();
 </script></body></html>
