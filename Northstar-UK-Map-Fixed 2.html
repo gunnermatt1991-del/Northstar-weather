@@ -120,12 +120,12 @@ const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true}).setVie
 map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
 let baseLayer;
 const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
-let mapMode="auto",nightMode=false,solarLocation=null;
+let mapMode="day",nightMode=false,solarLocation=null;
 const modeToggle=document.getElementById("modeToggle");
 function applyMapTheme(night){nightMode=night;document.body.classList.toggle("day",!night);document.getElementById("map").classList.toggle("night-map",night);if(!baseLayer){baseLayer=dayTiles;map.addLayer(baseLayer);}modeToggle.textContent=mapMode==="auto"?"🌗 Auto day/night":mapMode==="day"?"☀️ Day mode":"🌙 Night mode";}
 function solarEvent(date,lat,lon,isSunrise){const n=Math.floor((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())-Date.UTC(date.getFullYear(),0,0))/86400000);const lngHour=lon/15,t=n+((isSunrise?6:18)-lngHour)/24,m=.9856*t-3.289;let l=m+1.916*Math.sin(m*Math.PI/180)+.020*Math.sin(2*m*Math.PI/180)+282.634;l=(l+360)%360;let ra=Math.atan(.91764*Math.tan(l*Math.PI/180))*180/Math.PI;ra=(ra+360)%360;ra+=(Math.floor(l/90)*90-Math.floor(ra/90)*90);ra/=15;const sinDec=.39782*Math.sin(l*Math.PI/180),cosDec=Math.cos(Math.asin(sinDec)),cosH=(Math.cos(90.833*Math.PI/180)-sinDec*Math.sin(lat*Math.PI/180))/(cosDec*Math.cos(lat*Math.PI/180));if(cosH>1||cosH< -1)return null;const h=(isSunrise?360-Math.acos(cosH)*180/Math.PI:Math.acos(cosH)*180/Math.PI)/15;let utc=h+ra-.06571*t-6.622-lngHour;utc=((utc%24)+24)%24;return Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())+utc*3600000;}
 function updateAutomaticTheme(){if(mapMode!=="auto")return;let night;if(solarLocation){const now=new Date(),rise=solarEvent(now,solarLocation.lat,solarLocation.lon,true),set=solarEvent(now,solarLocation.lat,solarLocation.lon,false);night=rise===null||set===null?now.getHours()<7||now.getHours()>=19:Date.now()<rise||Date.now()>=set;}else{const h=new Date().getHours();night=h<7||h>=19;}if(night!==nightMode)applyMapTheme(night);else modeToggle.textContent="🌗 Auto day/night";}
-try{const saved=localStorage.getItem("northstar-map-mode");if(["auto","day","night"].includes(saved))mapMode=saved;}catch(e){}
+try{const saved=localStorage.getItem("northstar-map-mode");if(saved==="night"||saved==="day")mapMode=saved;else{mapMode="day";localStorage.setItem("northstar-map-mode","day");}}catch(e){mapMode="day";}
 applyMapTheme(mapMode==="night");
 modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
@@ -149,7 +149,7 @@ function showFogLayer(){
   points.push([x.lat,x.lon,intensity]);
   summary.push({name:x.name,vis,code,humidity,intensity});
  });
- fogLayer=L.heatLayer(points,{radius:68,blur:52,maxZoom:8,minOpacity:.16,gradient:{0.25:"#e6f2fb",0.48:"#c7d9e9",0.68:"#a9bfd3",0.84:"#879fb7",1:"#657d98"}});
+ fogLayer=L.heatLayer(points,{radius:92,blur:68,maxZoom:8,minOpacity:.24,gradient:{0.18:"#f4f7fa",0.38:"#e3e9ef",0.58:"#cbd4dd",0.76:"#aab6c2",0.92:"#8997a6",1:"#68788a"}});
  fogLayer.addTo(map);fogVisible=true;
  const detail=summary.length?summary.sort((a,b)=>a.vis-b.vis).slice(0,12).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No mapped locations currently meet the fog / reduced-visibility display thresholds.";
  document.getElementById("status").textContent=detail;
