@@ -49,7 +49,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;ma
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.model-trend-card{grid-column:1/-1}.daily-briefing-inline{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.chart-card{min-width:0}.switch{display:flex;gap:4px;padding:3px;background:#08152b;border-radius:99px}.switch button{border:0;border-radius:99px;background:transparent;color:var(--muted);padding:6px 10px;font-size:11px}.switch button.active{background:#29456c;color:#fff}.chart{height:170px;margin-top:10px;position:relative}.chart svg{width:100%;height:100%;overflow:visible;touch-action:pan-y}.chart circle{cursor:pointer;stroke:#12213b;stroke-width:3}.chart-tip{font-size:12px;color:#dbeaff;min-height:20px;margin-top:3px}.chart-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:10px}.footer{text-align:center;color:#8191aa;font-size:11px;margin:22px 0 0}.footer a{color:#b8d8ff}
 
 @media(max-width:720px){.wrap{padding-left:14px;padding-right:14px}header{align-items:flex-start;flex-direction:column}.search{width:100%}.hero,.chart-grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.card{padding:17px}.temp{font-size:82px}.day{grid-template-columns:1fr 32px 58px 64px 48px;gap:6px;padding:9px 8px}.range{height:5px}}
-/* Northstar mobile app dock and refreshed weather-first presentation */[data-view]{display:none!important}[data-view].view-active{display:grid!important}section[data-view="weather"].view-active,section[data-view="warnings"].view-active,section[data-view="radar"].view-active{display:block!important}
+/* Northstar mobile app dock and refreshed weather-first presentation */[data-view]{display:none!important}[data-view].view-active{display:grid!important}section[data-view="weather"].view-active,section[data-view="warnings"].view-active,section[data-view="radar"].view-active,section[data-view="settings"].view-active{display:block!important}
 .forecast-details{margin:14px 0;border:1px solid var(--line);border-radius:18px;background:#ffffff05;overflow:hidden}.forecast-details>summary{list-style:none;cursor:pointer;padding:15px 17px;font-weight:700;color:var(--text);display:flex;flex-direction:column;gap:4px}.forecast-details>summary::-webkit-details-marker{display:none}.forecast-details>summary:after{content:"＋";float:right;position:absolute;right:34px;color:var(--blue)}.forecast-details[open]>summary:after{content:"−"}.forecast-details>summary span{font-size:12px;color:var(--muted);font-weight:400}.forecast-details>section{margin:0 0 12px}.forecast-details[open]{padding-bottom:8px}
 .weather-hero{position:relative;overflow:hidden;background:radial-gradient(ellipse at 82% 8%,#6aa8e855,transparent 42%),linear-gradient(145deg,#203d65,#122541 72%)}
 .weather-hero:after{content:"";position:absolute;width:230px;height:230px;right:-95px;top:-105px;border-radius:50%;background:radial-gradient(circle,#d8efff20 0 35%,transparent 68%);pointer-events:none}
@@ -158,7 +158,22 @@ body{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 
 <section class="section chart-grid" id="weather-charts" data-view="charts"><article class="card chart-card"><div class="section-head"><h2>Temperature</h2><div class="switch"><button class="active" data-chart="temp" data-range="24">24h</button><button data-chart="temp" data-range="7">7 days</button></div></div><div class="chart" id="tempChart"></div><div class="chart-labels" id="tempLabels"></div><div class="chart-tip" id="tempTip">Tap a point to inspect temperature.</div></article><article class="card chart-card"><div class="section-head"><h2>Rainfall</h2><div class="switch"><button class="active" data-chart="rain" data-range="24">24h</button><button data-chart="rain" data-range="7">7 days</button></div></div><div class="chart" id="rainChart"></div><div class="chart-labels" id="rainLabels"></div><div class="chart-tip" id="rainTip">Tap a point to inspect rainfall.</div></article><article class="card chart-card model-trend-card"><div class="section-head"><h2>Temperature model trends</h2><span class="tag">Next 48 hours</span></div><div id="modelTrend" style="margin-top:8px"><div class="muted">Loading temperature trends…</div></div><p class="muted" style="font-size:11px;margin:12px 0 0">Compare hourly temperatures from ECMWF, GFS and ICON. Tap a model name to show or hide its line, or tap a point to inspect its forecast.</p></article></section>
 
-<section class="section card integrated-weather" id="weather-map" data-view="radar"><div class="section-head"><div><h2>Northstar Weather Map</h2><p class="muted" style="margin:5px 0 0;font-size:13px">One interactive UK, Ireland and Europe map for current conditions, radar, forecast layers and Premium storm intelligence. Switch storm models and forecast hours on the same map.</p></div><span class="tag">One unified map</span></div><iframe class="integrated-frame map-frame" src="./Northstar-UK-Map-Fixed%202.html?embed=1" title="Northstar unified weather and storm map" loading="lazy"></iframe></section>
+<section class="section card" id="weather-settings" data-view="settings">
+ <div class="section-head"><div><h2>Northstar Weather Alerts</h2><p class="muted" style="margin:5px 0 0;font-size:13px">Personalised weather heads-up alerts for your saved location.</p></div><span class="tag">Your alerts</span></div>
+ <div class="alert clear" style="margin-bottom:12px"><span class="aicon">🔔</span><div><strong>Stay ahead of changing weather</strong><p>Choose the conditions you want Northstar to watch for. Alerts are forecast-based and are not a replacement for official warnings.</p></div></div>
+ <div id="pushSupport" class="muted" role="status" style="margin:10px 0">Checking notification support…</div>
+ <div style="display:flex;gap:9px;flex-wrap:wrap;margin:12px 0"><button class="control" id="enableWeatherAlerts" type="button">Enable weather alerts</button><button class="control" id="testWeatherAlert" type="button" disabled>Send test alert</button><button class="control" id="disableWeatherAlerts" type="button" disabled>Turn alerts off</button></div>
+ <div class="section" style="margin-top:18px"><h3 style="font-size:15px;margin:0 0 8px">Alert location</h3><div class="muted" id="alertLocationName">Using your selected forecast location</div><p class="muted" style="font-size:11px;margin:5px 0">Search for a different town on the Weather tab to change this location.</p></div>
+ <div class="section" style="margin-top:18px"><h3 style="font-size:15px;margin:0 0 8px">Choose your alerts</h3>
+ <div class="mini-stat"><span>🌧️ Heavy rain</span><input type="checkbox" id="alertRain" checked aria-label="Heavy rain alerts"></div>
+ <div class="mini-stat"><span>💨 Strong winds</span><input type="checkbox" id="alertWind" checked aria-label="Strong wind alerts"></div>
+ <div class="mini-stat"><span>❄️ Snow and ice</span><input type="checkbox" id="alertSnow" checked aria-label="Snow and ice alerts"></div>
+ <div class="mini-stat"><span>⛈️ Thunderstorms</span><input type="checkbox" id="alertThunder" checked aria-label="Thunderstorm alerts"></div>
+ <div class="mini-stat"><span>🌫️ Fog and poor visibility</span><input type="checkbox" id="alertFog" checked aria-label="Fog alerts"></div></div>
+ <p class="muted" id="pushStatus" role="status" aria-live="polite" style="margin:14px 0 0">Alerts are currently off on this device.</p>
+ <p class="muted" style="font-size:11px;margin-top:12px">Northstar checks subscribed locations every 30 minutes. Your browser must allow notifications. On iPhone, install Northstar to your Home Screen and open it there before enabling push alerts.</p>
+ </section>
+ <section class="section card integrated-weather" id="weather-map" data-view="radar"><div class="section-head"><div><h2>Northstar Weather Map</h2><p class="muted" style="margin:5px 0 0;font-size:13px">One interactive UK, Ireland and Europe map for current conditions, radar, forecast layers and Premium storm intelligence. Switch storm models and forecast hours on the same map.</p></div><span class="tag">One unified map</span></div><iframe class="integrated-frame map-frame" src="./Northstar-UK-Map-Fixed%202.html?embed=1" title="Northstar unified weather and storm map" loading="lazy"></iframe></section>
 </main><nav class="northstar-dock" aria-label="Main navigation"><a href="#weather-home" class="dock-item active" data-dock="weather"><span>☀️</span><small>Weather</small></a><a href="#weather-map" class="dock-item" data-dock="radar"><span>◉</span><small>Radar</small></a><a href="#weather-charts" class="dock-item" data-dock="charts"><span>⌁</span><small>Charts</small></a><a href="#weather-warnings" class="dock-item" data-dock="warnings"><span>⚠️</span><small>Warnings</small></a><button type="button" class="dock-item" id="dockSettings"><span>⚙️</span><small>Settings</small></button></nav><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
 </div>
 <script>
@@ -194,8 +209,64 @@ function showNorthstarView(view){
 }
 showNorthstarView("weather");
 dockItems.forEach(item=>item.addEventListener("click",event=>{event.preventDefault();showNorthstarView(item.dataset.dock)}));
-document.getElementById("dockSettings")?.addEventListener("click",()=>document.getElementById("themeToggle")?.click());
+document.getElementById("dockSettings")?.addEventListener("click",()=>showNorthstarView("settings"));
 const $=id=>document.getElementById(id);let place={lat:52.3984,lon:-0.7283,name:"Kettering",country:"United Kingdom"},weather=null;
+const PUSH_WORKER="https://northstar-weather-alerts.gunnermatt1991.workers.dev";
+const pushPrefsKey="northstar-weather-alert-preferences";
+const pushSubKey="northstar-weather-push-subscription";
+const pushIds={rain:"alertRain",wind:"alertWind",snow:"alertSnow",thunder:"alertThunder",fog:"alertFog"};
+function pushPrefs(){const out={};for(const [key,id] of Object.entries(pushIds))out[key]=!!$(id)?.checked;return out}
+function setPushStatus(message){const el=$("pushStatus");if(el)el.textContent=message}
+function base64UrlBytes(value){const padded=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4);return Uint8Array.from(atob(padded),c=>c.charCodeAt(0))}
+async function pushRequest(path,options={}){const response=await fetch(PUSH_WORKER+path,{...options,headers:{"content-type":"application/json",...(options.headers||{})},cache:"no-store"});let data={};try{data=await response.json()}catch{}if(!response.ok||data.error)throw Error(data.error||"Notification service returned HTTP "+response.status);return data}
+function savedPushSubscription(){try{return JSON.parse(localStorage.getItem(pushSubKey)||"null")}catch{return null}}
+async function syncPushSubscription(subscription){const prefs=pushPrefs();localStorage.setItem(pushPrefsKey,JSON.stringify(prefs));await pushRequest("/subscribe",{method:"POST",body:JSON.stringify({subscription,latitude:place.lat,longitude:place.lon,locationName:place.name+", "+(place.country||"United Kingdom"),preferences:prefs})});}
+async function refreshPushUi(){
+ const support=$("pushSupport"),enable=$("enableWeatherAlerts"),test=$("testWeatherAlert"),off=$("disableWeatherAlerts");
+ if(!("serviceWorker"in navigator)||!("PushManager"in window)||!("Notification"in window)){support.textContent="Push notifications are not supported by this browser. Try the latest version of Safari, Chrome or Edge.";enable.disabled=true;return}
+ let sub=null;try{sub=await (await navigator.serviceWorker.getRegistration("./"))?.pushManager.getSubscription()}catch{}
+ const active=!!sub;support.textContent=active?"Notifications are enabled on this device.":"Notifications are not enabled on this device.";
+ enable.textContent=active?"Refresh alert settings":"Enable weather alerts";test.disabled=!active;off.disabled=!active;
+ const saved=savedPushSubscription();if(active){try{localStorage.setItem(pushSubKey,JSON.stringify(sub.toJSON()))}catch{}}else if(saved){/* subscription may need permission or a fresh service-worker registration */}
+}
+async function enableNorthstarPush(){
+ const button=$("enableWeatherAlerts");button.disabled=true;setPushStatus("Enabling notifications…");
+ try{
+  if(!("serviceWorker"in navigator)||!("PushManager"in window)||!("Notification"in window))throw Error("This browser does not support web push notifications.");
+  if(!window.isSecureContext)throw Error("Notifications require the secure Northstar website.");
+  if(Notification.permission==="denied")throw Error("Notifications are blocked in your browser settings. Allow them for Northstar, then try again.");
+  const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+  if(permission!=="granted")throw Error("Notification permission was not granted.");
+  const registration=await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription){
+   const keyData=await pushRequest("/vapid-public-key");
+   if(!keyData.publicKey)throw Error("The notification service has no VAPID public key configured yet.");
+   subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlBytes(keyData.publicKey)});
+  }
+  await syncPushSubscription(subscription.toJSON());
+  localStorage.setItem(pushSubKey,JSON.stringify(subscription.toJSON()));
+  setPushStatus("You're all set. Northstar will check your selected weather alerts every 30 minutes.");
+  await refreshPushUi();
+ }catch(error){setPushStatus(error.message||"Could not enable notifications. Please try again.");}
+ finally{button.disabled=false}
+}
+async function disableNorthstarPush(){
+ const button=$("disableWeatherAlerts");button.disabled=true;
+ try{
+  const registration=await navigator.serviceWorker.ready,subscription=await registration.pushManager.getSubscription();
+  if(subscription){await pushRequest("/unsubscribe",{method:"POST",body:JSON.stringify({endpoint:subscription.endpoint})});await subscription.unsubscribe()}
+  localStorage.removeItem(pushSubKey);setPushStatus("Weather alerts have been turned off on this device.");await refreshPushUi();
+ }catch(error){setPushStatus(error.message||"Could not turn alerts off. Please try again.");}
+ finally{button.disabled=false}
+}
+async function testNorthstarPush(){
+ const button=$("testWeatherAlert");button.disabled=true;
+ try{const registration=await navigator.serviceWorker.ready,subscription=await registration.pushManager.getSubscription();if(!subscription)throw Error("Enable alerts first.");await pushRequest("/test",{method:"POST",body:JSON.stringify({subscription:subscription.toJSON()})});setPushStatus("Test notification sent. Check your device.");}
+ catch(error){setPushStatus(error.message||"The test notification could not be sent.");}
+ finally{button.disabled=false}
+}
+
 const desc={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
 function icon(c,day=1){if(c===0)return day?"☀️":"🌙";if(c===1)return day?"🌤️":"🌙☁️";if(c===2)return day?"⛅":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return"🌦️";if(c<=86)return"🌨️";return"⛈️"}function tm(s){return new Date(s).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}function dn(s,i){return i===0?"Today":i===1?"Tomorrow":new Date(s+"T12:00:00").toLocaleDateString([],{weekday:"short"})}function dir(n){return["N","NE","E","SE","S","SW","W","NW"][Math.round(n/45)%8]}function notice(t){$("notice").textContent=t;$("notice").style.display="block"}
 async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
@@ -448,5 +519,13 @@ $("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$
  if(!area)throw Error("No UK match found. Try a town, city or county name.");
  place={lat:area[0],lon:area[1],name:area[2],country:"United Kingdom"};await load();return;
 }const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
-const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});setInterval(updateDayNightIcon,15000);load();setInterval(loadHomeWarning,5*60*1000);if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=104",{updateViaCache:"none"});await registration.update()}catch(e){}})}
+
+$("enableWeatherAlerts")?.addEventListener("click",enableNorthstarPush);
+$("disableWeatherAlerts")?.addEventListener("click",disableNorthstarPush);
+$("testWeatherAlert")?.addEventListener("click",testNorthstarPush);
+for(const id of Object.values(pushIds))$(id)?.addEventListener("change",async()=>{try{localStorage.setItem(pushPrefsKey,JSON.stringify(pushPrefs()));const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){await syncPushSubscription(sub.toJSON());setPushStatus("Your alert preferences have been updated.")}}catch(error){setPushStatus(error.message||"Could not update alert preferences.")}});
+try{const saved=JSON.parse(localStorage.getItem(pushPrefsKey)||"null");if(saved)for(const [key,id] of Object.entries(pushIds))if(typeof saved[key]==="boolean")$(id).checked=saved[key]}catch{}
+$("alertLocationName").textContent="Alerts will follow "+place.name+", "+(place.country||"United Kingdom")+".";
+refreshPushUi();
+const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});setInterval(updateDayNightIcon,15000);load();setInterval(loadHomeWarning,5*60*1000);if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=105",{updateViaCache:"none"});await registration.update()}catch(e){}})}
 </script></body></html>
