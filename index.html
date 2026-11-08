@@ -219,7 +219,7 @@ async function loadStationObservations(){
   let response;try{response=await fetch(u,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   const data=await response.json();if(!response.ok||data.error)throw Error(data.error||"Observation service unavailable");
   const o=data.latest||{},station=data.station||{};
-  const stamp=Number(o.datetime),date=Number.isFinite(stamp)?new Date(stamp*1000):null;
+  const date=o.datetime?new Date(o.datetime):null;
   const age=date?Math.max(0,(Date.now()-date.getTime())/3600000):Infinity;
   const fmt=(v,suffix,digits=1)=>v===null||v===undefined||!Number.isFinite(Number(v))?"—":Number(v).toFixed(digits)+suffix;
   const rows=[
@@ -227,7 +227,7 @@ async function loadStationObservations(){
    ["Wind",fmt(o.wind_speed," m/s")],
    ["Wind gust",fmt(o.wind_gust," m/s")],
    ["Humidity",fmt(o.humidity,"% ",0)],
-   ["Pressure",fmt(o.pressure," hPa",0)]
+   ["Pressure",fmt(o.mslp," hPa",0)]
   ].filter(x=>x[1]!=="—");
   const when=date?date.toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Time unavailable";
   const freshness=age<=2?"Recent hourly reading":age<=6?"Latest available reading":"Older reading — treat with caution";
