@@ -81,25 +81,56 @@
 })();
 </script>
 <script>
-(()=>{const $=id=>document.getElementById(id);const model=$("run-model"),cycle=$("run-cycle"),date=$("run-date"),step=$("forecast-step"),stepLabel=$("forecast-step-label"),endLabel=$("forecast-end-label"),status=$("run-status"),chart=$("run-chart");if(!model)return;
-const now=new Date();date.value=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate())).toISOString().slice(0,10);
-let validSteps=[];
-function config(){const m=model.value,h=cycle.value;if(m==="ecmwf"){if(h==="00"||h==="12")return {max:240,cycles:["00","12"],steps:[...Array.from({length:49},(_,i)=>i*3),...Array.from({length:16},(_,i)=>150+i*6)],name:"ECMWF IFS HRES"};return {max:90,cycles:["06","18"],steps:Array.from({length:31},(_,i)=>i*3),name:"ECMWF IFS short-range"};}if(m==="gfs")return {max:384,cycles:["00","06","12","18"],steps:[...Array.from({length:121},(_,i)=>i),...Array.from({length:88},(_,i)=>123+i*3)],name:"NOAA GFS"};return {max:null,cycles:["latest"],steps:[],name:m==="ukmo_uk"?"Met Office UK 2 km":"Met Office Global 10 km",unknown:true};}
-function sync(){let c=config();cycle.innerHTML=c.cycles.map(x=>'<option value="'+x+'">'+(x==="latest"?"Latest available":x+"Z")+'</option>').join("");if(!c.cycles.includes(cycle.value))cycle.value=c.cycles[0];c=config();validSteps=c.steps;step.disabled=!!c.unknown||!validSteps.length;step.min="0";step.max=String(Math.max(0,validSteps.length-1));step.step="1";step.value="0";stepLabel.textContent=validSteps.length?"+000 hours":"Waiting for provider run metadata";endLabel.textContent=c.max===null?"provider-defined":("+"+c.max+"h");}
-function updateStep(){const c=config(),n=validSteps[Number(step.value)]??0;stepLabel.textContent="+"+String(n).padStart(3,"0")+" hours";}
-model.addEventListener("change",sync);cycle.addEventListener("change",sync);step.addEventListener("input",updateStep);
-$("load-run").addEventListener("click",()=>{const c=config();status.textContent="The operational GRIB ingestion and chart-rendering service is not deployed yet. No chart is available to display.";chart.innerHTML='<div><div style="font-size:38px">🗺️</div><strong>Waiting for live model data service</strong><p class="muted">Selected run: '+c.name+' · '+date.value+' '+cycle.value+'Z · +'+(validSteps[Number(step.value)]??0)+'h</p><p class="muted">The chart will appear here after the source GRIB file is retrieved and decoded.</p></div>';$("run-metadata").textContent="Requested: "+c.name+" · "+date.value+" "+cycle.value+"Z · forecast +"+(validSteps[Number(step.value)]??0)+"h";});
-let timer=null;$("animate-run").addEventListener("click",()=>{if(timer){clearInterval(timer);timer=null;$("animate-run").textContent="▶ Animate run";return;}if(!validSteps.length)return;timer=setInterval(()=>{let n=Number(step.value)+1;if(n>=validSteps.length)n=0;step.value=String(n);updateStep();},650);$("animate-run").textContent="Ⅱ Pause";});
-sync();
+(()=> {
+ const $=id=>document.getElementById(id);
+ const api="https://northstar-model-engine.onrender.com";
+ const model=$("run-model"),cycle=$("run-cycle"),date=$("run-date"),field=$("run-field"),step=$("forecast-step");
+ const status=$("run-status"),chart=$("run-chart"),meta=$("run-metadata"),stepLabel=$("forecast-step-label"),endLabel=$("forecast-end-label");
+ if(!model||!cycle||!date||!field||!step)return;
+ let runInfo=null,steps=[],timer=null,chartUrl=null;
+ const names={gfs:"NOAA GFS",ecmwf:"ECMWF IFS HRES"};
+ function say(s){status.textContent=s;}
+ function clearChart(){if(chartUrl){URL.revokeObjectURL(chartUrl);chartUrl=null;}chart.innerHTML='<div><div style="font-size:38px">🗺️</div><strong>Choose a run and load a forecast chart</strong></div>';}
+ function syncSteps(){const n=steps[Number(step.value)]??0;stepLabel.textContent="+"+String(n).padStart(3,"0")+" hours";endLabel.textContent=steps.length?"+"+steps[steps.length-1]+"h":"Run metadata unavailable";}
+ async function loadRuns(){
+  if(model.value!=="gfs"&&model.value!=="ecmwf"){say("This live chart service currently supports GFS and ECMWF only. Met Office models are not connected yet.");steps=[];step.disabled=true;return;}
+  say("Checking the latest "+names[model.value]+" run…");clearChart();meta.textContent="Checking provider run availability…";
+  try{
+   const r=await fetch(api+"/api/runs?model="+encodeURIComponent(model.value),{cache:"no-store"});
+   const j=await r.json();if(!r.ok)throw new Error(j.detail||("HTTP "+r.status));
+   runInfo=j;date.value=j.date.slice(0,4)+"-"+j.date.slice(4,6)+"-"+j.date.slice(6,8);
+   cycle.innerHTML='<option value="'+j.cycle+'">'+j.cycle+'Z · latest available</option>';
+   steps=j.steps||[];step.disabled=!steps.length;step.min="0";step.max=String(Math.max(0,steps.length-1));step.step="1";step.value="0";syncSteps();
+   say(names[model.value]+" run found: "+j.run+". Select a forecast hour and load the chart.");
+   meta.textContent="Source: "+j.source+" · Run "+j.run+" · Forecast range to +"+j.max_hour+"h";
+  }catch(e){runInfo=null;steps=[];step.disabled=true;say("Couldn't retrieve run metadata: "+e.message);meta.textContent="The model service may be waking from its free-tier sleep. Try again shortly.";}
+ }
+ async function loadChart(){
+  if(!runInfo){say("Load available run metadata first.");return;}
+  const hour=steps[Number(step.value)];if(hour===undefined){say("No valid forecast hour is available.");return;}
+  const d=date.value.replace(/-/g,"");const params=new URLSearchParams({model:model.value,date:d,cycle:runInfo.cycle,hour:String(hour),field:field.value});
+  say("Retrieving and rendering "+names[model.value]+" +"+hour+"h chart. This can take a minute on the free server…");
+  $("load-run").disabled=true;
+  try{
+   const r=await fetch(api+"/api/chart?"+params.toString(),{cache:"no-store"});
+   if(!r.ok){let msg="HTTP "+r.status;try{const j=await r.json();msg=j.detail||msg;}catch{}throw new Error(msg);}
+   const blob=await r.blob();if(!blob.type.includes("image"))throw new Error("The model service did not return a chart image.");
+   if(chartUrl)URL.revokeObjectURL(chartUrl);chartUrl=URL.createObjectURL(blob);
+   chart.innerHTML="";const img=document.createElement("img");img.src=chartUrl;img.alt=names[model.value]+" "+field.value+" forecast chart, "+runInfo.run+", plus "+hour+" hours";img.style.cssText="display:block;width:100%;height:auto;border-radius:12px";chart.appendChild(img);
+   say("Chart loaded successfully.");meta.textContent="Source: "+runInfo.source+" · Run "+runInfo.run+" · Forecast +"+hour+"h · "+field.options[field.selectedIndex].text;
+  }catch(e){say("Chart request failed: "+e.message);meta.textContent="Check the selected field/run and try again. The API returned an error rather than a fabricated chart.";}
+  finally{$("load-run").disabled=false;}
+ }
+ model.addEventListener("change",loadRuns);
+ step.addEventListener("input",syncSteps);
+ $("load-run").addEventListener("click",loadChart);
+ $("animate-run").addEventListener("click",()=>{
+  if(timer){clearInterval(timer);timer=null;$("animate-run").textContent="▶ Animate run";return;}
+  if(!steps.length||!runInfo){say("Load a model run before starting animation.");return;}
+  $("animate-run").textContent="Ⅱ Pause";
+  timer=setInterval(()=>{let i=Number(step.value)+1;if(i>=steps.length)i=0;step.value=String(i);syncSteps();loadChart();},5000);
+ });
+ loadRuns();
 })();
-</script><script>
-(()=>{const $=id=>document.getElementById(id);const model=$("run-model"),cycle=$("run-cycle"),date=$("run-date"),step=$("forecast-step"),stepLabel=$("forecast-step-label"),endLabel=$("forecast-end-label"),status=$("run-status"),chart=$("run-chart");if(!model)return;
-const today=new Date();date.value=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate())).toISOString().slice(0,10);
-function config(){const m=model.value;if(m==="ecmwf")return {max:240,step:3,cycles:["00","12"],name:"ECMWF IFS HRES"};if(m==="gfs")return {max:384,step:3,cycles:["00","06","12","18"],name:"NOAA GFS"};return {max:120,step:1,cycles:["00","06","12","18"],name:m==="ukmo_uk"?"Met Office UK":"Met Office Global",unknown:true};}
-function sync(){const c=config();const keep=cycle.value;if(!c.cycles.includes(keep))cycle.value=c.cycles[0];cycle.innerHTML=c.cycles.map(x=>'<option value="'+x+'">'+x+'Z</option>').join("");cycle.value=c.cycles.includes(keep)?keep:c.cycles[0];step.max=String(c.max);step.step=String(c.step);if(Number(step.value)>c.max)step.value=String(c.max);stepLabel.textContent="+"+String(step.value).padStart(3,"0")+" hours";endLabel.textContent=c.unknown?"latest available":("+"+c.max+"h");}
-function changeStep(){stepLabel.textContent="+"+String(step.value).padStart(3,"0")+" hours";}
-model.addEventListener("change",()=>{sync();status.textContent="Select a run and load it when the operational chart feed is connected.";});step.addEventListener("input",changeStep);
-$("load-run").addEventListener("click",()=>{const c=config();status.textContent="The GFS + ECMWF chart engine source has been added, but its container still needs deployment. Live charts will appear when the API is online. Selected "+c.name+" GRIB forecast.";chart.innerHTML='<div><div style="font-size:38px">🗺️</div><strong>Live chart feed not connected</strong><p class="muted">No placeholder chart or invented run is being presented as operational data.</p></div>';$("run-metadata").textContent=c.name+" · "+date.value+" "+cycle.value+"Z · forecast +"+step.value+"h · awaiting GRIB processing service";});
-let timer=null;$("animate-run").addEventListener("click",()=>{if(timer){clearInterval(timer);timer=null;$("animate-run").textContent="▶ Animate run";return;}timer=setInterval(()=>{const c=config();let n=Number(step.value)+c.step;if(n>c.max)n=0;step.value=String(n);changeStep();},650);$("animate-run").textContent="Ⅱ Pause";});
-sync();changeStep();})();
-</script></body></html>
+</script>
+</body></html>
