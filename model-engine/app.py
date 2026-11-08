@@ -84,8 +84,14 @@ def ecmwf_download(day,cyc,hour,field):
  except Exception as e:
   path.unlink(missing_ok=True);raise HTTPException(502,f"ECMWF retrieval failed: {e}")
  return path
-def choose_dataset(path,field):
- datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
+def choose_dataset(path,field,model="gfs"):
+ # ECMWF Open Data requests one parameter/level per file. Opening it as a
+ # single hypercube avoids cfgrib.open_datasets auto-discovery, which can
+ # raise an internal AssertionError on valid single-field ECMWF GRIB files.
+ if model=="ecmwf":
+  datasets=[cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise"})]
+ else:
+  datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
  wanted={"mslp":["msl","prmsl","mslet"],"temperature":["t2m","2t"],"precipitation":["tp","total_precipitation"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
  for ds in datasets:
   for var in wanted:
@@ -97,7 +103,7 @@ def choose_dataset(path,field):
  raise ValueError(f"GRIB field not found; expected {wanted}; available variables: {[list(d.data_vars) for d in datasets]}")
 def render(path,field,model,day,cyc,hour):
  try:
-  ds,var,all_ds=choose_dataset(path,field); da=ds[var].squeeze()
+  ds,var,all_ds=choose_dataset(path,field,model); da=ds[var].squeeze()
   if field=="wind" and var in ("u10","u"): 
    vds=next((d for d in all_ds if "v10" in d.data_vars or "v" in d.data_vars),None)
    if vds is not None:da=np.hypot(da,vds["v10" if "v10" in vds.data_vars else "v"].squeeze())
