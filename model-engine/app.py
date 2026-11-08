@@ -93,27 +93,44 @@ def ecmwf_download(day,cyc,hour,field):
    path.unlink(missing_ok=True)
  raise HTTPException(502,"ECMWF Open Data retrieval failed on all mirrors. "+" | ".join(failures))
 def choose_dataset(path,field,model="gfs"):
- # ECMWF Open Data requests one parameter/level per file. Opening it as a
- # single hypercube avoids cfgrib.open_datasets auto-discovery, which can
- # raise an internal AssertionError on valid single-field ECMWF GRIB files.
- if model=="ecmwf":
-  datasets=[cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise"})]
- else:
-  try:
-   datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
-  except AssertionError:
-   # Some NOMADS subregion GRIBs trigger cfgrib multi-dataset discovery
-   # assertions even though the requested single field remains readable.
-   datasets=[cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise"})]
+ # GRIB files can contain several message groups. Filter by the physical
+ # level before cfgrib builds its xarray datasets; this avoids the
+ # AssertionError raised by automatic multi-hypercube discovery.
+ level_filters={
+  "mslp":{"typeOfLevel":"meanSea"},
+  "temperature":{"typeOfLevel":"heightAboveGround","level":2},
+  "precipitation":{"typeOfLevel":"surface"},
+  "wind":{"typeOfLevel":"heightAboveGround","level":10},
+  "z500":{"typeOfLevel":"isobaricInhPa","level":500},
+  "t850":{"typeOfLevel":"isobaricInhPa","level":850}}
  wanted={"mslp":["msl","prmsl","mslet"],"temperature":["t2m","2t"],"precipitation":["tp","total_precipitation"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
- for ds in datasets:
+ filters=[level_filters[field],{}]
+ errors=[]
+ for filter_keys in filters:
+  try:
+   opened=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise","filter_by_keys":filter_keys})
+   datasets=list(opened)
+   for ds in datasets:
+    for var in wanted:
+     if var in ds.data_vars:
+      return ds,var,datasets
+   errors.append(f"filter {filter_keys}: no {wanted}; got {[list(d.data_vars) for d in datasets]}")
+   for ds in datasets:
+    try:ds.close()
+    except Exception:pass
+  except Exception as e:
+   errors.append(f"filter {filter_keys}: {type(e).__name__}: {e}")
+ # Last-resort single-dataset opening, retaining explicit level filter.
+ try:
+  ds=cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise","filter_by_keys":level_filters[field]})
   for var in wanted:
-   if var in ds.data_vars:
-    if field in ("z500","t850"):
-     coord=next((k for k in ds.coords if k in ("isobaricInhPa","pressure_level")),None)
-     if coord and int(np.asarray(ds[coord].values).flat[0]) not in (500 if field=="z500" else 850,):continue
-    return ds,var,datasets
- raise ValueError(f"GRIB field not found; expected {wanted}; available variables: {[list(d.data_vars) for d in datasets]}")
+   if var in ds.data_vars:return ds,var,[ds]
+  errors.append(f"single dataset has variables {list(ds.data_vars)}")
+  ds.close()
+ except Exception as e:
+  errors.append(f"single dataset: {type(e).__name__}: {e}")
+ raise ValueError("Could not select requested GRIB field. "+" | ".join(errors))
+
 def render(path,field,model,day,cyc,hour):
  try:
   ds,var,all_ds=choose_dataset(path,field,model); da=ds[var].squeeze()
