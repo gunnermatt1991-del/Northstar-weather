@@ -100,7 +100,7 @@
    const j=await r.json();if(!r.ok)throw new Error(j.detail||("HTTP "+r.status));
    runInfo=j;date.value=j.date.slice(0,4)+"-"+j.date.slice(4,6)+"-"+j.date.slice(6,8);
    cycle.innerHTML='<option value="'+j.cycle+'">'+j.cycle+'Z · latest available</option>';
-   steps=j.steps||[];step.disabled=!steps.length;step.min="0";step.max=String(Math.max(0,steps.length-1));step.step="1";step.value="0";syncSteps();
+   steps=(j.steps||[]).filter(h=>Number.isFinite(Number(h))&&Number(h)>=0);step.disabled=!steps.length;step.min="0";step.max=String(Math.max(0,steps.length-1));step.step="1";const firstForecast=steps.findIndex(h=>Number(h)>0);step.value=String(firstForecast>=0?firstForecast:0);syncSteps();
    say(names[model.value]+" run found: "+j.run+". Select a forecast hour and load the chart.");
    meta.textContent="Source: "+j.source+" · Run "+j.run+" · Forecast range to +"+j.max_hour+"h";
   }catch(e){runInfo=null;steps=[];step.disabled=true;say("Couldn't retrieve run metadata: "+e.message);meta.textContent="The model service may be waking from its free-tier sleep. Try again shortly.";}
