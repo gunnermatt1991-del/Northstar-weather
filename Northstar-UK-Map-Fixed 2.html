@@ -333,25 +333,20 @@ function showFogLayer(){
   if(validVis){
    if(vis<200)intensity=Math.max(intensity,1);
    else if(vis<500)intensity=Math.max(intensity,.96);
-   else if(vis<1000)intensity=Math.max(intensity,.9);
-   else if(vis<2000)intensity=Math.max(intensity,.72);
-   else if(vis<5000&&humidity>=85)intensity=Math.max(intensity,.46);
-   else if(vis<8000&&humidity>=90)intensity=Math.max(intensity,.24);
+   else if(vis<1000)intensity=Math.max(intensity,.88);
+   else if(vis<2000)intensity=Math.max(intensity,.68);
+   else if(vis<5000)intensity=Math.max(intensity,.34);
   }
-  if(intensity>=.2)heat.push([x.lat,x.lon,intensity]);
-  if(intensity>=.62){
-   const severe=fogCode||vis<1000,fill=severe?"#3f4854":"#929ba6";
-   L.circleMarker([x.lat,x.lon],{pane:"fogPane",radius:severe?8:6,stroke:true,color:"#ffffff",weight:1,opacity:.72,fillColor:fill,fillOpacity:severe?.48:.3}).bindPopup("<strong>"+x.name+"</strong><br>Visibility: "+(validVis?(vis<1000?Math.round(vis)+" m":(vis/1000).toFixed(1)+" km"):"Fog reported")+(fogCode?"<br>Weather observation: fog":"")+"<br>Relative humidity: "+(Number.isFinite(humidity)?humidity+"%":"—")+"<br><small>Town-level observation; shading is interpolated and not an exact fog boundary.</small>").addTo(fogLayer);
-  }
+  if(intensity>0)heat.push([x.lat,x.lon,intensity]);
   if(intensity>=.2)summary.push({name:x.name,vis,code,humidity,intensity});
  });
  if(heat.length&&L.heatLayer){
-  fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:148,blur:112,maxZoom:8,minOpacity:.24,gradient:{0.08:"#e1e5e9",0.2:"#b7bec6",0.38:"#89939e",0.58:"#626d79",0.78:"#3f4854",1:"#202a36"}}).addTo(map);
-  fogLayer.bringToFront();fogHeatLayer.bringToFront();
+  fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:170,blur:135,maxZoom:8,minOpacity:.16,gradient:{0.06:"#eef0f2",0.18:"#c5cbd2",0.34:"#929ca7",0.52:"#626d79",0.72:"#3f4854",1:"#202a36"}}).addTo(map);
+  fogHeatLayer.bringToFront();
  }
  const severe=summary.filter(x=>x.intensity>=.8).length,moderate=summary.filter(x=>x.intensity>=.5&&x.intensity<.8).length;
- const detail=summary.length?summary.sort((a,b)=>a.intensity-b.intensity||a.vis-b.vis).slice(0,8).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No mapped locations currently meet the fog / reduced-visibility thresholds. No grey fog area is shown because the latest observations do not indicate fog.";
- document.getElementById("status").textContent=(summary.length?severe+" dense-fog / very-low-visibility sites · "+moderate+" reduced-visibility sites. ":"No fog or significant visibility reduction detected at sampled locations. ")+detail+" Shading is a smoother interpolated guide between town observations, not a measured fog boundary.";
+ const detail=summary.length?summary.sort((a,b)=>a.intensity-b.intensity||a.vis-b.vis).slice(0,8).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No sampled locations currently meet the fog / reduced-visibility thresholds.";
+ document.getElementById("status").textContent=(summary.length?severe+" dense-fog / very-low-visibility sites · "+moderate+" patchy / reduced-visibility sites. ":"No fog or significant visibility reduction detected at sampled locations. ")+detail+" Smooth shading is interpolated from town-level observations; it is not a satellite image or a measured fog boundary.";
 }
 
 const fogToggle=document.getElementById("fogToggle");
