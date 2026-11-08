@@ -28,7 +28,7 @@ FIELDS={
  "z500":{"title":"500 hPa geopotential height","units":"dam","cmap":"plasma"},
  "t850":{"title":"850 hPa temperature","units":"°C","cmap":"coolwarm"}}
 CYCLES={"gfs":["00","06","12","18"],"ecmwf":["00","12"]}
-STEPS={"gfs":list(range(0,121))+list(range(123,385,3)),"ecmwf":list(range(0,145,3))+list(range(150,241,6))}
+STEPS={"gfs":list(range(0,121))+list(range(123,385,3)),"ecmwf":list(range(3,145,3))+list(range(150,241,6))}
 
 def dt(day,cycle):
  return datetime.strptime(day+cycle,"%Y%m%d%H").replace(tzinfo=timezone.utc)
@@ -85,8 +85,8 @@ def ecmwf_download(day,cyc,hour,field):
   path.unlink(missing_ok=True);raise HTTPException(502,f"ECMWF retrieval failed: {e}")
  return path
 def choose_dataset(path,field):
- datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":""})
- wanted={"mslp":["msl"],"temperature":["t2m"],"precipitation":["tp"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
+ datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
+ wanted={"mslp":["msl","prmsl","mslet"],"temperature":["t2m","2t"],"precipitation":["tp","total_precipitation"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
  for ds in datasets:
   for var in wanted:
    if var in ds.data_vars:
@@ -106,7 +106,7 @@ def render(path,field,model,day,cyc,hour):
   if field=="temperature" or field=="t850":vals=vals-273.15
   if field=="precipitation":vals=vals*1000
   if field=="z500":vals=vals/10
-  lat=ds["latitude"].values;lon=ds["longitude"].values
+  lat_name=next((k for k in ("latitude","lat") if k in ds.coords),None);lon_name=next((k for k in ("longitude","lon") if k in ds.coords),None)\n  if not lat_name or not lon_name:raise ValueError(f"GRIB grid coordinates missing; available coordinates: {list(ds.coords)}")\n  lat=ds[lat_name].values;lon=ds[lon_name].values
   fig=plt.figure(figsize=(10,8),dpi=130);ax=plt.axes(projection=ccrs.PlateCarree())
   ax.set_extent(UK,crs=ccrs.PlateCarree());ax.add_feature(cfeature.LAND,facecolor="#e8e5d8");ax.add_feature(cfeature.OCEAN,facecolor="#dceaf4")
   ax.add_feature(cfeature.COASTLINE,linewidth=.7);ax.add_feature(cfeature.BORDERS,linewidth=.45)
