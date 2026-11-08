@@ -71,27 +71,42 @@ def gfs_download(day,cyc,hour,field):
  if len(r.content)<1000 or b"<html" in r.content[:300].lower():raise HTTPException(502,"NOAA returned an empty or invalid GRIB file.")
  path.write_bytes(r.content);return path
 def ecmwf_download(day,cyc,hour,field):
- path=cachefile(f"ecmwf-{day}-{cyc}-{hour}-{field}")
- if path.exists() and time.time()-path.stat().st_mtime<21600:return path
- request={"date":day,"time":int(cyc),"step":hour,"stream":"oper","type":"fc"}
- if field=="z500":request.update(param="z",levelist=500)
- elif field=="t850":request.update(param="t",levelist=850)
- else:request.update(param={"mslp":"msl","temperature":"2t","precipitation":"tp","wind":"10si"}[field])
- # ECMWF publishes the same Open Data through regional and cloud mirrors.
- # Try the AWS replica first, then the primary ECMWF endpoint if needed.
- failures=[]
- for source in ("aws","ecmwf","google"):
-  try:
-   path.unlink(missing_ok=True)
-   client=Client(source=source,model="ifs",resol="0p25",maximum_retries=2,retry_after=5)
-   client.retrieve(**request,target=str(path))
-   if not path.exists() or path.stat().st_size<1000:
-    raise RuntimeError("Provider returned an empty GRIB file")
-   return path
-  except Exception as e:
-   failures.append(f"{source}: {type(e).__name__}: {e}")
-   path.unlink(missing_ok=True)
- raise HTTPException(502,"ECMWF Open Data retrieval failed on all mirrors. "+" | ".join(failures))
+ # Download the official per-step HRES GRIB file directly. The ECMWF
+ # subset client has intermittently returned 502s for parameter-selective
+ # requests; the public Open Data file URL is stable and contains all
+ # fields for this forecast step. Cache once per run/step so subsequent
+ # chart fields reuse the same GRIB file.
+ path=cachefile(f"ecmwf-full-{day}-{cyc}-{hour}")
+ if path.exists() and time.time()-path.stat().st_mtime<21600 and path.stat().st_size>1000:
+  return path
+ stamp=day+cyc+"0000"
+ url=f"https://data.ecmwf.int/forecasts/{day}/{cyc}z/ifs/0p25/oper/{stamp}-{hour}h-oper-fc.grib2"
+ try:
+  with requests.get(url,stream=True,timeout=(20,300),headers={"User-Agent":"Northstar-Weather/1.0"}) as response:
+   if response.status_code==404:
+    raise HTTPException(503,f"ECMWF HRES file is not published yet for {day} {cyc}Z +{hour}h.")
+   response.raise_for_status()
+   tmp=path.with_suffix(".download")
+   total=0
+   with open(tmp,"wb") as output:
+    for chunk in response.iter_content(chunk_size=1024*1024):
+     if chunk:
+      output.write(chunk);total+=len(chunk)
+   if total<1000:
+    tmp.unlink(missing_ok=True)
+    raise RuntimeError("ECMWF returned an empty GRIB file")
+   with open(tmp,"rb") as check:
+    if check.read(4)!=b"GRIB":
+     tmp.unlink(missing_ok=True)
+     raise RuntimeError("ECMWF response was not a GRIB2 file")
+   tmp.replace(path)
+  return path
+ except HTTPException:
+  raise
+ except Exception as e:
+  path.unlink(missing_ok=True)
+  raise HTTPException(502,f"ECMWF Open Data download failed for {day} {cyc}Z +{hour}h: {type(e).__name__}: {e}")
+
 def choose_dataset(path,field,model="gfs"):
  # GRIB files can contain several message groups. Filter by the physical
  # level before cfgrib builds its xarray datasets; this avoids the
