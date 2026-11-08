@@ -1,0 +1,26 @@
+name: Deploy Northstar Model Data Worker
+on:
+  push:
+    branches: [main]
+    paths:
+      - "model-service/**"
+      - ".github/workflows/deploy-model-worker.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+      - name: Deploy model data Worker
+        working-directory: model-service
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPEN_METEO_API_KEY: ${{ secrets.OPEN_METEO_API_KEY }}
+        run: |
+          wrangler deploy
+          printf '%s' "$OPEN_METEO_API_KEY" | wrangler secret put OPEN_METEO_API_KEY
