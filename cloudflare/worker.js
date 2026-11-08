@@ -105,6 +105,69 @@ export default {
       }
     }
 
+    // Official Met Office NSWWS warning polygons (GeoJSON).
+    // Store METOFFICE_API_KEY as a Cloudflare Worker secret; never expose it to browsers.
+    if (request.method === "GET" && url.pathname === "/warnings/geojson") {
+      if (!env.METOFFICE_API_KEY) return json({ error: "Official warning polygons are not configured. Add the METOFFICE_API_KEY Worker secret." }, 503);
+      const cache = caches.default;
+      const cacheKey = new Request("https://northstar-warning-cache.local/uk-live-geojson", { method: "GET" });
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "HIT");
+        return new Response(cached.body, { status: cached.status, headers });
+      }
+      try {
+        const base = "https://data.hub.api.metoffice.gov.uk/nswws/v1.1";
+        const feedResponse = await fetch(base + "/objects/feed", {
+          headers: { "apikey": env.METOFFICE_API_KEY, "accept": "application/atom+xml, application/xml" }
+        });
+        if (!feedResponse.ok) throw new Error("Met Office warning feed returned " + feedResponse.status);
+        const xml = await feedResponse.text();
+        const entries = xml.match(/<entry(?:\\s[^>]*)?>[\\s\\S]*?<\\/entry>/gi) || [];
+        const uuids = [...new Set(entries.map(entry => {
+          const id = entry.match(/<id[^>]*>([\\s\\S]*?)<\\/id>/i)?.[1] || entry;
+          return (id.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i) || [])[0];
+        }).filter(Boolean))];
+        const collections = await Promise.all(uuids.map(async uuid => {
+          const response = await fetch(base + "/objects/issued/" + encodeURIComponent(uuid), {
+            headers: { "apikey": env.METOFFICE_API_KEY, "accept": "application/geo+json, application/json" }
+          });
+          if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error("Met Office warning geometry returned " + response.status);
+          }
+          const data = await response.json();
+          return data && data.type === "FeatureCollection" && Array.isArray(data.features) ? data.features : [];
+        }));
+        const seen = new Set();
+        const features = collections.flat().filter(feature => {
+          if (!feature || feature.type !== "Feature") return false;
+          const key = feature.id || JSON.stringify(feature.geometry);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        const body = JSON.stringify({ type: "FeatureCollection", features, updatedAt: new Date().toISOString(), source: "Met Office NSWWS" });
+        const response = new Response(body, { status: 200, headers: {
+          "content-type": "application/geo+json; charset=utf-8",
+          "cache-control": "public, max-age=300",
+          "access-control-allow-origin": APP_ORIGIN,
+          "vary": "Origin"
+        }});
+        ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
+          "content-type": "application/geo+json; charset=utf-8",
+          "cache-control": "public, max-age=300"
+        }})).catch(error => console.error("Warning geometry cache write failed", error)));
+        return response;
+      } catch (error) {
+        console.error("Official warning geometry fetch failed", error);
+        return json({ error: "Official Met Office warning polygons could not be loaded. " + error.message }, 502);
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/vapid-public-key") {
       if (!env.VAPID_PUBLIC_KEY) return fail("Push service is not configured yet.", 503);
       return json({ publicKey: env.VAPID_PUBLIC_KEY });
