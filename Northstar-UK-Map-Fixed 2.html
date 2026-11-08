@@ -156,6 +156,22 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
  .pin{min-width:25px!important;height:17px!important;padding:0 3px!important;font-size:7.5px!important;line-height:15px!important;border-radius:4px!important}
 }
 
+
+/* Collision-aware town markers: cluster nearby readings until the map is zoomed in. */
+.northstar-city-cluster{background:transparent!important;border:0!important}
+.northstar-city-cluster span{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:30px!important;height:30px!important;border-radius:50%!important;
+ color:#f6fbff!important;font:800 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+ background:linear-gradient(145deg,#327eaa,#17466c)!important;
+ border:1.5px solid #d8efff!important;box-shadow:0 2px 8px #06132699,inset 0 1px #ffffff55!important;
+ text-shadow:0 1px 2px #06132688!important
+}
+.northstar-city-cluster.medium span{width:34px!important;height:34px!important;font-size:11px!important;background:linear-gradient(145deg,#268b9b,#15536d)!important}
+.northstar-city-cluster.large span{width:38px!important;height:38px!important;font-size:12px!important;background:linear-gradient(145deg,#526eaa,#293f76)!important}
+.leaflet-markercluster-icon{background:transparent!important}
+@media(max-width:600px){.northstar-city-cluster span{width:28px!important;height:28px!important}.northstar-city-cluster.medium span{width:32px!important;height:32px!important}.northstar-city-cluster.large span{width:36px!important;height:36px!important}}
+
 </style>
 </head>
 <body><div class="wrap">
@@ -245,7 +261,7 @@ applyMapTheme(mapMode==="night");
 modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
 updateAutomaticTheme();setInterval(updateAutomaticTheme,60000);
-const cityMarkers=L.layerGroup().addTo(map);
+const cityMarkers=L.markerClusterGroup({maxClusterRadius:38,disableClusteringAtZoom:7,spiderfyOnMaxZoom:true,showCoverageOnHover:false,zoomToBoundsOnClick:true,animate:true,animateAddingMarkers:false,iconCreateFunction:function(cluster){const n=cluster.getChildCount();const size=n>=20?"large":n>=8?"medium":"small";return L.divIcon({html:"<span>"+n+"</span>",className:"northstar-city-cluster "+size,iconSize:L.point(30,30)});}}).addTo(map);
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});document.addEventListener("click",e=>{if(!e.target.closest(".layer-menu")&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false")}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false");layerMenuToggle.focus()}});
 function showMetricLayer(k){if(k==="temperature"){document.getElementById("status").textContent="Showing current temperatures. Use the temperature shading button for the colour surface.";return}if(k==="fog"){showFogLayer();return}const cfg={snow:["snowfall"," cm","Snowfall"],precipitation:["precipitation"," mm","Precipitation"],pressure:["pressure_msl"," hPa","Pressure"],cloud:["cloud_cover","%","Cloud cover"],wind:["wind_speed_10m"," km/h","Wind speed"]}[k];if(!cfg)return;cityMarkers.clearLayers();cityWeather.forEach(x=>{const v=x.current[cfg[0]];if(!Number.isFinite(v))return;const n=k==="pressure"||k==="cloud"?Math.round(v):Number(v).toFixed(1);const label=n+(k==="cloud"?"%":"");const color=k==="snow"?(v>0?"#d9f3ff":"#b5c9db"):k==="precipitation"?(v>0?"#45c8dd":"#b5c9db"):k==="pressure"?(v>=1020?"#f3d27b":v<=1000?"#e89a82":"#a9d6ff"):k==="cloud"?"#c5d5e8":v>=40?"#f3a36f":v>=20?"#f2d27b":"#9bd7c7";const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+label+'</div>',iconSize:[40,22],iconAnchor:[20,11]});const extra=k==="wind"?"<br>Direction: "+Math.round(x.current.wind_direction_10m)+"°":"";L.marker([x.lat,x.lon],{icon:marker}).bindPopup("<strong>"+x.name+"</strong><br>"+cfg[2]+": "+n+cfg[1]+extra).addTo(cityMarkers)});document.getElementById("status").textContent="Showing "+cfg[2].toLowerCase()+" at the mapped towns and cities. Tap a marker for details."}document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){setCloudCover(false);if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="satellite"){setSatelliteMode(true)}else if(k==="temperature"){setSatelliteMode(false);location.reload()}else{setSatelliteMode(false);showMetricLayer(k)}}}));
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
