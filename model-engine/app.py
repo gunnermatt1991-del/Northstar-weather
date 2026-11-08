@@ -91,7 +91,12 @@ def choose_dataset(path,field,model="gfs"):
  if model=="ecmwf":
   datasets=[cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise"})]
  else:
-  datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
+  try:
+   datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise"})
+  except AssertionError:
+   # Some NOMADS subregion GRIBs trigger cfgrib multi-dataset discovery
+   # assertions even though the requested single field remains readable.
+   datasets=[cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise"})]
  wanted={"mslp":["msl","prmsl","mslet"],"temperature":["t2m","2t"],"precipitation":["tp","total_precipitation"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
  for ds in datasets:
   for var in wanted:
