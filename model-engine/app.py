@@ -73,17 +73,25 @@ def gfs_download(day,cyc,hour,field):
 def ecmwf_download(day,cyc,hour,field):
  path=cachefile(f"ecmwf-{day}-{cyc}-{hour}-{field}")
  if path.exists() and time.time()-path.stat().st_mtime<21600:return path
- client=Client(source="ecmwf",model="ifs",resol="0p25")
- common={"date":day,"time":int(cyc),"step":hour,"stream":"oper","type":"fc","target":str(path)}
- try:
-  if field=="z500":client.retrieve(**common,param="z",levelist=500)
-  elif field=="t850":client.retrieve(**common,param="t",levelist=850)
-  else:
-   param={"mslp":"msl","temperature":"2t","precipitation":"tp","wind":"10si"}[field]
-   client.retrieve(**common,param=param)
- except Exception as e:
-  path.unlink(missing_ok=True);raise HTTPException(502,f"ECMWF retrieval failed: {e}")
- return path
+ request={"date":day,"time":int(cyc),"step":hour,"stream":"oper","type":"fc"}
+ if field=="z500":request.update(param="z",levelist=500)
+ elif field=="t850":request.update(param="t",levelist=850)
+ else:request.update(param={"mslp":"msl","temperature":"2t","precipitation":"tp","wind":"10si"}[field])
+ # ECMWF publishes the same Open Data through regional and cloud mirrors.
+ # Try the AWS replica first, then the primary ECMWF endpoint if needed.
+ failures=[]
+ for source in ("aws","ecmwf","google"):
+  try:
+   path.unlink(missing_ok=True)
+   client=Client(source=source,model="ifs",resol="0p25",maximum_retries=2,retry_after=5)
+   client.retrieve(**request,target=str(path))
+   if not path.exists() or path.stat().st_size<1000:
+    raise RuntimeError("Provider returned an empty GRIB file")
+   return path
+  except Exception as e:
+   failures.append(f"{source}: {type(e).__name__}: {e}")
+   path.unlink(missing_ok=True)
+ raise HTTPException(502,"ECMWF Open Data retrieval failed on all mirrors. "+" | ".join(failures))
 def choose_dataset(path,field,model="gfs"):
  # ECMWF Open Data requests one parameter/level per file. Opening it as a
  # single hypercube avoids cfgrib.open_datasets auto-discovery, which can
