@@ -157,21 +157,25 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 }
 
 
-/* Collision-aware town markers: cluster nearby readings until the map is zoomed in. */
+/* Collision-aware town markers — matching compact rounded-rectangle temperature labels. */
 .northstar-city-cluster{background:transparent!important;border:0!important}
 .northstar-city-cluster span{
  display:flex!important;align-items:center!important;justify-content:center!important;
- width:30px!important;height:30px!important;border-radius:50%!important;
- color:#f6fbff!important;font:800 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
- background:linear-gradient(145deg,#327eaa,#17466c)!important;
- border:1.5px solid #d8efff!important;box-shadow:0 2px 8px #06132699,inset 0 1px #ffffff55!important;
- text-shadow:0 1px 2px #06132688!important
+ min-width:30px!important;width:auto!important;height:20px!important;padding:0 6px!important;
+ border-radius:6px!important;color:#102033!important;
+ font:800 9px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+ background:linear-gradient(145deg,#65c9df,#31a8c8)!important;
+ border:1px solid #eaf8ff!important;box-shadow:0 1px 4px #06132677!important;
+ text-shadow:none!important
 }
-.northstar-city-cluster.medium span{width:34px!important;height:34px!important;font-size:11px!important;background:linear-gradient(145deg,#268b9b,#15536d)!important}
-.northstar-city-cluster.large span{width:38px!important;height:38px!important;font-size:12px!important;background:linear-gradient(145deg,#526eaa,#293f76)!important}
+.northstar-city-cluster.medium span{min-width:34px!important;height:21px!important;padding:0 7px!important;font-size:9px!important;background:linear-gradient(145deg,#57c4d5,#248cae)!important}
+.northstar-city-cluster.large span{min-width:38px!important;height:22px!important;padding:0 8px!important;font-size:10px!important;background:linear-gradient(145deg,#70b8df,#347eae)!important}
 .leaflet-markercluster-icon{background:transparent!important}
-@media(max-width:600px){.northstar-city-cluster span{width:28px!important;height:28px!important}.northstar-city-cluster.medium span{width:32px!important;height:32px!important}.northstar-city-cluster.large span{width:36px!important;height:36px!important}}
-
+@media(max-width:600px){
+ .northstar-city-cluster span{min-width:27px!important;height:18px!important;padding:0 5px!important;font-size:8px!important;line-height:16px!important;border-radius:5px!important}
+ .northstar-city-cluster.medium span{min-width:31px!important;height:19px!important}
+ .northstar-city-cluster.large span{min-width:35px!important;height:20px!important}
+}
 </style>
 </head>
 <body><div class="wrap">
