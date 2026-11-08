@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081225">
+<meta name="description" content="Northstar Professional Models — GFS, ECMWF and UKMO forecast model workspace.">
+<title>Northstar Professional Models</title>
+<style>
+:root{color-scheme:dark;--bg:#081225;--panel:#142440;--line:#ffffff20;--muted:#a8b7cf;--text:#f5f8ff;--blue:#86c4ff;--cyan:#78e0df;--gold:#ffd58a}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#344a70 0,#142443 34%,var(--bg) 75%);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1050px;margin:auto;padding:calc(20px + env(safe-area-inset-top)) 15px calc(38px + env(safe-area-inset-bottom))}a{color:#c9e3ff}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.brand{font-weight:800}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em}.back{border:1px solid var(--line);border-radius:99px;padding:8px 12px;text-decoration:none}.hero,.panel,.model{background:linear-gradient(145deg,#192b4bef,#101c34f2);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 50px #0002}.eyebrow{color:var(--cyan);font-size:10px;letter-spacing:.18em;font-weight:800;text-transform:uppercase}.hero h1{font-size:clamp(34px,7vw,54px);line-height:1.05;letter-spacing:-.04em;margin:10px 0}.hero p,.muted{color:#bdcbe0}.models{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}.model h2{font-size:22px;margin:6px 0}.model .org{color:var(--muted);font-size:12px}.pill{display:inline-flex;border:1px solid #ffd58a55;color:#ffe0a8;background:#a66b2018;border-radius:99px;padding:5px 9px;font-size:11px;font-weight:750;margin-top:12px}.model p{font-size:13px;color:#bdcbe0}.featuregrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.feature{background:#ffffff08;border:1px solid #ffffff14;border-radius:15px;padding:14px}.feature b{display:block;margin-bottom:4px}.status{background:#07152a;border:1px solid #86c4ff38;border-radius:16px;padding:16px;margin-top:14px}.status strong{color:var(--gold)}.btn{display:inline-block;padding:11px 15px;border-radius:12px;background:#24466d;border:1px solid #8bbfff66;color:white;text-decoration:none;font-weight:750;margin:6px 8px 0 0}.fine{font-size:12px;color:var(--muted)}.access{max-width:620px;margin:12vh auto;text-align:center}.access[hidden],#workspace[hidden]{display:none}@media(max-width:700px){.models{grid-template-columns:1fr}.featuregrid{grid-template-columns:1fr}.top{align-items:flex-start}}
+</style>
+</head>
+<body><main class="wrap">
+<nav class="top"><div class="brand">✦ Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div><a class="back" href="./premium.html">← Premium</a></nav>
+<section class="access hero" id="access"><div class="eyebrow">Northstar Premium</div><h1>Professional <span style="color:var(--blue)">Models</span></h1><p id="access-message">Checking your Northstar Premium access…</p><a class="btn" href="./premium.html">Manage Premium membership</a></section>
+<div id="workspace" hidden>
+<section class="hero"><div class="eyebrow">Premium forecast workspace</div><h1>Northstar <span style="color:var(--blue)">Model Centre</span></h1><p>Explore the major global forecast models through one Northstar-branded workspace. Choose a model, compare guidance and follow each forecast as new runs become available.</p><div class="pill">MODEL DATA INTEGRATION · PHASE 1</div></section>
+<section class="models">
+<article class="model"><div style="font-size:30px">🌎</div><h2>GFS</h2><div class="org">NOAA · Global Forecast System</div><p>Global deterministic guidance, with four scheduled cycles per day and forecast fields distributed through NOAA NOMADS.</p><span class="pill">Open data source identified</span></article>
+<article class="model"><div style="font-size:30px">🌐</div><h2>ECMWF IFS</h2><div class="org">European Centre for Medium-Range Weather Forecasts</div><p>High-quality global guidance. The open-data subset supports redistribution and commercial use with required attribution.</p><span class="pill">Open data source identified</span></article>
+<article class="model"><div style="font-size:30px">🇬🇧</div><h2>UKMO</h2><div class="org">Met Office global and UK models</div><p>UK-focused deterministic and ensemble guidance, including high-resolution UK forecast products through Weather DataHub.</p><span class="pill">DataHub access required</span></article>
+</section>
+<section class="panel" style="margin-top:14px"><div class="eyebrow">The model viewer we're building</div><h2>One place for every run</h2><div class="featuregrid">
+<div class="feature"><b>🕒 Run selector</b><span class="muted">00Z · 06Z · 12Z · 18Z, when published by each provider.</span></div>
+<div class="feature"><b>▶ Forecast animation</b><span class="muted">Move through forecast hours with a play, pause and timeline control.</span></div>
+<div class="feature"><b>🗺️ Northstar charts</b><span class="muted">Pressure, 500 hPa, rainfall, temperature, wind, gusts and snowfall.</span></div>
+<div class="feature"><b>⚖️ Model comparison</b><span class="muted">Compare GFS, ECMWF and UKMO for the same forecast period.</span></div>
+</div>
+<div class="status" role="status"><strong>Data feeds are not connected yet.</strong><p class="muted" style="margin-bottom:0">This is the first Model Centre release: the model sources and product design are established, but no live model charts are being displayed yet. We will only show a chart once its underlying model run has been retrieved and processed successfully. No sample graphics or invented forecast data are presented as live output.</p></div>
+</section>
+<section class="panel" style="margin-top:14px"><div class="eyebrow">Data and attribution</div><h2>Built on recognised forecast sources</h2><ul class="muted"><li>GFS data: NOAA / NCEP NOMADS.</li><li>ECMWF Open Data: CC BY 4.0 and ECMWF terms; required attribution will appear with charts.</li><li>UKMO: Weather DataHub licence, API plan and “Powered by Met Office data” attribution must be applied.</li></ul><p class="fine">Model output is guidance, not an official warning. Model runs can change, arrive late or be revised. Northstar will display the source, model cycle, issue time and forecast valid time on every chart.</p><a class="btn" href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF data terms ↗</a><a class="btn" href="https://datahub.metoffice.gov.uk/" target="_blank" rel="noopener">Met Office DataHub ↗</a><a class="btn" href="https://nomads.ncep.noaa.gov/" target="_blank" rel="noopener">NOAA NOMADS ↗</a></section>
+</div>
+</main>
+<script>
+(async function(){
+ const access=document.getElementById("access"),workspace=document.getElementById("workspace"),message=document.getElementById("access-message");
+ const membershipApi="https://northstar-premium-membership.gunnermatt1991.workers.dev";
+ async function post(url,body){const r=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const j=await r.json();return {ok:r.ok,data:j};}
+ try{
+  const owner=localStorage.getItem("northstarOwnerTestToken");
+  if(owner){const r=await post(membershipApi+"/owner/verify",{token:owner});if(r.ok&&r.data.active){access.hidden=true;workspace.hidden=false;return;}}
+  const subscription=localStorage.getItem("northstarPayPalSubscription");
+  if(subscription){const r=await post(membershipApi+"/verify",{subscriptionId:subscription});if(r.ok&&r.data.active){access.hidden=true;workspace.hidden=false;return;}}
+  message.textContent="This Model Centre is part of Northstar Premium. Sign in with your active membership to continue.";
+ }catch(e){message.textContent="We couldn't verify Premium access just now. Please try again when your connection is available.";}
+})();
+</script></body></html>
