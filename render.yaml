@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: northstar-model-engine
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./model-engine/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ORIGIN
+        value: https://gunnermatt1991-del.github.io
+      - key: CACHE_DIR
+        value: /tmp/northstar-model-cache
