@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import requests
 import numpy as np
-import xarray as xr
+import cfgrib
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -85,7 +85,7 @@ def ecmwf_download(day,cyc,hour,field):
   path.unlink(missing_ok=True);raise HTTPException(502,f"ECMWF retrieval failed: {e}")
  return path
 def choose_dataset(path,field):
- datasets=xr.open_datasets(path,engine="cfgrib",backend_kwargs={"indexpath":""})
+ datasets=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":""})
  wanted={"mslp":["msl"],"temperature":["t2m"],"precipitation":["tp"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
  for ds in datasets:
   for var in wanted:
