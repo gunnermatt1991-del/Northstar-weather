@@ -86,7 +86,7 @@ def ecmwf_download(day,cyc,hour,field):
  return path
 def choose_dataset(path,field):
  datasets=xr.open_datasets(path,engine="cfgrib",backend_kwargs={"indexpath":""})
- wanted={"mslp":["msl"],"temperature":["t2m"],"precipitation":["tp"],"wind":["si10","10si","ws"],"z500":["gh","z"],"t850":["t"]}[field]
+ wanted={"mslp":["msl"],"temperature":["t2m"],"precipitation":["tp"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
  for ds in datasets:
   for var in wanted:
    if var in ds.data_vars:
