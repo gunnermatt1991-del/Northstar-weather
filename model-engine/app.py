@@ -117,7 +117,9 @@ def render(path,field,model,day,cyc,hour):
   if field=="temperature" or field=="t850":vals=vals-273.15
   if field=="precipitation":vals=vals*1000
   if field=="z500":vals=vals/10
-  lat_name=next((k for k in ("latitude","lat") if k in ds.coords),None);lon_name=next((k for k in ("longitude","lon") if k in ds.coords),None)\n  if not lat_name or not lon_name:raise ValueError(f"GRIB grid coordinates missing; available coordinates: {list(ds.coords)}")\n  lat=ds[lat_name].values;lon=ds[lon_name].values
+  lat_name=next((k for k in ("latitude","lat") if k in ds.coords),None);lon_name=next((k for k in ("longitude","lon") if k in ds.coords),None)
+  if not lat_name or not lon_name:raise ValueError(f"GRIB grid coordinates missing; available coordinates: {list(ds.coords)}")
+  lat=ds[lat_name].values;lon=ds[lon_name].values
   fig=plt.figure(figsize=(10,8),dpi=130);ax=plt.axes(projection=ccrs.PlateCarree())
   ax.set_extent(UK,crs=ccrs.PlateCarree());ax.add_feature(cfeature.LAND,facecolor="#e8e5d8");ax.add_feature(cfeature.OCEAN,facecolor="#dceaf4")
   ax.add_feature(cfeature.COASTLINE,linewidth=.7);ax.add_feature(cfeature.BORDERS,linewidth=.45)
