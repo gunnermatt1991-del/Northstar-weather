@@ -237,21 +237,38 @@ async function loadHomeWarning(){
   let response;try{response=await fetch(url,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Warning feed unavailable");
   const data=await response.json();if(!Array.isArray(data.features))throw Error("Warning data unavailable");
-  const matches=data.features.filter(f=>pointInWarningGeometry(place.lon,place.lat,f.geometry));
+  const normalize=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const candidates=[place.name,place.admin2,place.admin3,place.admin4].filter(Boolean);
+  // Met Office warning regions can be county-wide while geocoding returns
+  // the newer unitary authority name. Add the official county alias.
+  if(/kettering|north northamptonshire|west northamptonshire/i.test(candidates.join(" ")))candidates.push("Northamptonshire");
+  const matches=data.features.filter(f=>{
+   if(pointInWarningGeometry(place.lon,place.lat,f.geometry))return true;
+   const areas=Array.isArray(f.properties?.affectedAreas)?f.properties.affectedAreas.map(a=>a?.regionName||""):[];
+   const normalizedAreas=areas.map(normalize);
+   return candidates.some(candidate=>{
+    const c=normalize(candidate);
+    return c&&normalizedAreas.some(area=>area===c||area.includes(c)||c.includes(area));
+   });
+  });
   if(!matches.length)return;
-  const f=matches[0],p=f.properties||{};
-  const title=warningProperty(p,/headline|title|warning.?type|weather.?type|event/i)||"Met Office weather warning";
-  const area=warningProperty(p,/area|region|name/i);
-  const levelValues=Object.entries(p).filter(([k])=>/level|severity|colour|color/i.test(k)).map(([,v])=>String(v)).join(" ").toLowerCase();
-  const level=/red|severe/.test(levelValues)?"red":/amber|orange/.test(levelValues)?"amber":"yellow";
-  const from=warningProperty(p,/valid.?from|onset|start/i),to=warningProperty(p,/valid.?to|expires|end/i);
-  const hazard=title.toLowerCase();
-  const weatherEmoji=/fog|visibility|mist/.test(hazard)?"🌫️":/snow|ice|blizzard/.test(hazard)?"❄️":/rain|flood/.test(hazard)?"🌧️":/wind|storm/.test(hazard)?"💨":"🌦️";
+  const f=matches.sort((a,b)=>{
+   const rank=v=>({RED:3,AMBER:2,YELLOW:1}[String(v||"").toUpperCase()]||0);
+   return rank(b.properties?.warningLevel)-rank(a.properties?.warningLevel);
+  })[0],p=f.properties||{};
+  const title=String(p.warningHeadline||p.headline||p.warningType?.join?.(" and ")||"Met Office weather warning").replace(/<[^>]*>/g," ").trim();
+  const areas=Array.isArray(p.affectedAreas)?p.affectedAreas.map(a=>a?.regionName).filter(Boolean):[];
+  const area=areas.length?areas.join(", "):"";
+  const level=String(p.warningLevel||"YELLOW").toLowerCase();
+  const from=p.validFromDate||"",to=p.validToDate||"";
+  const types=Array.isArray(p.weatherType)?p.weatherType.join(" ").toLowerCase():String(p.weatherType||title).toLowerCase();
+  const weatherEmoji=/fog|visibility|mist/.test(types)?"🌫️":/snow|ice|blizzard/.test(types)?"❄️":/rain|flood/.test(types)?"🌧️":/wind|storm/.test(types)?"💨":/heat/.test(types)?"🌡️":"🌦️";
   $("homeWarningIcons").textContent=weatherEmoji+" ⚠️";
   $("homeWarningTitle").textContent=title;
-  $("homeWarningDetail").textContent=(level.charAt(0).toUpperCase()+level.slice(1))+" warning"+(area?" · "+area:"")+(from?" · From "+new Date(from).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"}):"")+(to?" · Until "+new Date(to).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"}):"");
-  card.classList.add(level);card.hidden=false;
- }catch(error){card.hidden=true}
+  const timeText=(from?"From "+new Date(from).toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"")+(to?" · Until "+new Date(to).toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"");
+  $("homeWarningDetail").textContent=(level.charAt(0).toUpperCase()+level.slice(1))+" warning"+(area?" · "+area:"")+(timeText?" · "+timeText:"");
+  card.classList.add(level==="amber"||level==="red"?level:"yellow");card.hidden=false;
+ }catch(error){console.warn("Northstar local warning banner:",error);card.hidden=true}
 }
 
 async function load(){window.__northstarUsingStaleData=false;$("notice").style.display="none";$("app").style.opacity=".65";try{const p={latitude:place.lat,longitude:place.lon,current:"temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,visibility",hourly:"temperature_2m,precipitation_probability,precipitation,weather_code,is_day,visibility",minutely_15:"precipitation,rain",forecast_minutely_15:8,daily:"weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_speed_10m_max",forecast_days:7,timezone:"auto",wind_speed_unit:"kmh"};const proxy=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast"),direct=new URL("https://api.open-meteo.com/v1/forecast");Object.entries(p).forEach(([k,v])=>{proxy.searchParams.set(k,v);direct.searchParams.set(k,v)});weather=await northstarJson(proxy,direct);render();loadHomeWarning();loadStationObservations();minuteCast(weather);$("app").style.opacity="1";if(window.__northstarUsingStaleData)notice("Connection issue: showing your last saved forecast. We'll refresh it when service returns.")}catch(e){$("app").style.opacity="1";notice("Forecast unavailable: "+(e.message||"Please check your connection and try again."))}}
@@ -384,5 +401,5 @@ function draw(kind,range){const x=data(kind,range),id=kind==="temp"?"temp":"rain
 function charts(r){draw("temp",r);draw("rain",r)}
 document.querySelectorAll("[data-chart]").forEach(b=>b.addEventListener("click",()=>{b.parentElement.querySelectorAll("button").forEach(z=>z.classList.toggle("active",z===b));draw(b.dataset.chart,b.dataset.range)}));
 $("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$("locationInput").value.trim();if(!q)return;notice("Finding "+q+"…");try{if(/\bhenlow\b/i.test(q)){place={lat:52.03231,lon:-0.28925,name:"Henlow",country:"United Kingdom",admin2:"Central Bedfordshire"};await load();return;}const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/geocoding");u.searchParams.set("name",q);u.searchParams.set("count","10");u.searchParams.set("language","en");u.searchParams.set("countryCode","GB");const direct=new URL("https://geocoding-api.open-meteo.com/v1/search");direct.search=u.search;const g=await northstarJson(u,direct);if(!g.results?.length)throw Error("No UK match found. Try another spelling.");const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
-const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});setInterval(updateDayNightIcon,60000);load();setInterval(loadHomeWarning,5*60*1000);if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=100",{updateViaCache:"none"});await registration.update()}catch(e){}})}
+const themeToggle=document.getElementById("themeToggle");function applyTheme(theme){document.documentElement.dataset.theme=theme;const light=theme==="light";themeToggle.textContent=light?"☾ Dark mode":"☀ Light mode";themeToggle.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=light?"#edf3fb":"#081225"}let savedTheme="dark";try{savedTheme=localStorage.getItem("northstar-theme")==="light"?"light":"dark"}catch(e){}applyTheme(savedTheme);themeToggle.addEventListener("click",()=>{const next=document.documentElement.dataset.theme==="light"?"dark":"light";applyTheme(next);try{localStorage.setItem("northstar-theme",next)}catch(e){}});setInterval(updateDayNightIcon,60000);load();setInterval(loadHomeWarning,5*60*1000);if("serviceWorker"in navigator&&location.protocol==="https:"){let refreshing=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}});addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js?v=101",{updateViaCache:"none"});await registration.update()}catch(e){}})}
 </script></body></html>
