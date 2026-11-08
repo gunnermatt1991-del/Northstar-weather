@@ -322,7 +322,7 @@ function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
  clearFogLayer();cityMarkers.clearLayers();
- fogLayer=L.layerGroup().addTo(map);fogVisible=true;
+ fogLayer=L.layerGroup().addTo(map);fogVisible=true;fogToggle.classList.add("active");fogToggle.textContent="☁️ Hide fog shading";fogToggle.setAttribute("aria-pressed","true");
  const summary=[],heat=[];
  cityWeather.forEach(x=>{
   const v=x.current||{},vis=Number(v.visibility),code=Number(v.weather_code),humidity=Number(v.relative_humidity_2m);
