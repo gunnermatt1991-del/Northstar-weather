@@ -147,8 +147,8 @@ export default {
         if (!Array.isArray(observations) || !observations.length) {
           return json({ error: "The nearest Met Office station has no recent observations." }, 404);
         }
-        const rows = observations.filter(row => row && Number.isFinite(Number(row.datetime)))
-          .sort((a, b) => Number(b.datetime) - Number(a.datetime));
+        const rows = observations.filter(row => row && Number.isFinite(Date.parse(row.datetime)))
+          .sort((a, b) => Date.parse(b.datetime) - Date.parse(a.datetime));
         if (!rows.length) return json({ error: "The Met Office station returned no timestamped observations." }, 502);
         const body = JSON.stringify({
           source: "Met Office Land Observations",
