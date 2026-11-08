@@ -108,43 +108,45 @@ def ecmwf_download(day,cyc,hour,field):
   raise HTTPException(502,f"ECMWF Open Data download failed for {day} {cyc}Z +{hour}h: {type(e).__name__}: {e}")
 
 def choose_dataset(path,field,model="gfs"):
- # GRIB files can contain several message groups. Filter by the physical
- # level before cfgrib builds its xarray datasets; this avoids the
- # AssertionError raised by automatic multi-hypercube discovery.
- level_filters={
+ # Open exactly one GRIB message family at a time. cfgrib.open_datasets()
+ # scans the entire mixed ECMWF HRES file and can raise AssertionError
+ # while trying to build incompatible multi-level hypercubes.
+ levels={
   "mslp":{"typeOfLevel":"meanSea"},
   "temperature":{"typeOfLevel":"heightAboveGround","level":2},
   "precipitation":{"typeOfLevel":"surface"},
   "wind":{"typeOfLevel":"heightAboveGround","level":10},
   "z500":{"typeOfLevel":"isobaricInhPa","level":500},
   "t850":{"typeOfLevel":"isobaricInhPa","level":850}}
- wanted={"mslp":["msl","prmsl","mslet"],"temperature":["t2m","2t"],"precipitation":["tp","total_precipitation"],"wind":["si10","10si","ws","u10","u"],"z500":["gh","z"],"t850":["t"]}[field]
- filters=[level_filters[field],{}]
+ names={
+  "gfs":{"mslp":["prmsl"],"temperature":["2t"],"precipitation":["tp"],"wind":["10u","10v"],"z500":["gh"],"t850":["t"]},
+  "ecmwf":{"mslp":["msl"],"temperature":["2t"],"precipitation":["tp"],"wind":["10si","10u","10v"],"z500":["z"],"t850":["t"]}}
  errors=[]
- for filter_keys in filters:
+ for short_name in names[model][field]:
+  filters=dict(levels[field]);filters["shortName"]=short_name
   try:
-   opened=cfgrib.open_datasets(str(path),backend_kwargs={"indexpath":"","errors":"raise","filter_by_keys":filter_keys})
-   datasets=list(opened)
-   for ds in datasets:
-    for var in wanted:
-     if var in ds.data_vars:
-      return ds,var,datasets
-   errors.append(f"filter {filter_keys}: no {wanted}; got {[list(d.data_vars) for d in datasets]}")
-   for ds in datasets:
-    try:ds.close()
-    except Exception:pass
+   ds=cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","filter_by_keys":filters})
+   if short_name in ds.data_vars:
+    return ds,short_name,[ds]
+   if len(ds.data_vars)==1:
+    var=next(iter(ds.data_vars))
+    return ds,var,[ds]
+   errors.append(f"{filters}: variables={list(ds.data_vars)}")
+   ds.close()
   except Exception as e:
-   errors.append(f"filter {filter_keys}: {type(e).__name__}: {e}")
- # Last-resort single-dataset opening, retaining explicit level filter.
- try:
-  ds=cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","errors":"raise","filter_by_keys":level_filters[field]})
-  for var in wanted:
-   if var in ds.data_vars:return ds,var,[ds]
-  errors.append(f"single dataset has variables {list(ds.data_vars)}")
-  ds.close()
- except Exception as e:
-  errors.append(f"single dataset: {type(e).__name__}: {e}")
- raise ValueError("Could not select requested GRIB field. "+" | ".join(errors))
+   errors.append(f"{filters}: {type(e).__name__}: {e}")
+ # Some provider files use alternate level metadata; still constrain by
+ # shortName so we never ask cfgrib to combine unrelated fields.
+ for short_name in names[model][field]:
+  try:
+   ds=cfgrib.open_dataset(str(path),backend_kwargs={"indexpath":"","filter_by_keys":{"shortName":short_name}})
+   if short_name in ds.data_vars:return ds,short_name,[ds]
+   if len(ds.data_vars)==1:
+    var=next(iter(ds.data_vars));return ds,var,[ds]
+   errors.append(f"shortName={short_name}: variables={list(ds.data_vars)}");ds.close()
+  except Exception as e:
+   errors.append(f"shortName={short_name}: {type(e).__name__}: {e}")
+ raise ValueError("Could not open requested GRIB field. "+" | ".join(errors))
 
 def render(path,field,model,day,cyc,hour):
  try:
