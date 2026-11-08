@@ -1,1 +1,6 @@
-name = "northstar-model-data"\nmain = "worker.js"\ncompatibility_date = "2026-11-08"\n
+name = "northstar-model-data"
+main = "worker.js"
+compatibility_date = "2026-11-08"
+
+[vars]
+MODEL_API_MODE = "development"
