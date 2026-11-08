@@ -320,6 +320,7 @@ let fogLayer=null,fogHeatLayer=null,fogVisible=false;
 function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if(fogHeatLayer){map.removeLayer(fogHeatLayer);fogHeatLayer=null}fogVisible=false}
 function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
+ if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
  clearFogLayer();cityMarkers.clearLayers();
  fogLayer=L.layerGroup().addTo(map);fogVisible=true;
  const summary=[],heat=[];
