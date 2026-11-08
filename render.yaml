@@ -2,7 +2,7 @@ services:
   - type: web
     name: northstar-model-engine
     runtime: docker
-    plan: starter
+    plan: free
     region: frankfurt
     dockerfilePath: ./model-engine/Dockerfile
     dockerContext: .
