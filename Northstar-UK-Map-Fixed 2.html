@@ -81,6 +81,42 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 .storm-map-alert{max-width:190px;padding:9px 12px;border-radius:13px;background:#08172cf5;border:1px solid #a78bfa;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:11px}
 @media(min-width:700px){.storm-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.layer-menu-panel{max-width:430px}}
 @media(max-width:480px){.layer-menu-panel{max-height:58vh;padding:10px;border-radius:15px}.layer-choice{min-height:46px;font-size:13px;padding:10px}.storm-panel{padding:13px;border-radius:16px}.storm-controls{grid-template-columns:1fr}.storm-time{grid-column:1}.storm-map-alert{max-width:150px;font-size:10px}.storm-stats>div{min-height:62px;padding:9px}}
+
+/* NORTHSTAR PREMIUM EXPERIENCE — mobile-first visual system */
+.layer-menu{z-index:1800!important}
+.layer-menu-toggle{min-height:50px!important;border-radius:14px!important;background:linear-gradient(135deg,#24466f,#10233d)!important;border-color:#8ec5ff66!important;box-shadow:0 7px 20px #0003!important}
+.layer-menu-toggle span{font-size:11px!important}
+.layer-menu-panel{z-index:3000!important;width:min(100%,520px)!important;max-height:min(54vh,460px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:13px!important;border:1px solid #759ac4!important;border-radius:18px!important;background:#071426!important;background-color:rgb(7,20,38)!important;opacity:1!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:0 22px 60px #000e,0 0 0 1px #ffffff12!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}
+.layer-menu-panel[hidden]{display:none!important}
+.layer-menu-heading{grid-column:1/-1!important;padding:3px 5px 8px!important;color:#a9c9ee!important;font-size:10px!important;letter-spacing:.18em!important;font-weight:850!important;border-bottom:1px solid #ffffff18!important}
+.layer-choice{min-width:0!important;min-height:46px!important;padding:10px 9px!important;border:1px solid #ffffff10!important;border-radius:11px!important;background:#10233b!important;color:#edf5ff!important;font-size:12px!important;line-height:1.25!important;white-space:normal!important}
+.layer-choice.active{background:linear-gradient(135deg,#244b77,#183451)!important;border-color:#7fc3ff!important;box-shadow:inset 0 0 0 1px #7fc3ff22!important}
+.layer-choice.unavailable{grid-column:1/-1!important;background:#101b2b!important}
+.storm-panel{margin:16px 0!important;padding:16px!important;border-radius:20px!important;border:1px solid #9b83ff66!important;background:linear-gradient(155deg,#172b49 0%,#0b192e 100%)!important;box-shadow:0 18px 44px #0005,inset 0 1px #ffffff10!important}
+.storm-head{align-items:center!important;gap:14px!important}
+.storm-head strong{font-size:18px!important;letter-spacing:-.02em!important}
+.storm-head p{font-size:12px!important;line-height:1.5!important;max-width:42ch!important}
+.storm-pill{background:#9c7bff16!important;border-color:#b9a2ff77!important;padding:7px 10px!important}
+.storm-controls{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:16px 0!important}
+.storm-controls label{font-size:11px!important;letter-spacing:.02em!important}
+.storm-controls select{min-height:44px!important;padding:10px 12px!important;border-radius:12px!important;background:#102640!important;border-color:#83b7e544!important}
+.storm-time{grid-column:1/-1!important}
+.storm-time input{height:24px!important}
+.storm-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+.storm-stats>div{min-height:68px!important;padding:11px!important;border-radius:13px!important;background:linear-gradient(145deg,#ffffff0d,#ffffff06)!important;border:1px solid #a9c8eb20!important}
+.storm-stats small{font-size:10px!important;line-height:1.35!important;letter-spacing:.015em!important}
+.storm-stats strong{font-size:18px!important;font-weight:780!important;letter-spacing:-.02em!important;font-variant-numeric:tabular-nums!important}
+.storm-status{font-size:11px!important;line-height:1.55!important}
+.storm-summary{margin-top:12px!important;padding:12px!important;border-radius:12px!important;border-left:3px solid #a78bfa!important;background:#a78bfa0d!important;font-size:12px!important;line-height:1.65!important}
+.storm-foot{font-size:10px!important;line-height:1.65!important}
+.storm-map-alert{max-width:190px!important;padding:9px 11px!important;border-radius:13px!important;font-size:11px!important;line-height:1.4!important;backdrop-filter:blur(10px)!important}
+#map{border-radius:20px!important;border:1px solid #80b9e677!important;box-shadow:0 18px 42px #0005!important}
+.controls{padding:12px!important;border-radius:16px!important;background:#10223aeF!important;border-color:#8db9e533!important}
+.controls button{min-height:40px!important}
+#status{font-size:12px!important;line-height:1.55!important;padding:9px 11px!important;border-radius:10px!important;background:#ffffff08!important}
+@media(min-width:700px){.storm-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}.layer-menu-panel{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:480px){.layer-menu-panel{max-height:48vh!important;padding:10px!important;gap:5px!important}.layer-choice{min-height:44px!important;font-size:11px!important;padding:9px 7px!important}.storm-panel{padding:13px!important}.storm-controls{grid-template-columns:1fr!important}.storm-time{grid-column:1!important}.storm-stats>div{min-height:64px!important;padding:9px!important}.storm-stats strong{font-size:16px!important}.storm-head strong{font-size:16px!important}.storm-map-alert{max-width:155px!important;font-size:10px!important}}
+
 </style>
 </head>
 <body><div class="wrap">
@@ -89,7 +125,7 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 <section class="card">
 <h1>UK & Europe weather map</h1>
 <p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. Switch on temperature shading to compare colder and warmer areas, or view recent radar and a short-range rain forecast.</p>
-<div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose what to display</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="temperature" type="button">🌡️ Temperature</button><button class="layer-choice" data-layer="satellite" type="button">🛰️ Satellite imagery</button><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button><div class="layer-choice unavailable">⚡ Lightning strikes — data source not connected yet</div></div></div><div class="controls" aria-label="Weather map controls">
+<div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose a layer · menu closes after selection</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="temperature" type="button">🌡️ Temperature</button><button class="layer-choice" data-layer="satellite" type="button">🛰️ Satellite imagery</button><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button><div class="layer-choice unavailable">⚡ Lightning strikes — data source not connected yet</div></div></div><div class="controls" aria-label="Weather map controls">
 <button id="tempToggle" type="button">🌡️ Show temperature shading</button>
 <button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
 <button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
