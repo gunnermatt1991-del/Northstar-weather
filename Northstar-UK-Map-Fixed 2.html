@@ -329,18 +329,29 @@ function showFogLayer(){
   const fogCode=code===45||code===48,validVis=Number.isFinite(vis)&&vis>=0;
   if(!validVis&&!fogCode)return;
   let intensity=0;
-  if(fogCode)intensity=Math.max(intensity,code===48?1:.88);
-  if(validVis){if(vis<200)intensity=Math.max(intensity,1);else if(vis<500)intensity=Math.max(intensity,.94);else if(vis<1000)intensity=Math.max(intensity,.82);else if(vis<2000)intensity=Math.max(intensity,.62);else if(vis<5000&&humidity>=90)intensity=Math.max(intensity,.34)}
-  if(intensity<.3)return;
-  heat.push([x.lat,x.lon,intensity]);
-  const severe=fogCode||vis<1000,fill=severe?"#9aa6b2":"#d5dce3";
-  L.circleMarker([x.lat,x.lon],{pane:"fogPane",radius:severe?11:8,stroke:true,color:"#ffffff",weight:1.5,opacity:.95,fillColor:fill,fillOpacity:severe?.82:.62}).bindPopup("<strong>"+x.name+"</strong><br>Visibility: "+(validVis?(vis<1000?Math.round(vis)+" m":(vis/1000).toFixed(1)+" km"):"Fog reported")+(fogCode?"<br>Weather observation: fog":"")+"<br>Relative humidity: "+(Number.isFinite(humidity)?humidity+"%":"—")+"<br><small>Town-level observation; not an exact fog boundary.</small>").addTo(fogLayer);
-  summary.push({name:x.name,vis,code,humidity,intensity});
+  if(fogCode)intensity=1;
+  if(validVis){
+   if(vis<200)intensity=Math.max(intensity,1);
+   else if(vis<500)intensity=Math.max(intensity,.96);
+   else if(vis<1000)intensity=Math.max(intensity,.9);
+   else if(vis<2000)intensity=Math.max(intensity,.72);
+   else if(vis<5000&&humidity>=85)intensity=Math.max(intensity,.46);
+   else if(vis<8000&&humidity>=90)intensity=Math.max(intensity,.24);
+  }
+  if(intensity>=.2)heat.push([x.lat,x.lon,intensity]);
+  if(intensity>=.62){
+   const severe=fogCode||vis<1000,fill=severe?"#3f4854":"#929ba6";
+   L.circleMarker([x.lat,x.lon],{pane:"fogPane",radius:severe?8:6,stroke:true,color:"#ffffff",weight:1,opacity:.72,fillColor:fill,fillOpacity:severe?.48:.3}).bindPopup("<strong>"+x.name+"</strong><br>Visibility: "+(validVis?(vis<1000?Math.round(vis)+" m":(vis/1000).toFixed(1)+" km"):"Fog reported")+(fogCode?"<br>Weather observation: fog":"")+"<br>Relative humidity: "+(Number.isFinite(humidity)?humidity+"%":"—")+"<br><small>Town-level observation; shading is interpolated and not an exact fog boundary.</small>").addTo(fogLayer);
+  }
+  if(intensity>=.2)summary.push({name:x.name,vis,code,humidity,intensity});
  });
- if(heat.length&&L.heatLayer){fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:92,blur:68,maxZoom:8,minOpacity:.38,gradient:{0.08:"#f1f4f7",0.22:"#d8dee5",0.42:"#b8c2cc",0.68:"#8794a1",1:"#566371"}}).addTo(map);fogLayer.bringToFront();fogHeatLayer.bringToFront()}
+ if(heat.length&&L.heatLayer){
+  fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:148,blur:112,maxZoom:8,minOpacity:.24,gradient:{0.08:"#e1e5e9",0.2:"#b7bec6",0.38:"#89939e",0.58:"#626d79",0.78:"#3f4854",1:"#202a36"}}).addTo(map);
+  fogLayer.bringToFront();fogHeatLayer.bringToFront();
+ }
  const severe=summary.filter(x=>x.intensity>=.8).length,moderate=summary.filter(x=>x.intensity>=.5&&x.intensity<.8).length;
  const detail=summary.length?summary.sort((a,b)=>a.intensity-b.intensity||a.vis-b.vis).slice(0,8).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No mapped locations currently meet the fog / reduced-visibility thresholds. No grey fog area is shown because the latest observations do not indicate fog.";
- document.getElementById("status").textContent=(summary.length?severe+" dense-fog / very-low-visibility sites · "+moderate+" reduced-visibility sites. ":"No fog or significant visibility reduction detected at sampled locations. ")+detail+" Shading is an interpolated guide between town observations, not a measured fog boundary.";
+ document.getElementById("status").textContent=(summary.length?severe+" dense-fog / very-low-visibility sites · "+moderate+" reduced-visibility sites. ":"No fog or significant visibility reduction detected at sampled locations. ")+detail+" Shading is a smoother interpolated guide between town observations, not a measured fog boundary.";
 }
 
 const fogToggle=document.getElementById("fogToggle");
