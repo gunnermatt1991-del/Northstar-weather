@@ -158,7 +158,7 @@ def render(path,field,model,day,cyc,hour):
   if field=="mslp":vals=vals/100
   if field=="temperature" or field=="t850":vals=vals-273.15
   if field=="precipitation":vals=vals*1000
-  if field=="z500":vals=vals/10
+  if field=="z500":vals=vals/(9.80665 if model=="ecmwf" else 1)/10
   lat_name=next((k for k in ("latitude","lat") if k in ds.coords),None);lon_name=next((k for k in ("longitude","lon") if k in ds.coords),None)
   if not lat_name or not lon_name:raise ValueError(f"GRIB grid coordinates missing; available coordinates: {list(ds.coords)}")
   lat=ds[lat_name].values;lon=ds[lon_name].values
