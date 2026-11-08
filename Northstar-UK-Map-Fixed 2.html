@@ -135,7 +135,9 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 .storm-summary{border-left:3px solid #a78bfa!important;background:#a78bfa12!important;padding:12px!important;line-height:1.65!important}
 #map .leaflet-overlay-pane{pointer-events:auto}
 @media(max-width:480px){.layer-menu-panel{max-height:46vh!important}.layer-choice{font-size:11px!important;padding:9px 7px!important}.storm-panel{padding:13px!important}}
-</style>
+
+/* Atlantic storm approach intelligence card */
+.atlantic-approach{margin:12px 0 16px;padding:15px;border:1px solid #58b7d477;border-radius:17px;background:linear-gradient(145deg,#102d49,#0a1b31 78%);box-shadow:0 12px 30px #0004,inset 0 1px #ffffff12;color:#eaf5ff}.atlantic-approach-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9bc9ed;font-size:10px;font-weight:850;letter-spacing:.15em}.atlantic-stage{padding:6px 9px;border-radius:99px;background:#1d5270;color:#c9f1ff;font-size:9px;letter-spacing:.08em}.atlantic-headline{margin:12px 0;font-size:16px;line-height:1.35;font-weight:800;color:#fff}.atlantic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.atlantic-grid>div{padding:10px;border:1px solid #a7c9e51c;border-radius:11px;background:#ffffff08;min-width:0}.atlantic-grid small{display:block;color:#a9bfd4;font-size:10px;line-height:1.35}.atlantic-grid strong{display:block;margin-top:5px;color:#fff;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.atlantic-track{height:7px;margin:13px 0 9px;border-radius:9px;background:#ffffff16;overflow:hidden}.atlantic-track>div{height:100%;border-radius:9px;background:linear-gradient(90deg,#55c7d9,#b6a0ff);transition:width .3s}.atlantic-detail{font-size:11px;line-height:1.6;color:#d2e1ef}.atlantic-foot{margin-top:9px;padding-top:9px;border-top:1px solid #ffffff18;font-size:9px;line-height:1.55;color:#94aac0}@media(min-width:700px){.atlantic-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}</style>
 </head>
 <body><div class="wrap">
 <header><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div class="brand">Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></header>
@@ -164,6 +166,19 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
   <div><small>Active signals</small><strong id="stormCells">—</strong></div><div><small>Peak hourly rain</small><strong id="stormRain">—</strong></div><div><small>Peak gust</small><strong id="stormGust">—</strong></div><div><small>Thunderstorm cells</small><strong id="stormThunder">—</strong></div><div><small>Deepening lows</small><strong id="stormDeepening">—</strong></div><div><small>Pressure fall (3h)</small><strong id="stormPressureFall">—</strong></div><div><small>Cold-air sites (≤3°C)</small><strong id="stormCold">—</strong></div><div><small>Freezing sites (≤0°C)</small><strong id="stormFreezing">—</strong></div>
  </div>
  <div id="stormStatus" class="storm-status">Checking Premium access…</div><div id="stormSummary" class="storm-summary">Storm overlays will appear on the main map when access is confirmed.</div>
+ <section id="atlanticApproachCard" class="atlantic-approach" aria-live="polite">
+  <div class="atlantic-approach-head"><span>🌊 ATLANTIC STORM TRACKER</span><span id="atlanticStage" class="atlantic-stage">AWAITING DATA</span></div>
+  <div id="atlanticHeadline" class="atlantic-headline">Tracking Atlantic systems towards the UK and Ireland</div>
+  <div class="atlantic-grid">
+   <div><small>Closest forecast approach</small><strong id="atlanticClosest">—</strong></div>
+   <div><small>Estimated timing</small><strong id="atlanticTiming">—</strong></div>
+   <div><small>Lowest pressure</small><strong id="atlanticPressure">—</strong></div>
+   <div><small>Peak gust forecast</small><strong id="atlanticGust">—</strong></div>
+  </div>
+  <div class="atlantic-track"><div id="atlanticTrackFill"></div></div>
+  <div id="atlanticDetail" class="atlantic-detail">Forecast guidance will appear when the selected model has loaded.</div>
+  <div class="atlantic-foot">Model-derived tracking estimate, not an official storm warning. Timing and track can change between model runs.</div>
+ </section>
  <div id="stormLocked" class="storm-locked" hidden>Storm intelligence is a Premium feature. <a href="./premium.html">View Northstar Premium</a> or sign in through the Owner Portal to test it.</div>
  <p class="storm-foot">Forecast model output, not live radar or official warnings. Low centres and pressure contours are estimated from sampled forecast points; signal tracks are indicative only. Always follow the Met Office and local authorities for warnings.</p>
 </section>
@@ -342,6 +357,34 @@ function stormRisk(p,i){const h=p.hourly,r=Number(h.precipitation?.[i])||0,g=Num
 function stormDist(a,b){const rad=x=>x*Math.PI/180,dl=rad(b.lat-a.lat),dn=rad(b.lon-a.lon),q=Math.sin(dl/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dn/2)**2;return 12742*Math.asin(Math.sqrt(q))}
 function stormFetch(id){const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast"),q={latitude:stormLocs.map(x=>x[0]).join(","),longitude:stormLocs.map(x=>x[1]).join(","),hourly:"precipitation,wind_speed_10m,wind_gusts_10m,weather_code,pressure_msl,snowfall,temperature_2m",forecast_days:3,timezone:"Europe/London",wind_speed_unit:"kmh",models:id};Object.entries(q).forEach(([k,v])=>u.searchParams.set(k,v));return fetch(u).then(async r=>{if(!r.ok){let detail="HTTP "+r.status;try{const body=await r.json();if(body&&body.reason)detail=body.reason;else if(body&&body.message)detail=body.message}catch(e){}throw Error(stormNames[id]+" unavailable: "+detail)}return r.json()}).then(raw=>(Array.isArray(raw)?raw:[raw]).map((d,i)=>({name:stormLocs[i][2],lat:stormLocs[i][0],lon:stormLocs[i][1],hourly:d.hourly})))}
 function stormLowCentres(ps){return ps.filter(p=>Number.isFinite(p.pressure)&&p.pressure<1010&&ps.filter(q=>q!==p&&stormDist(p,q)<650&&Number.isFinite(q.pressure)).every(q=>p.pressure<=q.pressure)).filter(p=>ps.some(q=>q!==p&&stormDist(p,q)<500&&Number.isFinite(q.pressure)&&q.pressure-p.pressure>=2))}
+function updateAtlanticApproach(data){
+ const ids=["atlanticStage","atlanticHeadline","atlanticClosest","atlanticTiming","atlanticPressure","atlanticGust","atlanticTrackFill","atlanticDetail"];
+ if(!data||!data.length||!data[0].hourly||!data[0].hourly.time){ids.forEach(id=>{const el=se(id);if(el)el.textContent="—"});return}
+ const hours=Math.min(48,data[0].hourly.time.length),uk={lat:53.5,lon:-3.5},track=[];
+ for(let i=0;i<hours;i++){
+  const points=data.map(p=>({...p,...stormRisk(p,i)}));
+  const lows=stormLowCentres(points).filter(p=>p.lon<=-3.5&&p.lon>=-22&&p.pressure<1008);
+  if(!lows.length)continue;
+  const low=lows.sort((a,b)=>stormDist(a,uk)-stormDist(b,uk))[0];
+  track.push({...low,hour:i,distance:stormDist(low,uk)});
+ }
+ const stage=se("atlanticStage"),headline=se("atlanticHeadline"),closest=se("atlanticClosest"),timing=se("atlanticTiming"),pressure=se("atlanticPressure"),gust=se("atlanticGust"),fill=se("atlanticTrackFill"),detail=se("atlanticDetail");
+ if(!track.length){stage.textContent="NO CLEAR LOW";headline.textContent="No organised Atlantic low-pressure centre identified";closest.textContent="No clear centre";timing.textContent="Not estimated";pressure.textContent="—";gust.textContent=Math.max(...data.map(p=>Math.max(0,...(p.hourly.wind_gusts_10m||[]).slice(0,hours)))).toFixed(0)+" km/h";fill.style.width="0%";detail.textContent="This does not mean calm weather: fronts, rain and strong winds can occur without a clearly resolved low centre. The forecast grid is sampled, so small or fast systems may be missed.";return}
+ const nearest=track.reduce((a,b)=>b.distance<a.distance?b:a),start=track[0],last=track[track.length-1],movingCloser=last.distance<start.distance-80,closestKm=Math.round(nearest.distance);
+ const nearUK=closestKm<350,approaching=movingCloser&&last.distance<start.distance-150;
+ const stageText=nearUK?"NEAR UK & IRELAND":approaching?"APPROACHING":"ATLANTIC TRACK";
+ stage.textContent=stageText;
+ headline.textContent=nearUK?"A forecast low-pressure centre comes close to the UK region":approaching?"An Atlantic low-pressure system is forecast to move towards the UK":"An Atlantic low-pressure system is being tracked";
+ const time=new Date(data[0].hourly.time[nearest.hour]);
+ closest.textContent=closestKm+" km";
+ timing.textContent=nearest.hour===0?"Already in forecast area":time.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+ pressure.textContent=nearest.pressure.toFixed(0)+" hPa";
+ const gusts=data.map(p=>Math.max(0,...(p.hourly.wind_gusts_10m||[]).slice(0,hours))),maxGust=Math.max(0,...gusts);
+ gust.textContent=maxGust.toFixed(0)+" km/h";
+ fill.style.width=Math.max(6,Math.min(100,100-nearest.distance/35))+"%";
+ const trend=last.distance<start.distance-100?"track trends closer to the UK reference point":last.distance>start.distance+100?"track trends away from the UK reference point":"track remains broadly steady";
+ detail.textContent="Closest sampled low centre: "+nearest.name+" · "+nearest.pressure.toFixed(1)+" hPa. Across the forecast window, the centre "+trend+". Highest sampled gust anywhere in the Atlantic-to-UK grid: "+maxGust.toFixed(0)+" km/h. Closest approach is measured to a broad UK reference point, not a predicted landfall.";
+}
 function stormDraw(){const data=stormData[stormModel];if(!data)return;const hr=Number(se("stormHour").value),overlay=se("stormOverlay").value,all=data.map(p=>({...p,...stormRisk(p,hr)})),active=all.filter(p=>p.flag),lows=all.filter(p=>p.low),snow=all.filter(p=>p.snow>=.1),winds=all.filter(p=>p.storm),thunder=all.filter(p=>p.thunder),deepening=stormLowCentres(all).filter(p=>p.deepening),cold=all.filter(p=>p.cold),freezing=all.filter(p=>p.freezing),press=all.map(p=>p.pressure).filter(Number.isFinite),min=press.length?Math.min(...press):NaN,rain=Math.max(0,...all.map(p=>p.rain)),gust=Math.max(0,...all.map(p=>p.gust)),maxFall=Math.max(0,...all.map(p=>p.pressureFall3h));
 se("stormLows").textContent=lows.length;se("stormMinPressure").textContent=Number.isFinite(min)?min.toFixed(0)+" hPa":"—";se("stormWinds").textContent=winds.length;se("stormSnow").textContent=snow.length;se("stormCells").textContent=active.length;se("stormRain").textContent=rain.toFixed(1)+" mm";se("stormGust").textContent=gust.toFixed(0)+" km/h";se("stormThunder").textContent=thunder.length;se("stormDeepening").textContent=deepening.length;se("stormPressureFall").textContent=maxFall.toFixed(1)+" hPa";se("stormCold").textContent=cold.length;se("stormFreezing").textContent=freezing.length;se("stormTimeLabel").textContent=new Date(data[0].hourly.time[hr]).toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 stormPoints.clearLayers();stormLines.clearLayers();const centres=stormLowCentres(all);
@@ -351,6 +394,7 @@ const shown=overlay==="pressure"?all.filter(p=>p.pressure<1015):overlay==="wind"
 shown.forEach(p=>{const col=overlay==="pressure"?"#a78bfa":overlay==="snow"?"#d9f2ff":overlay==="wind"?(p.storm?"#ff8585":p.gust>=55?"#ffd58a":"#78e0df"):(p.thunder?"#ff8585":p.rain>=5||p.gust>=75?"#ffd58a":"#78e0df");L.circleMarker([p.lat,p.lon],{radius:p.low?11:p.snow>=.1?9:8,color:"#fff",weight:2,fillColor:col,fillOpacity:.9}).bindPopup("<strong>"+p.name+"</strong><br>Pressure: "+(Number.isFinite(p.pressure)?p.pressure.toFixed(1)+" hPa":"—")+"<br>Wind: "+p.wind.toFixed(0)+" km/h · gust "+p.gust.toFixed(0)+" km/h<br>Rain: "+p.rain.toFixed(1)+" mm/h · snow "+p.snow.toFixed(1)+" cm<br>Temperature: "+(Number.isFinite(p.temp)?p.temp.toFixed(1)+"°C":"—")).addTo(stormPoints)});
 const path=[];for(let i=0;i<Math.min(48,data[0].hourly.time.length);i+=3){const f=data.map(p=>({...p,...stormRisk(p,i)})),ls=stormLowCentres(f);if(ls.length){const q=ls.sort((a,b)=>a.pressure-b.pressure)[0];path.push([q.lat,q.lon])}}if(path.length>1)L.polyline(path,{color:"#c4a5ff",weight:4,opacity:.9,dashArray:"8 6"}).bindTooltip("Forecast low-pressure centre path").addTo(stormLines);
 const stormActive=active.length>0||winds.length>0||thunder.length>0||deepening.length>0;updateStormMapAlert(!stormActive,stormActive);se("stormSummary").textContent=(active.length===0&&winds.length===0&&thunder.length===0&&deepening.length===0?"No significant storm signals detected in the sampled area for this forecast time. ":"")+deepening.length+" estimated deepening low centres (pressure fall ≥3 hPa/3h); strongest sampled 3-hour fall "+maxFall.toFixed(1)+" hPa. "+lows.length+" low-pressure sample points; lowest pressure "+(Number.isFinite(min)?min.toFixed(1)+" hPa":"unavailable")+". "+cold.length+" cold-air sites, "+freezing.length+" freezing sites and "+snow.length+" snow/sleet sites. "+winds.length+" storm-force wind sites; "+thunder.length+" thunderstorm-code sites.";
+updateAtlanticApproach(data);
 }
 async function stormLoad(){if(!stormAccess)return;se("stormStatus").textContent="Loading "+stormNames[stormModel]+" Atlantic-to-UK forecast grid…";try{stormData[stormModel]=await stormFetch(stormModel);se("stormHour").max=Math.min(47,stormData[stormModel][0].hourly.time.length-1);se("stormHour").disabled=false;stormReady=true;stormDraw();se("stormStatus").textContent="Loaded "+stormNames[stormModel]+" guidance across "+stormLocs.length+" Atlantic and UK sample locations. Select another model to load its guidance."}catch(e){stormReady=false;se("stormStatus").textContent="Storm forecast unavailable: "+e.message}}
 function setStormControlsEnabled(enabled){["stormModel","stormOverlay","stormHour"].forEach(id=>{const el=se(id);if(el)el.disabled=!enabled});}setStormControlsEnabled(false);async function stormGate(){const token=localStorage.getItem("northstarOwnerTestToken");if(token){se("stormStatus").textContent="Verifying Owner Test Mode…";try{const r=await fetch("https://northstar-premium-membership.gunnermatt1991.workers.dev/owner/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token})}),j=await r.json();if(r.ok&&j.active){stormAccess=true;setStormControlsEnabled(true);se("stormLocked").hidden=true;await stormLoad();return}}catch(e){}se("stormStatus").textContent="Owner session could not be verified. Sign in again through Owner Portal.";se("stormLocked").hidden=false;setStormControlsEnabled(false);return}
