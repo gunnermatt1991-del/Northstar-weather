@@ -126,30 +126,29 @@ export default {
         });
         if (!feedResponse.ok) throw new Error("Met Office warning feed returned " + feedResponse.status);
         const xml = await feedResponse.text();
-        const entries = xml.match(/<entry(?:\s[^>]*)?>[\s\S]*?<\/entry>/gi) || [];
-        const uuids = [...new Set(entries.map(entry => {
-          const id = entry.match(/<id[^>]*>([\s\S]*?)<\/id>/i)?.[1] || entry;
-          return (id.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i) || [])[0];
-        }).filter(Boolean))];
-        const collections = await Promise.all(uuids.map(async uuid => {
-          const response = await fetch(base + "/objects/issued/" + encodeURIComponent(uuid), {
-            headers: { "apikey": env.METOFFICE_API_KEY, "accept": "application/geo+json, application/json" }
-          });
-          if (!response.ok) {
-            if (response.status === 404) return null;
-            throw new Error("Met Office warning geometry returned " + response.status);
-          }
-          const data = await response.json();
-          return data && data.type === "FeatureCollection" && Array.isArray(data.features) ? data.features : [];
-        }));
-        const seen = new Set();
-        const features = collections.flat().filter(feature => {
-          if (!feature || feature.type !== "Feature") return false;
-          const key = feature.id || JSON.stringify(feature.geometry);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
+
+        // NSWWS v1.1 exposes the current all-warnings GeoJSON snapshot through
+        // the Atom feed's rel="related" link. Follow that authoritative link
+        // instead of constructing /objects/issued/{uuid} URLs from feed entries.
+        const linkTags = xml.match(/<link\\b[^>]*>/gi) || [];
+        const relatedTag = linkTags.find(tag => {
+          const rel = tag.match(/\\brel=["']([^"']+)["']/i)?.[1] || "";
+          return rel.toLowerCase() === "related";
         });
+        const relatedHref = relatedTag?.match(/\\bhref=["']([^"']+)["']/i)?.[1];
+        if (!relatedHref) throw new Error("Met Office warning feed did not contain its related GeoJSON snapshot link.");
+        const snapshotUrl = new URL(relatedHref, base).toString();
+        const snapshotResponse = await fetch(snapshotUrl, {
+          headers: { "apikey": env.METOFFICE_API_KEY, "accept": "application/geo+json, application/json" }
+        });
+        if (!snapshotResponse.ok) throw new Error("Met Office warning GeoJSON snapshot returned " + snapshotResponse.status);
+        const snapshot = await snapshotResponse.json();
+        if (!snapshot || snapshot.type !== "FeatureCollection" || !Array.isArray(snapshot.features)) {
+          throw new Error("Met Office warning GeoJSON snapshot was not a FeatureCollection.");
+        }
+        const features = snapshot.features.filter(feature =>
+          feature && feature.type === "Feature" && feature.geometry
+        );
         const body = JSON.stringify({ type: "FeatureCollection", features, updatedAt: new Date().toISOString(), source: "Met Office NSWWS" });
         const response = new Response(body, { status: 200, headers: {
           "content-type": "application/geo+json; charset=utf-8",
