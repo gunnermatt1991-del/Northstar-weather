@@ -126,9 +126,9 @@ export default {
         });
         if (!feedResponse.ok) throw new Error("Met Office warning feed returned " + feedResponse.status);
         const xml = await feedResponse.text();
-        const entries = xml.match(/<entry(?:\\s[^>]*)?>[\\s\\S]*?<\\/entry>/gi) || [];
+        const entries = xml.match(/<entry(?:\s[^>]*)?>[\s\S]*?<\/entry>/gi) || [];
         const uuids = [...new Set(entries.map(entry => {
-          const id = entry.match(/<id[^>]*>([\\s\\S]*?)<\\/id>/i)?.[1] || entry;
+          const id = entry.match(/<id[^>]*>([\s\S]*?)<\/id>/i)?.[1] || entry;
           return (id.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i) || [])[0];
         }).filter(Boolean))];
         const collections = await Promise.all(uuids.map(async uuid => {
