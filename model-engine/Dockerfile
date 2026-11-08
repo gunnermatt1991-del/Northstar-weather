@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends libeccodes0 libeccodes-tools libproj-dev proj-data proj-bin libgeos-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY model-engine/requirements.txt ./requirements.txt
