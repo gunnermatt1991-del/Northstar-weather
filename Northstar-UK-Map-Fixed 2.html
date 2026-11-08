@@ -275,6 +275,7 @@ function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)re
 function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73":t<20?"#bedc37":t<25?"#faa523":"#eb412d"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView([54,-3],5);
 map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
+map.createPane("fogPane");map.getPane("fogPane").style.zIndex=650;map.getPane("fogPane").style.pointerEvents="none";
 let baseLayer;
 const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abc",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
 let cloudCoverLayer=null,cloudCoverVisible=false;
@@ -297,6 +298,7 @@ function showMetricLayer(k){
  if(k==="fog"){showFogLayer();return}
  const cfg={snow:["snowfall"," cm","Snowfall"],precipitation:["precipitation"," mm","Precipitation"],pressure:["pressure_msl"," hPa","Pressure"],cloud:["cloud_cover","%","Cloud cover"],wind:["wind_speed_10m"," km/h","Wind speed"]}[k];
  if(!cfg)return;
+ clearFogLayer();
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
  cityMarkers.clearLayers();
  if(k==="snow"||k==="precipitation"||k==="cloud"){
@@ -312,12 +314,13 @@ function showMetricLayer(k){
  cityWeather.forEach(x=>{const v=x.current[cfg[0]];if(!Number.isFinite(v))return;const n=k==="pressure"||k==="cloud"?Math.round(v):Number(v).toFixed(1),label=n+(k==="cloud"?"%":"");const color=k==="pressure"?(v>=1020?"#f3d27b":v<=1000?"#e89a82":"#a9d6ff"):v>=40?"#f3a36f":v>=20?"#f2d27b":"#9bd7c7";const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+label+'</div>',iconSize:[31,20],iconAnchor:[15,10]});const extra=k==="wind"?"<br>Direction: "+Math.round(x.current.wind_direction_10m)+"°":"";L.marker([x.lat,x.lon],{icon:marker}).bindPopup("<strong>"+x.name+"</strong><br>"+cfg[2]+": "+n+cfg[1]+extra).addTo(cityMarkers)});
  document.getElementById("status").textContent="Showing "+cfg[2].toLowerCase()+" at mapped towns and cities. Tap a marker for details.";
 }
-document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){setCloudCover(false);if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="satellite"){setSatelliteMode(true)}else if(k==="temperature"){setSatelliteMode(false);location.reload()}else{setSatelliteMode(false);showMetricLayer(k)}}}));
+document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;if(k!=="fog")clearFogLayer();document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){setCloudCover(false);if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="satellite"){setSatelliteMode(true)}else if(k==="temperature"){setSatelliteMode(false);location.reload()}else{setSatelliteMode(false);showMetricLayer(k)}}}));
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
 let fogLayer=null,fogHeatLayer=null,fogVisible=false;
+function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if(fogHeatLayer){map.removeLayer(fogHeatLayer);fogHeatLayer=null}fogVisible=false}
 function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
- if(fogLayer)map.removeLayer(fogLayer);if(fogHeatLayer)map.removeLayer(fogHeatLayer);cityMarkers.clearLayers();
+ clearFogLayer();cityMarkers.clearLayers();
  fogLayer=L.layerGroup().addTo(map);fogVisible=true;
  const summary=[],heat=[];
  cityWeather.forEach(x=>{
@@ -330,10 +333,10 @@ function showFogLayer(){
   if(intensity<.3)return;
   heat.push([x.lat,x.lon,intensity]);
   const severe=fogCode||vis<1000,fill=severe?"#68727e":"#a8afb8";
-  L.circleMarker([x.lat,x.lon],{radius:severe?10:7,stroke:true,color:"#f5f7fa",weight:1.5,opacity:.9,fillColor:fill,fillOpacity:severe?.88:.68}).bindPopup("<strong>"+x.name+"</strong><br>Visibility: "+(validVis?(vis<1000?Math.round(vis)+" m":(vis/1000).toFixed(1)+" km"):"Fog reported")+(fogCode?"<br>Weather observation: fog":"")+"<br>Relative humidity: "+(Number.isFinite(humidity)?humidity+"%":"—")+"<br><small>Town-level observation; not an exact fog boundary.</small>").addTo(fogLayer);
+  L.circleMarker([x.lat,x.lon],{pane:"fogPane",radius:severe?10:7,stroke:true,color:"#f5f7fa",weight:1.5,opacity:.95,fillColor:fill,fillOpacity:severe?.92:.76}).bindPopup("<strong>"+x.name+"</strong><br>Visibility: "+(validVis?(vis<1000?Math.round(vis)+" m":(vis/1000).toFixed(1)+" km"):"Fog reported")+(fogCode?"<br>Weather observation: fog":"")+"<br>Relative humidity: "+(Number.isFinite(humidity)?humidity+"%":"—")+"<br><small>Town-level observation; not an exact fog boundary.</small>").addTo(fogLayer);
   summary.push({name:x.name,vis,code,humidity,intensity});
  });
- if(heat.length&&L.heatLayer){fogHeatLayer=L.heatLayer(heat,{radius:50,blur:34,maxZoom:8,minOpacity:.3,gradient:{0.12:"#c4c9cf",0.3:"#aab1ba",0.52:"#89939f",0.74:"#68727e",1:"#4d5662"}}).addTo(map);fogHeatLayer.setZIndex(450);fogLayer.bringToFront()}
+ if(heat.length&&L.heatLayer){fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:62,blur:42,maxZoom:8,minOpacity:.42,gradient:{0.08:"#aeb5be",0.22:"#858e99",0.42:"#626c78",0.68:"#46515e",1:"#303a47"}}).addTo(map);fogLayer.bringToFront();fogHeatLayer.bringToFront()}
  const severe=summary.filter(x=>x.intensity>=.8).length,moderate=summary.filter(x=>x.intensity>=.5&&x.intensity<.8).length;
  const detail=summary.length?summary.sort((a,b)=>a.intensity-b.intensity||a.vis-b.vis).slice(0,8).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No mapped locations currently meet the fog / reduced-visibility thresholds. No grey fog area is shown because the latest observations do not indicate fog.";
  document.getElementById("status").textContent=(summary.length?severe+" dense-fog / very-low-visibility sites · "+moderate+" reduced-visibility sites. ":"No fog or significant visibility reduction detected at sampled locations. ")+detail+" Shading is an interpolated guide between town observations, not a measured fog boundary.";
@@ -429,6 +432,7 @@ const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current
 "☁️ Cloud: "+fmt(v.cloud_cover)+"%<br>"+
 "🌀 Pressure: "+fmt(v.pressure_msl)+" hPa";
 L.marker([x.lat,x.lon],{icon:marker}).bindPopup(popup,{maxWidth:260}).addTo(cityMarkers);bounds.push([x.lat,x.lon]);count++}catch(e){failed++}}));if(bounds.length)map.setView([54,-3],5);document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland and Europe"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";if(!count)document.getElementById("status").textContent="Weather couldn't load. Please check your connection and refresh.";setTimeout(()=>map.invalidateSize({pan:false}),250)})();
+setInterval(async()=>{try{const updates=await Promise.allSettled(cities.map(getCity));const fresh=updates.filter(x=>x.status==="fulfilled").map(x=>x.value);if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer()}}catch(e){console.warn("Fog observation refresh failed",e)}},15*60*1000);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
