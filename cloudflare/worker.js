@@ -130,12 +130,12 @@ export default {
         // NSWWS v1.1 exposes the current all-warnings GeoJSON snapshot through
         // the Atom feed's rel="related" link. Follow that authoritative link
         // instead of constructing /objects/issued/{uuid} URLs from feed entries.
-        const linkTags = xml.match(/<link\\b[^>]*>/gi) || [];
+        const linkTags = xml.match(/<link\b[^>]*>/gi) || [];
         const relatedTag = linkTags.find(tag => {
-          const rel = tag.match(/\\brel=["']([^"']+)["']/i)?.[1] || "";
+          const rel = tag.match(/\brel=["']([^"']+)["']/i)?.[1] || "";
           return rel.toLowerCase() === "related";
         });
-        const relatedHref = relatedTag?.match(/\\bhref=["']([^"']+)["']/i)?.[1];
+        const relatedHref = relatedTag?.match(/\bhref=["']([^"']+)["']/i)?.[1];
         if (!relatedHref) throw new Error("Met Office warning feed did not contain its related GeoJSON snapshot link.");
         const snapshotUrl = new URL(relatedHref, base).toString();
         const snapshotResponse = await fetch(snapshotUrl, {
