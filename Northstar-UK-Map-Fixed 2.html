@@ -316,8 +316,8 @@ function showMetricLayer(k){
 }
 document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;if(k==="warnings"){toggleOfficialWarnings();document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));return;}if(k!=="fog"){clearFogLayer();fogToggle.classList.remove("active");fogToggle.textContent="🌫️ Show fog shading";fogToggle.setAttribute("aria-pressed","false");}document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){setCloudCover(false);if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="satellite"){setSatelliteMode(true)}else if(k==="temperature"){setSatelliteMode(false);location.reload()}else{setSatelliteMode(false);showMetricLayer(k)}}}));
 let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
-let fogLayer=null,fogHeatLayer=null,fogVisible=false;
-function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if(fogHeatLayer){map.removeLayer(fogHeatLayer);fogHeatLayer=null}fogVisible=false}
+let fogLayer=null,fogHeatLayer=null,fogVisible=false,fogZoomHandler=null;
+function clearFogLayer(){if(fogZoomHandler){map.off("zoomend",fogZoomHandler);fogZoomHandler=null}if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if(fogHeatLayer){map.removeLayer(fogHeatLayer);fogHeatLayer=null}fogVisible=false}
 function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
@@ -341,8 +341,7 @@ function showFogLayer(){
   if(intensity>=.2)summary.push({name:x.name,vis,code,humidity,intensity});
  });
  if(heat.length&&L.heatLayer){
-  fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:54,blur:48,maxZoom:8,minOpacity:.07,gradient:{0.08:"#e4e7ea",0.24:"#c2c8ce",0.42:"#9aa3ad",0.62:"#747f8b",0.82:"#56616d",1:"#46515d"}}).addTo(map);
-  fogHeatLayer.bringToFront();
+  const baseZoom=8,baseRadius=54,baseBlur=48;const scale=Math.pow(2,baseZoom-map.getZoom());fogHeatLayer=L.heatLayer(heat,{pane:"fogPane",radius:baseRadius*scale,blur:baseBlur*scale,maxZoom:baseZoom,minOpacity:.07,gradient:{0.08:"#e4e7ea",0.24:"#c2c8ce",0.42:"#9aa3ad",0.62:"#747f8b",0.82:"#56616d",1:"#46515d"}}).addTo(map);fogZoomHandler=()=>{if(fogHeatLayer){const s=Math.pow(2,baseZoom-map.getZoom());fogHeatLayer.setOptions({radius:baseRadius*s,blur:baseBlur*s});}};map.on("zoomend",fogZoomHandler);fogHeatLayer.bringToFront();
  }
  const severe=summary.filter(x=>x.intensity>=.62).length,moderate=summary.filter(x=>x.intensity>=.35&&x.intensity<.62).length;
  const detail=summary.length?summary.sort((a,b)=>a.intensity-b.intensity||a.vis-b.vis).slice(0,8).map(x=>x.name+" ("+(Number.isFinite(x.vis)?(x.vis<1000?Math.round(x.vis)+" m":(x.vis/1000).toFixed(1)+" km"):"fog reported")+")").join(", "):"No sampled locations currently meet the fog / reduced-visibility thresholds.";
