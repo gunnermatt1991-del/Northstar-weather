@@ -8,44 +8,64 @@
 :root{color-scheme:dark;--bg:#081225;--panel:#142440;--line:#ffffff20;--muted:#a8b7cf;--text:#f5f8ff;--blue:#86c4ff;--cyan:#78e0df;--gold:#ffd58a}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#344a70 0,#142443 34%,var(--bg) 75%);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1050px;margin:auto;padding:calc(20px + env(safe-area-inset-top)) 15px calc(38px + env(safe-area-inset-bottom))}a{color:#c9e3ff}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.brand{font-weight:800}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em}.back{border:1px solid var(--line);border-radius:99px;padding:8px 12px;text-decoration:none}.hero,.panel,.model{background:linear-gradient(145deg,#192b4bef,#101c34f2);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 50px #0002}.eyebrow{color:var(--cyan);font-size:10px;letter-spacing:.18em;font-weight:800;text-transform:uppercase}.hero h1{font-size:clamp(34px,7vw,54px);line-height:1.05;letter-spacing:-.04em;margin:10px 0}.hero p,.muted{color:#bdcbe0}.models{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}.model h2{font-size:22px;margin:6px 0}.model .org{color:var(--muted);font-size:12px}.pill{display:inline-flex;border:1px solid #ffd58a55;color:#ffe0a8;background:#a66b2018;border-radius:99px;padding:5px 9px;font-size:11px;font-weight:750;margin-top:12px}.model p{font-size:13px;color:#bdcbe0}.featuregrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.feature{background:#ffffff08;border:1px solid #ffffff14;border-radius:15px;padding:14px}.feature b{display:block;margin-bottom:4px}.status{background:#07152a;border:1px solid #86c4ff38;border-radius:16px;padding:16px;margin-top:14px}.status strong{color:var(--gold)}.btn{display:inline-block;padding:11px 15px;border-radius:12px;background:#24466d;border:1px solid #8bbfff66;color:white;text-decoration:none;font-weight:750;margin:6px 8px 0 0}.fine{font-size:12px;color:var(--muted)}.access{max-width:620px;margin:12vh auto;text-align:center}.access[hidden],#workspace[hidden]{display:none}@media(max-width:700px){.models{grid-template-columns:1fr}.featuregrid{grid-template-columns:1fr}.top{align-items:flex-start}}
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>#uk-map .leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#10213a;color:#f5f8ff}.leaflet-control-attribution{font-size:9px}</style></head>
+</head>
 <body><main class="wrap">
 <nav class="top"><div class="brand">✦ Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div><a class="back" href="./premium.html">← Premium</a></nav>
 <section class="access hero" id="access"><div class="eyebrow">Northstar Premium</div><h1>Professional <span style="color:var(--blue)">Models</span></h1><p id="access-message">Checking your Northstar Premium access…</p><a class="btn" href="./premium.html">Manage Premium membership</a></section>
 <div id="workspace" hidden>
 <section class="hero"><div class="eyebrow">Premium forecast workspace</div><h1>Northstar <span style="color:var(--blue)">Model Centre</span></h1><p>Explore the major global forecast models through one Northstar-branded workspace. Choose a model, compare guidance and follow each forecast as new runs become available.</p><div class="pill">MODEL DATA INTEGRATION · PHASE 1</div></section>
-<section class="models">
-<article class="model"><div style="font-size:30px">🌎</div><h2>GFS</h2><div class="org">NOAA · Global Forecast System</div><p>Global deterministic guidance, with four scheduled cycles per day and forecast fields distributed through NOAA NOMADS.</p><span class="pill">Open data source identified</span></article>
-<article class="model"><div style="font-size:30px">🌐</div><h2>ECMWF IFS</h2><div class="org">European Centre for Medium-Range Weather Forecasts</div><p>High-quality global guidance. The open-data subset supports redistribution and commercial use with required attribution.</p><span class="pill">Open data source identified</span></article>
-<article class="model"><div style="font-size:30px">🇬🇧</div><h2>UKMO</h2><div class="org">Met Office global and UK models</div><p>UK-focused deterministic and ensemble guidance, including high-resolution UK forecast products through Weather DataHub.</p><span class="pill">DataHub access required</span></article>
-</section>
-<section class="panel" style="margin-top:14px"><div class="eyebrow">The model viewer we're building</div><h2>One place for every run</h2><div class="featuregrid">
-<div class="feature"><b>🕒 Run selector</b><span class="muted">00Z · 06Z · 12Z · 18Z, when published by each provider.</span></div>
-<div class="feature"><b>▶ Forecast animation</b><span class="muted">Move through forecast hours with a play, pause and timeline control.</span></div>
-<div class="feature"><b>🗺️ Northstar charts</b><span class="muted">Pressure, 500 hPa, rainfall, temperature, wind, gusts and snowfall.</span></div>
-<div class="feature"><b>⚖️ Model comparison</b><span class="muted">Compare GFS, ECMWF and UKMO for the same forecast period.</span></div>
-</div>
-<div class="status" role="status"><strong>Data feeds are not connected yet.</strong><p class="muted" style="margin-bottom:0">This is the first Model Centre release: the model sources and product design are established, but no live model charts are being displayed yet. We will only show a chart once its underlying model run has been retrieved and processed successfully. No sample graphics or invented forecast data are presented as live output.</p></div>
-</section>
-<section class="panel" style="margin-top:14px"><div class="eyebrow">Data and attribution</div><h2>Built on recognised forecast sources</h2><ul class="muted"><li>GFS data: NOAA / NCEP NOMADS.</li><li>ECMWF Open Data: CC BY 4.0 and ECMWF terms; required attribution will appear with charts.</li><li>UKMO: Weather DataHub licence, API plan and “Powered by Met Office data” attribution must be applied.</li></ul><p class="fine">Model output is guidance, not an official warning. Model runs can change, arrive late or be revised. Northstar will display the source, model cycle, issue time and forecast valid time on every chart.</p><a class="btn" href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF data terms ↗</a><a class="btn" href="https://datahub.metoffice.gov.uk/" target="_blank" rel="noopener">Met Office DataHub ↗</a><a class="btn" href="https://nomads.ncep.noaa.gov/" target="_blank" rel="noopener">NOAA NOMADS ↗</a></section>
-<section class="panel" id="live-model-panel" style="margin-top:14px">
-<div class="eyebrow">UK-wide live model viewer</div><h2>Explore the whole UK</h2>
-<p class="muted">Select a forecast model and weather field. The map samples live model guidance across the UK rather than a single town. The service supplies the latest available run; its returned run metadata is shown below.</p>
+<section class="panel" id="run-viewer" style="margin-top:14px">
+<div class="eyebrow">Operational forecast runs</div>
+<h2>Explore the latest model run</h2>
+<p class="muted">Choose a model, select an available run, then step through its forecast charts. The forecast-hour range follows the selected model's operational range.</p>
 <div class="featuregrid">
-<label class="feature">Forecast model<select id="uk-model"><option value="gfs">NOAA GFS Global</option><option value="ecmwf">ECMWF IFS</option><option value="ukmo_global">Met Office Global 10 km</option><option value="ukmo_uk">Met Office UK 2 km</option></select></label>
-<label class="feature">Weather field<select id="uk-field"><option value="temperature_2m">Temperature (°C)</option><option value="precipitation">Precipitation (mm)</option><option value="wind_speed_10m">Wind speed (km/h)</option><option value="pressure_msl">Mean sea-level pressure (hPa)</option><option value="wind_gusts_10m">Wind gusts (km/h)</option><option value="snowfall">Snowfall (cm)</option></select></label>
+<label class="feature">Model
+<select id="run-model">
+<option value="ecmwf">ECMWF IFS HRES · up to +240h</option>
+<option value="gfs">NOAA GFS · up to +384h</option>
+<option value="ukmo_global">Met Office Global · latest available range</option>
+<option value="ukmo_uk">Met Office UK · latest available range</option>
+</select></label>
+<label class="feature">Run cycle (UTC)
+<select id="run-cycle"><option value="00">00Z</option><option value="12">12Z</option></select></label>
+<label class="feature">Run date (UTC)
+<input id="run-date" type="date"></label>
+<label class="feature">Chart field
+<select id="run-field">
+<option value="mslp">Mean sea-level pressure</option><option value="z500">500 hPa geopotential height</option>
+<option value="t850">850 hPa temperature</option><option value="temperature">2m temperature</option>
+<option value="precipitation">Precipitation</option><option value="wind">10m wind</option>
+<option value="gust">Wind gusts</option><option value="snow">Snowfall</option>
+</select></label>
 </div>
-<div class="featuregrid" style="margin-top:10px">
-<label class="feature">Forecast hour <input id="uk-hour" type="range" min="0" max="72" step="1" value="0"><span id="uk-hour-label" class="muted">Hour 0</span></label>
-<div class="feature"><b>Model run</b><span id="uk-run-meta" class="muted">Latest available run — load to retrieve issue time</span></div>
+<div class="feature" style="margin-top:12px">
+<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>Forecast step</b><strong id="forecast-step-label">+000 hours</strong></div>
+<input id="forecast-step" type="range" min="0" max="240" step="3" value="0" style="width:100%;margin-top:12px">
+<div style="display:flex;justify-content:space-between" class="fine"><span>Run time · +000h</span><span id="forecast-end-label">+240h</span></div>
 </div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="uk-load" type="button">Load UK model map</button><button class="btn" id="uk-play" type="button">▶ Animate</button></div>
-<p id="uk-status" class="muted" role="status">Ready. Load a model to retrieve forecast values across the UK.</p>
-<div id="uk-map" aria-label="UK-wide forecast map" style="height:480px;min-height:360px;border:1px solid #ffffff25;border-radius:16px;overflow:hidden;background:#dbe6ee"></div>
-<div class="fine" style="margin-top:10px">Map points are forecast samples from the selected model, not a claim of native-resolution gridded imagery. Choose a marker to inspect its value. The displayed run is the latest run returned by the data service.</div>
-<div id="uk-legend" class="fine" style="margin-top:8px"></div>
-</section></div>
-</main>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+<button class="btn" id="load-run" type="button">Load selected run</button>
+<button class="btn" id="animate-run" type="button">▶ Animate run</button>
+</div>
+<p id="run-status" class="muted" role="status">Run chart service is not connected yet. No forecast image is being fabricated.</p>
+<div id="run-chart" style="min-height:300px;border:1px solid #ffffff20;border-radius:16px;background:#07152a;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px">
+<div><div style="font-size:38px">🗺️</div><strong>Forecast chart will appear here</strong><p class="muted" style="margin-bottom:0">The selected model run and forecast hour will be shown when the GRIB/chart feed is connected.</p></div>
+</div>
+<p id="run-metadata" class="fine" style="margin-top:10px">No run loaded.</p>
+</section>
+<section class="panel" style="margin-top:14px">
+<div class="eyebrow">Model data and attribution</div><h2>Operational data sources</h2>
+<ul class="muted">
+<li>ECMWF IFS Open Data: HRES 00Z/12Z runs, with forecast steps up to +240h; attribution and licence terms apply.</li>
+<li>NOAA GFS: 00Z/06Z/12Z/18Z runs, with forecast steps up to +384h.</li>
+<li>Met Office Global and UK models: latest cycles and forecast ranges depend on the DataHub product and access plan.</li>
+</ul>
+<p class="fine">The viewer must use actual published run files and their real forecast-step availability. A run is not shown as available until its source files have been found and processed. Forecast output is guidance, not an official warning.</p>
+<a class="btn" href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF Open Data ↗</a>
+<a class="btn" href="https://nomads.ncep.noaa.gov/" target="_blank" rel="noopener">NOAA NOMADS ↗</a>
+<a class="btn" href="https://datahub.metoffice.gov.uk/" target="_blank" rel="noopener">Met Office DataHub ↗</a>
+</section>
+</div>
 <script>
 (async function(){
  const access=document.getElementById("access"),workspace=document.getElementById("workspace"),message=document.getElementById("access-message");
@@ -59,9 +79,17 @@
   message.textContent="This Model Centre is part of Northstar Premium. Sign in with your active membership to continue.";
  }catch(e){message.textContent="We couldn't verify Premium access just now. Please try again when your connection is available.";}
 })();
-</script><script>
-document.getElementById("load-model")?.addEventListener("click",async()=>{const s=document.getElementById("model-status"),r=document.getElementById("model-result");r.hidden=true;s.textContent="Requesting forecast…";try{const q=new URLSearchParams({model:document.getElementById("model-choice").value,latitude:document.getElementById("model-lat").value,longitude:document.getElementById("model-lon").value});const res=await fetch("https://northstar-model-data.gunnermatt1991.workers.dev/model?"+q);const p=await res.json();if(!res.ok)throw Error(p.error||"Request failed");const h=p.data.hourly,t=document.getElementById("model-rows");t.replaceChildren();for(let i=0;i<Math.min(72,h.time.length);i+=3){const tr=document.createElement("tr");[new Date(h.time[i]).toISOString().slice(0,16).replace("T"," "),h.temperature_2m?.[i],h.precipitation?.[i],h.wind_speed_10m?.[i],h.pressure_msl?.[i]].forEach((v,j)=>{const d=document.createElement("td");d.textContent=j===0?v:(v==null?"—":Number(v).toFixed(1));d.style.padding="8px";tr.append(d)});t.append(tr)}document.getElementById("model-meta").textContent=p.modelId+" · "+new Date(p.retrievedAt).toLocaleString();document.getElementById("model-attribution").textContent=p.attribution;r.hidden=false;s.textContent="Forecast loaded."}catch(e){s.textContent=e.message+". Worker deployment/API credentials may be pending."}});
-</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</script>
 <script>
 (()=>{const $=id=>document.getElementById(id);if(!$("uk-map")||!window.L)return;const map=L.map("uk-map",{scrollWheelZoom:false}).setView([55.2,-3.2],5);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:"© OpenStreetMap"}).addTo(map);const bounds=[[49.7,-8.7],[59.2,2.2]];map.fitBounds(bounds);let marks=[],samples=[],timer=null;const pts=[];for(let lat=50.2;lat<=58.7;lat+=1.15){for(let lon=-6.2;lon<=1.1;lon+=1.25){const inLand=(lat>50.0&&lat<55.8&&lon>-5.8&&lon<1.8)||(lat>=55.8&&lat<59&&lon>-7.5&&lon<0.5)||(lat>54.0&&lat<55.6&&lon>-7.8&&lon<-5.8);if(inLand)pts.push([Number(lat.toFixed(2)),Number(lon.toFixed(2))]);}}function clear(){marks.forEach(m=>map.removeLayer(m));marks=[];}function valAt(p,i,field){return p?.data?.hourly?.[field]?.[i]??null;}function colour(v,field){if(v==null)return "#8995a5";if(field==="temperature_2m"){if(v<0)return "#83c5ff";if(v<5)return "#74b8d8";if(v<10)return "#70c99b";if(v<15)return "#e4d36b";if(v<20)return "#e99b55";return "#d95e61";}if(field==="precipitation"||field==="snowfall"){if(v<.1)return "#d6e4ee";if(v<1)return "#74b9e8";if(v<3)return "#388bd1";if(v<8)return "#6559b8";return "#9a4caa";}if(field==="pressure_msl"){if(v<995)return "#6b91dc";if(v<1010)return "#72c5bd";if(v<1025)return "#e6d27a";return "#e59a5b";}return v<10?"#83c5ff":v<25?"#70c99b":v<40?"#e4d36b":v<60?"#e99b55":"#d95e61";}function unit(field){return field==="temperature_2m"?"°C":field==="pressure_msl"?"hPa":field==="snowfall"?"cm":field==="precipitation"?"mm":"km/h";}function draw(){clear();const field=$("uk-field").value,h=Number($("uk-hour").value);samples.forEach((p,i)=>{const v=valAt(p,h,field);if(v==null)return;const m=L.circleMarker([p.latitude,p.longitude],{radius:12,weight:1,color:"#10213a",fillColor:colour(v,field),fillOpacity:.88}).addTo(map);m.bindPopup("<b>"+p.latitude.toFixed(2)+", "+p.longitude.toFixed(2)+"</b><br>"+field.replaceAll("_"," ")+": "+Number(v).toFixed(1)+" "+unit(field));marks.push(m);});$("uk-hour-label").textContent="Hour "+h+(samples[0]?.data?.hourly?.time?.[h]?" · "+samples[0].data.hourly.time[h].replace("T"," "):"");$("uk-legend").textContent="Field: "+field.replaceAll("_"," ")+" ("+unit(field)+") · "+marks.length+" valid UK sample points";}async function load(){if(timer){clearInterval(timer);timer=null;$("uk-play").textContent="▶ Animate";} $("uk-status").textContent="Retrieving "+pts.length+" UK forecast points…";$("uk-load").disabled=true;try{const model=$("uk-model").value;const out=[];let done=0;for(let i=0;i<pts.length;i+=4){const batch=pts.slice(i,i+4);const got=await Promise.all(batch.map(async q=>{const u=new URL("https://northstar-model-data.gunnermatt1991.workers.dev/model");u.searchParams.set("model",model);u.searchParams.set("latitude",q[0]);u.searchParams.set("longitude",q[1]);const r=await fetch(u);const j=await r.json();if(!r.ok)throw Error(j.error||"Model service returned "+r.status);return {latitude:q[0],longitude:q[1],...j};}));out.push(...got);done+=batch.length;$("uk-status").textContent="Retrieved "+done+" of "+pts.length+" UK points…";}samples=out;const meta=out.find(p=>p.retrievedAt||p.modelId);$("uk-run-meta").textContent=meta?(meta.modelId||model)+" · retrieved "+new Date(meta.retrievedAt).toLocaleString():"Latest available run returned by model service";$("uk-hour").max=String(Math.max(0,...out.map(p=>(p.data?.hourly?.time?.length||1)-1)));$("uk-hour").value="0";draw();$("uk-status").textContent="UK model data loaded: "+out.length+" sample points. Select a field or forecast hour to explore."; }catch(e){$("uk-status").textContent="Could not load the UK-wide model data: "+e.message+". The model service may currently support point requests only or may have a request limit.";}finally{$("uk-load").disabled=false;}}$("uk-load").addEventListener("click",load);$("uk-field").addEventListener("change",draw);$("uk-hour").addEventListener("input",draw);$("uk-play").addEventListener("click",()=>{if(!samples.length)return;if(timer){clearInterval(timer);timer=null;$("uk-play").textContent="▶ Animate";return;}$("uk-play").textContent="Ⅱ Pause";timer=setInterval(()=>{const el=$("uk-hour");el.value=Number(el.value)>=Number(el.max)?0:Number(el.value)+1;draw();},700);});})();
+</script><script>
+(()=>{const $=id=>document.getElementById(id);const model=$("run-model"),cycle=$("run-cycle"),date=$("run-date"),step=$("forecast-step"),stepLabel=$("forecast-step-label"),endLabel=$("forecast-end-label"),status=$("run-status"),chart=$("run-chart");if(!model)return;
+const today=new Date();date.value=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate())).toISOString().slice(0,10);
+function config(){const m=model.value;if(m==="ecmwf")return {max:240,step:3,cycles:["00","12"],name:"ECMWF IFS HRES"};if(m==="gfs")return {max:384,step:3,cycles:["00","06","12","18"],name:"NOAA GFS"};return {max:120,step:1,cycles:["00","06","12","18"],name:m==="ukmo_uk"?"Met Office UK":"Met Office Global",unknown:true};}
+function sync(){const c=config();const keep=cycle.value;if(!c.cycles.includes(keep))cycle.value=c.cycles[0];cycle.innerHTML=c.cycles.map(x=>'<option value="'+x+'">'+x+'Z</option>').join("");cycle.value=c.cycles.includes(keep)?keep:c.cycles[0];step.max=String(c.max);step.step=String(c.step);if(Number(step.value)>c.max)step.value=String(c.max);stepLabel.textContent="+"+String(step.value).padStart(3,"0")+" hours";endLabel.textContent=c.unknown?"latest available":("+"+c.max+"h");}
+function changeStep(){stepLabel.textContent="+"+String(step.value).padStart(3,"0")+" hours";}
+model.addEventListener("change",()=>{sync();status.textContent="Select a run and load it when the operational chart feed is connected.";});step.addEventListener("input",changeStep);
+$("load-run").addEventListener("click",()=>{const c=config();status.textContent="The run-chart backend is not connected. This page cannot yet retrieve or render the selected "+c.name+" GRIB forecast.";chart.innerHTML='<div><div style="font-size:38px">🗺️</div><strong>Live chart feed not connected</strong><p class="muted">No placeholder chart or invented run is being presented as operational data.</p></div>';$("run-metadata").textContent=c.name+" · "+date.value+" "+cycle.value+"Z · forecast +"+step.value+"h · awaiting GRIB processing service";});
+let timer=null;$("animate-run").addEventListener("click",()=>{if(timer){clearInterval(timer);timer=null;$("animate-run").textContent="▶ Animate run";return;}timer=setInterval(()=>{const c=config();let n=Number(step.value)+c.step;if(n>c.max)n=0;step.value=String(n);changeStep();},650);$("animate-run").textContent="Ⅱ Pause";});
+sync();changeStep();})();
 </script></body></html>
