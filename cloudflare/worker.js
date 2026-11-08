@@ -105,6 +105,75 @@ export default {
       }
     }
 
+
+    // Met Office Land Observations: resolve the nearest station, then retrieve
+    // its hourly observations. Keep the subscription key on the Worker only.
+    if (request.method === "GET" && url.pathname === "/observations/latest") {
+      if (!env.METOFFICE_LANDOBS_API_KEY) return json({ error: "Met Office Land Observations are not configured. Add the METOFFICE_LANDOBS_API_KEY Worker secret." }, 503);
+      const lat = Number(url.searchParams.get("latitude"));
+      const lon = Number(url.searchParams.get("longitude"));
+      if (!Number.isFinite(lat) || lat < 49 || lat > 61 || !Number.isFinite(lon) || lon < -8 || lon > 2) {
+        return fail("A valid UK latitude and longitude are required.");
+      }
+      const roundedLat = Math.round(lat * 100) / 100;
+      const roundedLon = Math.round(lon * 100) / 100;
+      const cache = caches.default;
+      const cacheKey = new Request("https://northstar-observation-cache.local/latest/" + roundedLat + "/" + roundedLon, { method: "GET" });
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "HIT");
+        return new Response(cached.body, { status: cached.status, headers });
+      }
+      try {
+        const base = "https://data.hub.api.metoffice.gov.uk/observation-land/1";
+        const headers = { "apikey": env.METOFFICE_LANDOBS_API_KEY, "accept": "application/json" };
+        const nearestUrl = new URL(base + "/nearest");
+        nearestUrl.searchParams.set("lat", roundedLat);
+        nearestUrl.searchParams.set("lon", roundedLon);
+        nearestUrl.searchParams.set("max", "1");
+        const nearestResponse = await fetch(nearestUrl, { headers });
+        if (!nearestResponse.ok) throw new Error("Met Office nearest-station lookup returned " + nearestResponse.status);
+        const nearest = await nearestResponse.json();
+        if (!Array.isArray(nearest) || !nearest.length || !nearest[0].geohash) {
+          return json({ error: "No Met Office observation station was found for this location." }, 404);
+        }
+        const station = nearest[0];
+        const observationsResponse = await fetch(base + "/" + encodeURIComponent(station.geohash), { headers });
+        if (!observationsResponse.ok) throw new Error("Met Office station observations returned " + observationsResponse.status);
+        const observations = await observationsResponse.json();
+        if (!Array.isArray(observations) || !observations.length) {
+          return json({ error: "The nearest Met Office station has no recent observations." }, 404);
+        }
+        const rows = observations.filter(row => row && Number.isFinite(Number(row.datetime)))
+          .sort((a, b) => Number(b.datetime) - Number(a.datetime));
+        if (!rows.length) return json({ error: "The Met Office station returned no timestamped observations." }, 502);
+        const body = JSON.stringify({
+          source: "Met Office Land Observations",
+          station: { geohash: station.geohash, area: station.area || null, region: station.region || null, country: station.country || null, timeZone: station.olson_time_zone || "Europe/London" },
+          latest: rows[0],
+          observations: rows.slice(0, 24),
+          fetchedAt: new Date().toISOString()
+        });
+        const response = new Response(body, { status: 200, headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=1800",
+          "access-control-allow-origin": APP_ORIGIN,
+          "vary": "Origin"
+        }});
+        ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=1800"
+        }})).catch(error => console.error("Observation cache write failed", error)));
+        return response;
+      } catch (error) {
+        console.error("Met Office observation fetch failed", error);
+        return json({ error: "Met Office observations could not be loaded. " + error.message }, 502);
+      }
+    }
+
     // Official Met Office NSWWS warning polygons (GeoJSON).
     // Store METOFFICE_API_KEY as a Cloudflare Worker secret; never expose it to browsers.
     if (request.method === "GET" && url.pathname === "/warnings/geojson") {
