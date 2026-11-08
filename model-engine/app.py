@@ -1,4 +1,4 @@
-import os, time, hashlib
+import os, time, hashlib, traceback
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
@@ -94,7 +94,7 @@ def choose_dataset(path,field):
      coord=next((k for k in ds.coords if k in ("isobaricInhPa","pressure_level")),None)
      if coord and int(np.asarray(ds[coord].values).flat[0]) not in (500 if field=="z500" else 850,):continue
     return ds,var,datasets
- raise ValueError(f"GRIB field not found; expected {wanted}")
+ raise ValueError(f"GRIB field not found; expected {wanted}; available variables: {[list(d.data_vars) for d in datasets]}")
 def render(path,field,model,day,cyc,hour):
  try:
   ds,var,all_ds=choose_dataset(path,field); da=ds[var].squeeze()
@@ -122,7 +122,7 @@ def render(path,field,model,day,cyc,hour):
    try:d.close()
    except Exception:pass
   return out.getvalue()
- except Exception as e:raise HTTPException(422,f"Unable to decode or render {field}: {e}")
+ except Exception as e:raise HTTPException(422,f"Unable to decode or render {field}: {type(e).__name__}: {e!r}; traceback: {traceback.format_exc(limit=3)}")
 @app.get("/api/chart")
 def chart(model:str=Query(...,pattern="^(gfs|ecmwf)$"),date:str=Query(...,pattern="^\\d{8}$"),cycle:str=Query(...),hour:int=Query(...,ge=0),field:str=Query(...)):
  if field not in FIELDS:raise HTTPException(400,"Unsupported chart field.")
