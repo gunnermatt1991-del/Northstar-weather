@@ -48,8 +48,24 @@ export default {
         "vary": "Origin"
       }});
     }
-    if (!allowed(request)) return fail("Origin not allowed.", 403);
     const url = new URL(request.url);
+    // Permit direct navigation to read-only diagnostics/public-key endpoints.
+    // Browser app mutations still require the exact Northstar GitHub Pages origin.
+    const readOnlyNoOrigin = request.method === "GET" && !origin &&
+      (url.pathname === "/health" || url.pathname === "/vapid-public-key");
+    if (!allowed(request) && !readOnlyNoOrigin) return fail("Origin not allowed.", 403);
+
+    if (request.method === "GET" && url.pathname === "/health") {
+      return json({
+        service: "Northstar Weather Alerts",
+        ok: true,
+        vapidConfigured: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
+        publicKeyConfigured: !!env.VAPID_PUBLIC_KEY,
+        privateKeyConfigured: !!env.VAPID_PRIVATE_KEY,
+        subjectConfigured: !!env.VAPID_SUBJECT,
+        databaseConfigured: !!env.DB
+      });
+    }
 
     // Shared edge cache for Open-Meteo requests. Browser clients call this
     // same-origin Worker instead of hitting the upstream API independently.
