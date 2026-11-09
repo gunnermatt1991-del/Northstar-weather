@@ -2,6 +2,9 @@ name: Configure and deploy Northstar push notifications
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
