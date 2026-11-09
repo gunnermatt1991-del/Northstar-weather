@@ -51,9 +51,12 @@ export default {
     const url = new URL(request.url);
     // Permit direct navigation to read-only diagnostics/public-key endpoints.
     // Browser app mutations still require the exact Northstar GitHub Pages origin.
-    const readOnlyNoOrigin = request.method === "GET" && !origin &&
-      (url.pathname === "/health" || url.pathname === "/vapid-public-key");
-    if (!allowed(request) && !readOnlyNoOrigin) return fail("Origin not allowed.", 403);
+    // Health is a read-only diagnostic and is intentionally available by direct
+    // browser navigation (some mobile browsers attach an Origin header even to
+    // top-level navigations). All state-changing endpoints remain origin-locked.
+    const readOnlyHealth = request.method === "GET" && url.pathname === "/health";
+    const readOnlyPublicKey = request.method === "GET" && url.pathname === "/vapid-public-key" && !origin;
+    if (!allowed(request) && !readOnlyHealth && !readOnlyPublicKey) return fail("Origin not allowed.", 403);
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/")) {
       return json({
