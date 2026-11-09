@@ -139,6 +139,52 @@ body{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 .northstar-precip-status{flex-basis:100%;color:var(--muted);font-size:11px;text-align:center;min-height:15px}
 .northstar-precip-control:active,.northstar-precip-reset:active{transform:scale(.98)}
 @media(prefers-reduced-motion:reduce){#northstarPrecipCanvas{display:none}}
+
+/* Cross-device layout hardening: Samsung/Android browsers, narrow viewports and text scaling. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{width:100%;overflow-x:hidden}
+.wrap,main,.card,.weather-hero,.hero,.section{min-width:0;max-width:100%}
+.place,.home-warning-copy,.official-warning-card,.alert,.section-head{min-width:0;overflow-wrap:anywhere}
+.home-warning-copy strong,.home-warning-copy span,.official-warning-card p{overflow-wrap:anywhere;word-break:normal}
+button,input,select,textarea{max-width:100%;font-size:inherit}
+img,svg,canvas{max-width:100%}
+@media(max-width:600px){
+ .wrap{padding-left:clamp(10px,3.5vw,16px);padding-right:clamp(10px,3.5vw,16px);padding-top:calc(14px + env(safe-area-inset-top))}
+ header{gap:12px;margin-bottom:16px}
+ .brand{font-size:clamp(15px,4.3vw,18px);gap:9px}
+ .brand small{font-size:clamp(8px,2.5vw,10px);letter-spacing:.13em}
+ .logo{width:40px;height:40px;flex:0 0 40px}
+ .search{display:flex;gap:7px}
+ .search input{width:0;min-width:0;padding:11px 13px}
+ .search button,.control{padding:10px 14px;white-space:nowrap}
+ .card{padding:clamp(13px,3.8vw,18px);border-radius:20px}
+ .place{font-size:clamp(18px,5vw,23px);line-height:1.25}
+ .date{font-size:clamp(11px,3.2vw,13px)}
+ .home-warning{gap:8px;padding:10px}
+ .home-warning-icons{font-size:20px}
+ .home-warning-copy strong{font-size:clamp(12px,3.4vw,14px)}
+ .home-warning-copy span{font-size:clamp(10px,2.9vw,12px)}
+ .current{gap:clamp(8px,3vw,16px);flex-wrap:wrap}
+ .temp{font-size:clamp(62px,17vw,84px)}
+ .weather-icon-wrap{min-width:70px}
+ .metrics{gap:8px}
+ .metric{padding:10px}
+ .northstar-dock{width:calc(100% - 20px);bottom:calc(7px + env(safe-area-inset-bottom));padding:7px 6px;border-radius:22px}
+ .dock-item{padding:7px 1px}
+ .dock-item span{font-size:19px}
+ .dock-item small{font-size:clamp(9px,2.6vw,10px)}
+ body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+}
+@media(max-width:380px){
+ .weather-icon-wrap{min-width:60px}
+ .temp{font-size:62px}
+ .home-warning-arrow{font-size:14px}
+ .dock-item small{font-size:9px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ .northstar-dock{bottom:5px}
+ body{padding-bottom:75px}
+}
 </style></head>
 <body><div class="wrap">
 <header><div class="brand"><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div>Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">☀ Light mode</button><a href="./premium.html" style="color:#d8eaff;text-decoration:none;border:1px solid #8bbfff55;border-radius:99px;padding:9px 14px;background:#203252">✦ Premium</a></div><form class="search" id="searchForm"><input id="locationInput" value="Kettering" aria-label="Search town or city" placeholder="Search a town or city"><button>Search</button></form></header>
@@ -416,7 +462,7 @@ async function loadOfficialWarnings(){
   // regional fog alerts) into one clean warning card.
   const groups=new Map();
   items.forEach(item=>{
-   const rawTitle=(item.title||"Met Office weather warning").replace(/<[^>]*>/g,"");
+   const rawTitle=decodeWarningEntities((item.title||"Met Office weather warning").replace(/<[^>]*>/g,""));
    const hazardMatch=rawTitle.match(/warning of (.+?) affecting/i);
    const hazard=(hazardMatch?hazardMatch[1]:"weather").trim();
    const raw=(rawTitle+" "+(item.description||"")).toLowerCase();
@@ -427,8 +473,8 @@ async function loadOfficialWarnings(){
   });
   box.innerHTML=[...groups.values()].map(group=>{
    const title=escapeWarningText(group.hazard.charAt(0).toUpperCase()+group.hazard.slice(1));
-   const heading=group.items.length>1?group.level.charAt(0).toUpperCase()+group.level.slice(1)+" warning of "+title.toLowerCase()+" affecting multiple UK areas":(group.items[0].title||"Met Office weather warning").replace(/<[^>]*>/g,"");
-   const details=group.items.map(item=>escapeWarningText((item.description||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").trim())).filter(Boolean);
+   const heading=group.items.length>1?group.level.charAt(0).toUpperCase()+group.level.slice(1)+" warning of "+title.toLowerCase()+" affecting multiple UK areas":decodeWarningEntities((group.items[0].title||"Met Office weather warning").replace(/<[^>]*>/g,""));
+   const details=group.items.map(item=>escapeWarningText(decodeWarningEntities((item.description||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ")).trim())).filter(Boolean);
    const desc=details.join(" · ");
    const when=group.items.map(item=>item.pubDate?new Date(item.pubDate).toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"").filter(Boolean)[0]||"Latest feed update";
    const href=group.items.map(item=>item.link||"").find(link=>/^https:\/\//.test(link))||officialUrl;
@@ -439,6 +485,7 @@ async function loadOfficialWarnings(){
  }
 }
 function normalizeWarningArea(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/&/g," and ").replace(/\b(city and county of|county of|city of|borough of|district of)\b/g," ").replace(/\b(city|county|borough|district)\b/g," ").replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");}
+function decodeWarningEntities(value){const node=document.createElement("textarea");node.innerHTML=String(value||"");return node.value;}
 function escapeWarningText(value){return String(value||"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function initNorthstarPrecipitation(){
  const canvas=$("northstarPrecipCanvas"),wrap=$("weather-home")?.querySelector(".weather-hero"),button=$("northstarShakePrecip"),reset=$("northstarResetPrecip"),status=$("northstarPrecipStatus");if(!canvas||!wrap||!button||canvas.dataset.ready)return;canvas.dataset.ready="1";
