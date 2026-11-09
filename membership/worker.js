@@ -1,4 +1,4 @@
-const ALLOWED_ORIGIN = "*";
+const ALLOWED_ORIGIN = "https://gunnermatt1991-del.github.io";
 const OWNER_EMAIL = "gunnermatt1991@icloud.com";
 function b64url(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_"); }
 function unb64url(value) { const raw=value.replace(/-/g,"+").replace(/_/g,"/"); return Uint8Array.from(atob(raw+"=".repeat((4-raw.length%4)%4)),c=>c.charCodeAt(0)); }
@@ -27,6 +27,9 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "content-type",
     "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
     "vary": "Origin"
   }
 });
@@ -50,12 +53,21 @@ async function paypalAccessToken(env) {
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    // Accept browser requests only from the published Northstar site.
+    // CORS is an additional browser boundary, not a replacement for server-side verification.
+    if (origin !== ALLOWED_ORIGIN) {
+      return new Response("Origin not allowed.", {
+        status: 403,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "vary": "Origin", "x-content-type-options": "nosniff" }
+      });
+    }
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: {
-        "access-control-allow-origin": "*",
+        "access-control-allow-origin": ALLOWED_ORIGIN,
         "access-control-allow-methods": "POST, OPTIONS",
         "access-control-allow-headers": "content-type",
-        "access-control-max-age": "86400"
+        "access-control-max-age": "86400",
+        "vary": "Origin"
       }});
     }
     const url = new URL(request.url);
