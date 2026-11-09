@@ -11,3 +11,11 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+
+-- Hashed per-IP, per-route request counters used to throttle public push endpoints.
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  bucket TEXT PRIMARY KEY,
+  window_start INTEGER NOT NULL,
+  hits INTEGER NOT NULL DEFAULT 0
+);
