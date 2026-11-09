@@ -47,6 +47,10 @@ jobs:
             npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN updated_at TEXT"
             npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''"
           fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"alert_state"'; then
+            echo "Adding missing alert_state column required by the scheduled alert checker."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN alert_state TEXT NOT NULL DEFAULT '{}'"
+          fi
           npx wrangler d1 execute northstar-notifications --remote --command="CREATE INDEX IF NOT EXISTS idx_subscriptions_updated_at ON subscriptions(updated_at)"
 
       - name: Generate and install VAPID credentials if missing
