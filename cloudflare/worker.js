@@ -2,12 +2,15 @@
 // Build trigger after correcting Cloudflare root directory
 import webpush from "web-push";
 
-const APP_ORIGIN = "https://gunnermatt1991-del.github.io";
-const json = (data, status = 200, origin = APP_ORIGIN) => new Response(JSON.stringify(data), {
+const APP_ORIGINS = new Set([
+  "https://gunnermatt1991-del.github.io",
+  "https://northstar-weather.pages.dev"
+]);
+const json = (data, status = 200, origin = "*") => new Response(JSON.stringify(data), {
   status,
   headers: {
     "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": origin,
+    "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
     "access-control-allow-headers": "content-type",
     "vary": "Origin"
@@ -15,7 +18,7 @@ const json = (data, status = 200, origin = APP_ORIGIN) => new Response(JSON.stri
 });
 const fail = (message, status = 400) => json({ error: message }, status);
 const ctxWaitUntilSafe = promise => { try { /* cache write is awaited by the runtime */ return promise; } catch { return Promise.resolve(); } };
-const allowed = request => request.headers.get("Origin") === APP_ORIGIN;
+const allowed = request => APP_ORIGINS.has(request.headers.get("Origin"));
 const b64url = value => btoa(String.fromCharCode(...new Uint8Array(value)))
   .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 
@@ -39,9 +42,9 @@ export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
-      if (origin !== APP_ORIGIN) return new Response(null, { status: 403 });
+      if (!APP_ORIGINS.has(origin)) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: {
-        "access-control-allow-origin": APP_ORIGIN,
+        "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
         "access-control-allow-headers": "content-type",
         "access-control-max-age": "86400",
@@ -83,7 +86,7 @@ export default {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
@@ -101,7 +104,7 @@ export default {
         const headers = new Headers(upstreamResponse.headers);
         headers.set("content-type", "application/json; charset=utf-8");
         headers.set("cache-control", "public, max-age=" + ttl);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "MISS");
         const response = new Response(await upstreamResponse.arrayBuffer(), {
@@ -141,7 +144,7 @@ export default {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
@@ -179,7 +182,7 @@ export default {
         const response = new Response(body, { status: 200, headers: {
           "content-type": "application/json; charset=utf-8",
           "cache-control": "public, max-age=1800",
-          "access-control-allow-origin": APP_ORIGIN,
+          "access-control-allow-origin": "*",
           "vary": "Origin"
         }});
         ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
@@ -202,7 +205,7 @@ export default {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
@@ -241,7 +244,7 @@ export default {
         const response = new Response(body, { status: 200, headers: {
           "content-type": "application/geo+json; charset=utf-8",
           "cache-control": "public, max-age=300",
-          "access-control-allow-origin": APP_ORIGIN,
+          "access-control-allow-origin": "*",
           "vary": "Origin"
         }});
         ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
