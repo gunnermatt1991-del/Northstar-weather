@@ -55,7 +55,7 @@ export default {
       (url.pathname === "/health" || url.pathname === "/vapid-public-key");
     if (!allowed(request) && !readOnlyNoOrigin) return fail("Origin not allowed.", 403);
 
-    if (request.method === "GET" && url.pathname === "/health") {
+    if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/")) {
       return json({
         service: "Northstar Weather Alerts",
         ok: true,
