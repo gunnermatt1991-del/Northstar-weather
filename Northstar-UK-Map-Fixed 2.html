@@ -409,19 +409,19 @@ rainForecastToggle.addEventListener("click",async()=>{
 rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
 
 function createLandTemperatureLayer(readings,features){
- // Use Leaflet's native heat layer for reliable rendering across mobile browsers.
- // Values are normalised from -5°C to 30°C; the gradient maps cold blues through
- // mild greens/yellows to hot reds. City observations are the source readings.
- const points=readings.filter(p=>Number.isFinite(p.t)).map(p=>[
-  p.lat,p.lon,Math.max(0,Math.min(1,(p.t+5)/35))
- ]);
- if(points.length<8)throw Error("Not enough temperature readings for shading");
+ // Native Leaflet heat rendering is reliable on mobile and uses existing live town observations.
+ const points=readings.map(p=>{
+  const t=p.t;
+  const intensity=t<=-5?.10:t<=0?.18:t<=5?.30:t<=10?.43:t<=15?.57:t<=20?.71:t<=25?.86:1;
+  return [p.lat,p.lon,intensity];
+ });
+ if(points.length<8||!L.heatLayer)throw Error("Temperature shading renderer or readings unavailable");
  return L.heatLayer(points,{
-  radius:76,blur:62,maxZoom:8,minOpacity:0.38,max:1,
+  pane:"temperaturePane",radius:105,blur:88,maxZoom:8,minOpacity:0.48,max:1,
   gradient:{
    0.00:"#2326a8",
-   0.14:"#315de0",
-   0.29:"#39bde7",
+   0.12:"#315de0",
+   0.28:"#39bde7",
    0.43:"#27ad78",
    0.57:"#b8d83c",
    0.71:"#f5cf35",
@@ -429,8 +429,33 @@ function createLandTemperatureLayer(readings,features){
    1.00:"#d92732"
   }
  });
+} });
 }
-async function loadTemperatureShading(){tempToggle.disabled=true;tempToggle.textContent="🌡️ Loading temperatures…";try{const results=await Promise.all(cities.map(async city=>{const[name,lat,lon]=city;const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m");u.searchParams.set("timezone","UTC");const response=await fetch(u);if(!response.ok)throw Error();const data=await response.json();const t=data.current&&data.current.temperature_2m;return Number.isFinite(t)?{name,lat,lon,t}:null}));const readings=results.filter(Boolean);if(readings.length<8)throw Error();const boundaryResponse=await fetch("https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson");if(!boundaryResponse.ok)throw Error("Land boundaries unavailable");const boundaryData=await boundaryResponse.json();const europeCodes=["GB","IE","PT","ES","FR","BE","NL","LU","DE","DK","NO","SE","FI","EE","LV","LT","PL","CZ","AT","CH","IT","SI","HR","HU","SK","RO","BG","GR","RS","BA","ME","AL","MK","XK","UA","MD","BY"];const landFeatures=boundaryData.features.filter(feature=>europeCodes.includes(feature.properties&&feature.properties["ISO3166-1-Alpha-2"]));if(!landFeatures.length)throw Error("UK and Ireland land boundaries unavailable");tempLayer=createLandTemperatureLayer(readings,landFeatures);tempToggle.disabled=false;tempToggle.textContent="🌡️ Show temperature shading";document.getElementById("status").textContent="Temperature shading is ready, based on "+readings.length+" real town and city readings. Tap the button to show it."}catch(error){tempToggle.disabled=false;tempToggle.textContent="🌡️ Try temperature shading again";document.getElementById("status").textContent="Temperature shading couldn't load just now. Town markers and rain radar are still available."}}
+async function loadTemperatureShading(){
+ tempToggle.disabled=true;
+ tempToggle.textContent="🌡️ Preparing temperature shading…";
+ try{
+  // Reuse the live observations already fetched for the map pins. This avoids
+  // a second burst of dozens of requests and keeps the heat layer in sync.
+  if(!cityWeather.length){
+   document.getElementById("status").textContent="Live town temperatures are still loading. Please try again in a moment.";
+   throw Error("Town temperature observations are not ready yet.");
+  }
+  const readings=cityWeather
+   .map(x=>({name:x.name,lat:Number(x.lat),lon:Number(x.lon),t:Number(x.current&&x.current.temperature_2m)}))
+   .filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&Number.isFinite(x.t));
+  if(readings.length<8)throw Error("Not enough valid town temperature readings ("+readings.length+").");
+  tempLayer=createLandTemperatureLayer(readings,[]);
+  tempToggle.disabled=false;
+  tempToggle.textContent="🌡️ Show temperature shading";
+  document.getElementById("status").textContent="Temperature shading ready using "+readings.length+" live town readings. Tap the button to show the colour layer.";
+ }catch(error){
+  tempToggle.disabled=false;
+  tempToggle.textContent="🌡️ Try temperature shading again";
+  if(!document.getElementById("status").textContent.includes("still loading"))document.getElementById("status").textContent=error.message||"Temperature shading couldn't load. Please try again.";
+  tempLayer=null;
+ }
+}
 tempToggle.addEventListener("click",async()=>{if(!tempLayer){await loadTemperatureShading();if(!tempLayer)return}tempVisible=!tempVisible;if(tempVisible){tempLayer.addTo(map);tempToggle.textContent="🌡️ Hide temperature shading";tempToggle.classList.add("active");tempLegend.classList.add("show")}else{map.removeLayer(tempLayer);tempToggle.textContent="🌡️ Show temperature shading";tempToggle.classList.remove("active");tempLegend.classList.remove("show")}});
 async function getCity(city){const[name,lat,lon]=city;const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m,apparent_temperature,relative_humidity_2m,visibility,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall");u.searchParams.set("timezone","auto");const r=await fetch(u);if(!r.ok)throw Error();const j=await r.json();return{name,lat,lon,current:j.current}}
 (async()=>{let count=0,failed=0;const bounds=[];await Promise.all(cities.map(async city=>{try{const x=await getCity(city);cityWeather.push(x);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+t+'°</div>',iconSize:[31,20],iconAnchor:[15,10]});const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
