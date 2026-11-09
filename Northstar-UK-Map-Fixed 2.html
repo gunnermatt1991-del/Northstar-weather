@@ -415,32 +415,26 @@ rainForecastToggle.addEventListener("click",async()=>{
 rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
 
 function createLandTemperatureLayer(readings,features){
- const overlay=document.createElement("canvas");
- overlay.style.cssText="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none";
- overlay.setAttribute("aria-hidden","true");
- map.getPane("temperaturePane").appendChild(overlay);
- let frame=0;
- const colorStops=[[-5,[35,48,190]],[0,[55,105,235]],[5,[55,190,225]],[10,[35,175,115]],[15,[190,220,55]],[20,[250,165,35]],[25,[235,65,45]],[30,[190,25,45]]];
- function colorAt(t){let i=0;while(i<colorStops.length-2&&t>colorStops[i+1][0])i++;const a=colorStops[i],b=colorStops[i+1],p=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0])));return a[1].map((v,k)=>Math.round(v+(b[1][k]-v)*p))}
- function draw(){
-  cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
-   const size=map.getSize(),dpr=Math.min(2,window.devicePixelRatio||1),w=Math.max(1,Math.round(size.x*dpr)),h=Math.max(1,Math.round(size.y*dpr));
-   L.DomUtil.setPosition(overlay,map.containerPointToLayerPoint([0,0]));overlay.width=w;overlay.height=h;const ctx=overlay.getContext("2d");ctx.clearRect(0,0,w,h);ctx.save();ctx.scale(dpr,dpr);
-   const path=new Path2D();
-   function ring(coords){if(!coords||!coords.length)return;const first=map.latLngToContainerPoint([coords[0][1],coords[0][0]]);path.moveTo(first.x,first.y);for(let i=1;i<coords.length;i++){const p=map.latLngToContainerPoint([coords[i][1],coords[i][0]]);path.lineTo(p.x,p.y)}path.closePath()}
-   for(const feature of features){const g=feature.geometry;if(!g)continue;const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];for(const poly of polys)for(const r of poly)ring(r)}
-   ctx.clip(path,"evenodd");
-   const step=3;
-   for(let y=0;y<size.y;y+=step){for(let x=0;x<size.x;x+=step){
-    const ll=map.containerPointToLatLng([x+step/2,y+step/2]);let sum=0,weight=0;
-    for(const p of readings){const dx=(ll.lng-p.lon)*Math.cos(ll.lat*Math.PI/180),dy=ll.lat-p.lat,d2=dx*dx+dy*dy;if(d2<0.000001){sum=p.t;weight=1;break}const q=1/Math.pow(d2,1.35);sum+=p.t*q;weight+=q}
-    if(!weight)continue;const rgb=colorAt(sum/weight);ctx.fillStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.68)";ctx.fillRect(x,y,step,step)
-   }}
-   ctx.restore();
-  });
- }
- map.on("moveend zoomend resize",draw);draw();
- const layer=new L.Layer();layer.onAdd=function(){overlay.style.display="block";draw()};layer.onRemove=function(){overlay.style.display="none"};return layer;
+ // Use Leaflet's native heat layer for reliable rendering across mobile browsers.
+ // Values are normalised from -5°C to 30°C; the gradient maps cold blues through
+ // mild greens/yellows to hot reds. City observations are the source readings.
+ const points=readings.filter(p=>Number.isFinite(p.t)).map(p=>[
+  p.lat,p.lon,Math.max(0,Math.min(1,(p.t+5)/35))
+ ]);
+ if(points.length<8)throw Error("Not enough temperature readings for shading");
+ return L.heatLayer(points,{
+  radius:76,blur:62,maxZoom:8,minOpacity:0.38,max:1,
+  gradient:{
+   0.00:"#2326a8",
+   0.14:"#315de0",
+   0.29:"#39bde7",
+   0.43:"#27ad78",
+   0.57:"#b8d83c",
+   0.71:"#f5cf35",
+   0.86:"#f18428",
+   1.00:"#d92732"
+  }
+ });
 }
 async function loadTemperatureShading(){tempToggle.disabled=true;tempToggle.textContent="🌡️ Loading temperatures…";try{const results=await Promise.all(cities.map(async city=>{const[name,lat,lon]=city;const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast");u.searchParams.set("latitude",lat);u.searchParams.set("longitude",lon);u.searchParams.set("current","temperature_2m");u.searchParams.set("timezone","UTC");const response=await fetch(u);if(!response.ok)throw Error();const data=await response.json();const t=data.current&&data.current.temperature_2m;return Number.isFinite(t)?{name,lat,lon,t}:null}));const readings=results.filter(Boolean);if(readings.length<8)throw Error();const boundaryResponse=await fetch("https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson");if(!boundaryResponse.ok)throw Error("Land boundaries unavailable");const boundaryData=await boundaryResponse.json();const europeCodes=["GB","IE","PT","ES","FR","BE","NL","LU","DE","DK","NO","SE","FI","EE","LV","LT","PL","CZ","AT","CH","IT","SI","HR","HU","SK","RO","BG","GR","RS","BA","ME","AL","MK","XK","UA","MD","BY"];const landFeatures=boundaryData.features.filter(feature=>europeCodes.includes(feature.properties&&feature.properties["ISO3166-1-Alpha-2"]));if(!landFeatures.length)throw Error("UK and Ireland land boundaries unavailable");tempLayer=createLandTemperatureLayer(readings,landFeatures);tempToggle.disabled=false;tempToggle.textContent="🌡️ Show temperature shading";document.getElementById("status").textContent="Temperature shading is ready, based on "+readings.length+" real town and city readings. Tap the button to show it."}catch(error){tempToggle.disabled=false;tempToggle.textContent="🌡️ Try temperature shading again";document.getElementById("status").textContent="Temperature shading couldn't load just now. Town markers and rain radar are still available."}}
 tempToggle.addEventListener("click",async()=>{if(!tempLayer){await loadTemperatureShading();if(!tempLayer)return}tempVisible=!tempVisible;if(tempVisible){tempLayer.addTo(map);tempToggle.textContent="🌡️ Hide temperature shading";tempToggle.classList.add("active");tempLegend.classList.add("show")}else{map.removeLayer(tempLayer);tempToggle.textContent="🌡️ Show temperature shading";tempToggle.classList.remove("active");tempLegend.classList.remove("show")}});
