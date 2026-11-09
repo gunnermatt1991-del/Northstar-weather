@@ -52,6 +52,10 @@ jobs:
             echo "Adding missing location_name column required by subscription saves and scheduled checks."
             npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN location_name TEXT NOT NULL DEFAULT 'Saved location'"
           fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"preferences"'; then
+            echo "Adding missing preferences column required by alert subscriptions."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN preferences TEXT NOT NULL DEFAULT '{}'"
+          fi
           if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"created_at"'; then
             echo "Adding missing created_at column required by subscription saves."
             npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN created_at TEXT"
