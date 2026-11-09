@@ -42,6 +42,12 @@ jobs:
           set -euo pipefail
           npx wrangler d1 execute northstar-notifications --remote --file=schema.sql
           COLUMNS="$(npx wrangler d1 execute northstar-notifications --remote --command="PRAGMA table_info(subscriptions)" --json)"
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"id"'; then
+            echo "Adding missing id column required by subscription upserts."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN id TEXT"
+            npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET id = lower(hex(randomblob(16))) WHERE id IS NULL OR id = ''"
+          fi
+          npx wrangler d1 execute northstar-notifications --remote --command="CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_id ON subscriptions(id)"
           if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"updated_at"'; then
             echo "Adding missing updated_at column to existing subscriptions."
             npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN updated_at TEXT"
