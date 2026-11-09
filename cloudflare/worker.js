@@ -397,10 +397,10 @@ export default {
         const forecastUrl = new URL("https://api.open-meteo.com/v1/forecast");
         forecastUrl.searchParams.set("latitude", sub.latitude);
         forecastUrl.searchParams.set("longitude", sub.longitude);
-        forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max");
+        forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max,temperature_2m_min");
         forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m");
         forecastUrl.searchParams.set("forecast_hours", "36");
-        forecastUrl.searchParams.set("forecast_days", "2");
+        forecastUrl.searchParams.set("forecast_days", "7");
         forecastUrl.searchParams.set("timezone", "auto");
         const response = await fetch(forecastUrl);
         if (!response.ok) continue;
@@ -424,6 +424,16 @@ export default {
           }
           if (prefs.wind !== false && wind >= 55) {
             alerts.push({ key: "wind-" + day, title: "Strong winds possible", body: dayLabel + " near " + sub.location_name + ": gusty conditions are possible, with forecast wind around " + Math.round(wind) + " km/h." });
+          }
+          const overnightLow = Number(forecast.daily.temperature_2m_min?.[i]);
+          if (prefs.frost !== false && Number.isFinite(overnightLow) && overnightLow <= 0) {
+            const severity = overnightLow <= -5 ? "severe" : overnightLow <= -2 ? "hard" : "frost";
+            const title = severity === "severe" ? "Severe frost risk" : severity === "hard" ? "Hard frost possible" : "Frost and icy patches possible";
+            const body = dayLabel + " near " + sub.location_name + ": overnight minimum around " + Math.round(overnightLow) + "°C is forecast. " +
+              (severity === "severe" ? "Severe frost is possible; protect plants, check exposed pipes and take extra care on untreated roads." :
+               severity === "hard" ? "A hard frost is possible; protect plants and watch for icy surfaces." :
+               "A light frost is possible, especially on exposed surfaces. Watch for icy patches.");
+            alerts.push({ key: "frost-" + severity + "-" + day, title, body });
           }
           if (prefs.thunder !== false && [95,96,99].includes(code)) {
             alerts.push({ key: "thunder-" + day, title: "Thunderstorms possible", body: dayLabel + " near " + sub.location_name + ": thunderstorms appear in the forecast." });
