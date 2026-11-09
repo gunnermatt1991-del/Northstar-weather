@@ -269,12 +269,29 @@ async function pushRequest(path,options={}){let response;try{response=await fetc
 function savedPushSubscription(){try{return JSON.parse(localStorage.getItem(pushSubKey)||"null")}catch{return null}}
 async function syncPushSubscription(subscription){if(!Number.isFinite(Number(place.lat))||!Number.isFinite(Number(place.lon)))throw Error("Choose and save a valid home location before refreshing alerts.");const prefs=pushPrefs();const result=await pushRequest("/subscribe",{method:"POST",body:JSON.stringify({subscription,latitude:Number(place.lat),longitude:Number(place.lon),locationName:place.name+", "+(place.country||"United Kingdom"),preferences:prefs})});localStorage.setItem(pushPrefsKey,JSON.stringify(prefs));return result;}
 async function refreshPushUi(){
- const support=$("pushSupport"),enable=$("enableWeatherAlerts"),test=$("testWeatherAlert"),off=$("disableWeatherAlerts");
- if(!("serviceWorker"in navigator)||!("PushManager"in window)||!("Notification"in window)){support.textContent="Push notifications are not supported by this browser. Try the latest version of Safari, Chrome or Edge.";enable.disabled=true;return}
- let sub=null;try{sub=await (await navigator.serviceWorker.getRegistration("./"))?.pushManager.getSubscription()}catch{}
- const active=!!sub;support.textContent=active?"Notifications are enabled on this device.":"Notifications are not enabled on this device.";
- enable.textContent=active?"Refresh alert settings":"Enable weather alerts";test.disabled=!active;off.disabled=!active;
- const saved=savedPushSubscription();if(active){try{localStorage.setItem(pushSubKey,JSON.stringify(sub.toJSON()))}catch{}}else if(saved){/* subscription may need permission or a fresh service-worker registration */}
+ const support=$("pushSupport"),status=$("pushStatus"),enable=$("enableWeatherAlerts"),test=$("testWeatherAlert"),off=$("disableWeatherAlerts");
+ if(!("serviceWorker"in navigator)||!("PushManager"in window)||!("Notification"in window)){
+  support.textContent="Push notifications are not supported by this browser. Try the latest version of Safari, Chrome or Edge.";
+  status.textContent="Weather alerts are unavailable in this browser.";
+  enable.disabled=true;test.disabled=true;off.disabled=true;return;
+ }
+ let sub=null;
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  sub=await registration.pushManager.getSubscription();
+ }catch(error){
+  support.textContent="Waiting for Northstar's notification service to initialise.";
+  status.textContent="Northstar couldn't check this device's notification subscription. Please refresh alert settings.";
+  enable.disabled=false;test.disabled=true;off.disabled=true;return;
+ }
+ const active=!!sub&&Notification.permission==="granted";
+ support.textContent=active?"Notifications are enabled on this device.":Notification.permission==="denied"?"Notifications are blocked in this device's browser settings.":"Notifications are not enabled on this device.";
+ status.textContent=active
+  ?"You're all set. Weather alerts remain enabled when you close Northstar, provided this device still allows notifications."
+  :"Alerts are currently off on this device. Tap Enable weather alerts to switch them on.";
+ enable.textContent=active?"Refresh alert settings":"Enable weather alerts";
+ enable.disabled=false;test.disabled=!active;off.disabled=!active;
+ if(active){try{localStorage.setItem(pushSubKey,JSON.stringify(sub.toJSON()))}catch{}}
 }
 async function enableNorthstarPush(){
  const button=$("enableWeatherAlerts");button.disabled=true;setPushStatus("Enabling notifications…");
