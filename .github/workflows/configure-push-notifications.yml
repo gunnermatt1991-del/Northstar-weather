@@ -48,6 +48,15 @@ jobs:
             npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET id = lower(hex(randomblob(16))) WHERE id IS NULL OR id = ''"
           fi
           npx wrangler d1 execute northstar-notifications --remote --command="CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_id ON subscriptions(id)"
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"location_name"'; then
+            echo "Adding missing location_name column required by subscription saves and scheduled checks."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN location_name TEXT NOT NULL DEFAULT 'Saved location'"
+          fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"created_at"'; then
+            echo "Adding missing created_at column required by subscription saves."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN created_at TEXT"
+            npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''"
+          fi
           if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"updated_at"'; then
             echo "Adding missing updated_at column to existing subscriptions."
             npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN updated_at TEXT"
