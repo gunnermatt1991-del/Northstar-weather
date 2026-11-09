@@ -31,11 +31,47 @@ function vapid(env) {
 
 function validSubscription(s) {
   try {
+    if (!s || typeof s.endpoint !== "string" || s.endpoint.length > 2048) return false;
     const u = new URL(s.endpoint);
-    return u.protocol === "https:" && typeof s.keys?.p256dh === "string" &&
-      typeof s.keys?.auth === "string" && s.keys.p256dh.length < 200 &&
-      s.keys.auth.length < 100;
+    const host = u.hostname.toLowerCase();
+    const browserPushHost =
+      host === "fcm.googleapis.com" ||
+      host === "push.services.mozilla.com" ||
+      host.endsWith(".push.services.mozilla.com") ||
+      host.endsWith(".push.apple.com") ||
+      host.endsWith(".notify.windows.com");
+    return u.protocol === "https:" && u.username === "" && u.password === "" &&
+      (u.port === "" || u.port === "443") && browserPushHost &&
+      typeof s.keys?.p256dh === "string" && s.keys.p256dh.length >= 40 && s.keys.p256dh.length <= 200 &&
+      typeof s.keys?.auth === "string" && s.keys.auth.length >= 16 && s.keys.auth.length <= 100;
   } catch { return false; }
+}
+async function limitedJson(request, maxBytes = 16384) {
+  const raw = await request.text();
+  if (raw.length > maxBytes) throw new Error("Request body is too large.");
+  return JSON.parse(raw);
+}
+async function rateLimited(request, env, route, limit, windowSeconds = 600) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip + "|" + route));
+  const key = b64url(digest);
+  const window = Math.floor(Date.now() / (windowSeconds * 1000));
+  const row = await env.DB.prepare(`
+    INSERT INTO api_rate_limits (bucket, window_start, hits)
+    VALUES (?, ?, 1)
+    ON CONFLICT(bucket) DO UPDATE SET
+      hits = CASE WHEN api_rate_limits.window_start = excluded.window_start
+        THEN api_rate_limits.hits + 1 ELSE 1 END,
+      window_start = excluded.window_start
+    RETURNING hits
+  `).bind(key, window).first();
+  return Number(row?.hits || 0) > limit;
+}
+function sameSecret(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 export default {
@@ -264,10 +300,17 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/subscribe") {
+      try {
+        if (await rateLimited(request, env, "/subscribe", 12)) return fail("Too many subscription changes. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Subscription rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
       const { subscription, latitude, longitude, locationName, preferences } = body || {};
       if (!validSubscription(subscription)) return fail("Invalid push subscription.");
+      const existing = await env.DB.prepare("SELECT p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(subscription.endpoint).first();
+      if (existing && (!sameSecret(existing.p256dh, subscription.keys.p256dh) || !sameSecret(existing.auth, subscription.keys.auth))) {
+        return fail("This notification subscription could not be verified.", 403);
+      }
       if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
           !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
         return fail("A valid location is required.");
@@ -299,20 +342,35 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/unsubscribe") {
+      try {
+        if (await rateLimited(request, env, "/unsubscribe", 20)) return fail("Too many requests. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Unsubscribe rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
-      if (typeof body?.endpoint !== "string") return fail("Subscription endpoint is required.");
-      await env.DB.prepare("DELETE FROM subscriptions WHERE endpoint = ?").bind(body.endpoint).run();
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
+      const sub = body?.subscription;
+      if (!validSubscription(sub)) return fail("A valid device subscription is required.");
+      const existing = await env.DB.prepare("SELECT id, p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(sub.endpoint).first();
+      if (existing && sameSecret(existing.p256dh, sub.keys.p256dh) && sameSecret(existing.auth, sub.keys.auth)) {
+        await env.DB.prepare("DELETE FROM subscriptions WHERE id = ?").bind(existing.id).run();
+      }
       return json({ ok: true });
     }
 
     if (request.method === "POST" && url.pathname === "/test") {
+      try {
+        if (await rateLimited(request, env, "/test", 3)) return fail("Too many test alerts. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Test alert rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
-      if (!validSubscription(body?.subscription)) return fail("Valid subscription required.");
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
+      const sub = body?.subscription;
+      if (!validSubscription(sub)) return fail("Valid device subscription required.");
+      const saved = await env.DB.prepare("SELECT endpoint, p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(sub.endpoint).first();
+      if (!saved || !sameSecret(saved.p256dh, sub.keys.p256dh) || !sameSecret(saved.auth, sub.keys.auth)) {
+        return fail("This device is not registered for Northstar alerts. Refresh alert settings first.", 403);
+      }
       try {
         vapid(env);
-        await webpush.sendNotification(body.subscription, JSON.stringify({
+        await webpush.sendNotification({ endpoint: saved.endpoint, keys: { p256dh: saved.p256dh, auth: saved.auth } }, JSON.stringify({
           title: "Northstar Weather",
           body: "Your weather notifications are switched on. This is a test alert.",
           tag: "northstar-test",
