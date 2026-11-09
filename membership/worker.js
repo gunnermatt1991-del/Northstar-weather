@@ -1,6 +1,25 @@
 const ALLOWED_ORIGIN = "https://gunnermatt1991-del.github.io";
 const OWNER_EMAIL = "gunnermatt1991@icloud.com";
 function b64url(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_"); }
+function sameSecret(a,b) {
+  if(typeof a!=="string"||typeof b!=="string"||a.length!==b.length)return false;
+  let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+  return diff===0;
+}
+async function rateLimited(request,env,route,limit,windowSeconds=900) {
+  const ip=request.headers.get("CF-Connecting-IP")||"unknown";
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ip+"|"+route));
+  const key=b64url(digest),window=Math.floor(Date.now()/(windowSeconds*1000));
+  const row=await env.DB.prepare(`
+    INSERT INTO membership_rate_limits (bucket,window_start,hits) VALUES (?,?,1)
+    ON CONFLICT(bucket) DO UPDATE SET
+      hits=CASE WHEN membership_rate_limits.window_start=excluded.window_start
+        THEN membership_rate_limits.hits+1 ELSE 1 END,
+      window_start=excluded.window_start
+    RETURNING hits
+  `).bind(key,window).first();
+  return Number(row?.hits||0)>limit;
+}
 function unb64url(value) { const raw=value.replace(/-/g,"+").replace(/_/g,"/"); return Uint8Array.from(atob(raw+"=".repeat((4-raw.length%4)%4)),c=>c.charCodeAt(0)); }
 async function ownerKey(secret, usages) { return crypto.subtle.importKey("raw",new TextEncoder().encode(secret),{name:"HMAC",hash:"SHA-256"},false,usages); }
 async function signOwnerSession(secret) {
@@ -73,6 +92,8 @@ export default {
     const url = new URL(request.url);
     if (request.method !== "POST") return json({ error: "Not found" }, 404);
     if (url.pathname === "/owner/login") {
+      try { if (await rateLimited(request,env,"/owner/login",5,900)) return json({error:"Too many login attempts. Please wait 15 minutes before trying again."},429); }
+      catch(error) { console.error("Owner login rate limit unavailable",error); return json({error:"Owner login is temporarily unavailable."},503); }
       if (!env.OWNER_ACCESS_CODE) return json({error:"Owner access is not configured yet"},503);
       let submittedCode = "";
       const contentType = request.headers.get("content-type") || "";
@@ -87,7 +108,7 @@ export default {
       } catch { return json({error:"Invalid request"},400); }
       const isForm = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
       const html = (message, success) => new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Northstar Owner</title><style>body{margin:0;padding:28px;background:#081225;color:#f5f8ff;font:17px/1.5 -apple-system,BlinkMacSystemFont,sans-serif}.card{max-width:640px;margin:8vh auto;padding:28px;background:#142440;border:1px solid #ffffff24;border-radius:22px}h1{font-size:30px}a{display:block;padding:13px 0;color:#9ed0ff;border-bottom:1px solid #ffffff20}.error{color:#ffd58a}</style><main class="card"><div style="color:#78e0df;font-weight:800;letter-spacing:.15em">NORTHSTAR WEATHER · PRIVATE</div><h1>'+(success?'Welcome to your owner area':'Owner access')+'</h1><p class="'+(success?'':'error')+'">'+message+'</p>'+(success?'<a href="https://gunnermatt1991-del.github.io/Northstar-weather/">Open Northstar Weather</a><a href="https://gunnermatt1991-del.github.io/Northstar-weather/premium.html">Open Premium features</a><a href="https://gunnermatt1991-del.github.io/Northstar-weather/Northstar-UK-Map-Fixed%202.html">Open UK & Europe weather map</a><a href="https://www.paypal.com/myaccount/autopay/">Manage PayPal subscriptions</a><a href="https://dash.cloudflare.com/">Open Cloudflare controls</a>':'<a href="https://gunnermatt1991-del.github.io/Northstar-weather/owner.html">Return to owner login</a>')+'</main></html>',{status:success?200:401,headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store"}});
-      if (submittedCode.length > 256 || submittedCode !== env.OWNER_ACCESS_CODE) {
+      if (submittedCode.length > 256 || !sameSecret(submittedCode,env.OWNER_ACCESS_CODE)) {
         if (isForm) return html("That owner code wasn't recognised.",false);
         return json({error:"That owner code wasn't recognised."},401);
       }
@@ -95,6 +116,8 @@ export default {
       return json({token:await signOwnerSession(env.OWNER_ACCESS_CODE),email:OWNER_EMAIL,expiresIn:43200});
     }
     if (url.pathname === "/owner/verify") {
+      try { if (await rateLimited(request,env,"/owner/verify",30,60)) return json({active:false,error:"Too many verification requests. Please try again shortly."},429); }
+      catch(error) { console.error("Owner verification rate limit unavailable",error); return json({active:false,error:"Owner verification is temporarily unavailable."},503); }
       if (!env.OWNER_ACCESS_CODE) return json({active:false,error:"Owner access is not configured"},503);
       let body; try { body=await request.json(); } catch { return json({active:false,error:"Invalid request"},400); }
       const active=await verifyOwnerSession(body?.token,env.OWNER_ACCESS_CODE);
