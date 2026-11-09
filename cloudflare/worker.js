@@ -280,17 +280,22 @@ export default {
         fog: preferences?.fog !== false
       };
       const id = crypto.randomUUID();
-      await env.DB.prepare(`
-        INSERT INTO subscriptions (id, endpoint, p256dh, auth, latitude, longitude, location_name, preferences, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(endpoint) DO UPDATE SET
-          p256dh=excluded.p256dh, auth=excluded.auth, latitude=excluded.latitude,
-          longitude=excluded.longitude, location_name=excluded.location_name,
-          preferences=excluded.preferences, updated_at=datetime('now')
-      `).bind(id, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth,
-        latitude, longitude, String(locationName || "Saved location").slice(0, 80),
-        JSON.stringify(prefs)).run();
-      return json({ ok: true });
+      try {
+        await env.DB.prepare(`
+          INSERT INTO subscriptions (id, endpoint, p256dh, auth, latitude, longitude, location_name, preferences, alert_state, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', datetime('now'), datetime('now'))
+          ON CONFLICT(endpoint) DO UPDATE SET
+            p256dh=excluded.p256dh, auth=excluded.auth, latitude=excluded.latitude,
+            longitude=excluded.longitude, location_name=excluded.location_name,
+            preferences=excluded.preferences, updated_at=datetime('now')
+        `).bind(id, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth,
+          latitude, longitude, String(locationName || "Saved location").slice(0, 80),
+          JSON.stringify(prefs)).run();
+        return json({ ok: true, saved: true });
+      } catch (error) {
+        console.error("Push subscription save failed", error);
+        return json({ error: "Could not save alert settings: " + String(error?.message || error).slice(0, 240) }, 500);
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/unsubscribe") {
