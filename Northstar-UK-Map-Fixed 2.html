@@ -419,7 +419,7 @@ function createLandTemperatureLayer(readings,features){
  function draw(){
   cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
    const size=map.getSize(),dpr=Math.min(2,window.devicePixelRatio||1),w=Math.max(1,Math.round(size.x*dpr)),h=Math.max(1,Math.round(size.y*dpr));
-   overlay.width=w;overlay.height=h;const ctx=overlay.getContext("2d");ctx.clearRect(0,0,w,h);ctx.save();ctx.scale(dpr,dpr);
+   L.DomUtil.setPosition(overlay,map.containerPointToLayerPoint([0,0]));overlay.width=w;overlay.height=h;const ctx=overlay.getContext("2d");ctx.clearRect(0,0,w,h);ctx.save();ctx.scale(dpr,dpr);
    const path=new Path2D();
    function ring(coords){if(!coords||!coords.length)return;const first=map.latLngToContainerPoint([coords[0][1],coords[0][0]]);path.moveTo(first.x,first.y);for(let i=1;i<coords.length;i++){const p=map.latLngToContainerPoint([coords[i][1],coords[i][0]]);path.lineTo(p.x,p.y)}path.closePath()}
    for(const feature of features){const g=feature.geometry;if(!g)continue;const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];for(const poly of polys)for(const r of poly)ring(r)}
@@ -428,7 +428,7 @@ function createLandTemperatureLayer(readings,features){
    for(let y=0;y<size.y;y+=step){for(let x=0;x<size.x;x+=step){
     const ll=map.containerPointToLatLng([x+step/2,y+step/2]);let sum=0,weight=0;
     for(const p of readings){const dx=(ll.lng-p.lon)*Math.cos(ll.lat*Math.PI/180),dy=ll.lat-p.lat,d2=dx*dx+dy*dy;if(d2<0.000001){sum=p.t;weight=1;break}const q=1/Math.pow(d2,1.35);sum+=p.t*q;weight+=q}
-    if(!weight)continue;const rgb=colorAt(sum/weight);ctx.fillStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.94)";ctx.fillRect(x,y,step,step)
+    if(!weight)continue;const rgb=colorAt(sum/weight);ctx.fillStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.68)";ctx.fillRect(x,y,step,step)
    }}
    ctx.restore();
   });
