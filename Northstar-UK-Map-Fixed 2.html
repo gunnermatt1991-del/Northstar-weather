@@ -217,6 +217,8 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
 <span id="frameTime">Radar loading…</span>
 </div>
 <div class="temp-legend" id="tempLegend"><span>Colder</span><div class="temp-gradient"></div><span>Warmer</span></div>
+<div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
+ <div class="map-save-row"><button id="saveMapButton" class="map-save-btn" type="button">📸 Save Map Image</button><span id="saveMapStatus" class="map-save-help" role="status">Save the current map view as an image for your Facebook weather posts.</span></div>
 <section class="storm-panel" id="stormPanel" aria-label="Storm intelligence map controls">
  <div class="storm-head"><div><div class="storm-eyebrow">Premium · Storm intelligence</div><strong>Storm systems on this map</strong><p>Switch between model guidance and forecast layers without opening a second map.</p></div><span class="storm-pill">ONE MAP</span></div>
  <div class="storm-controls">
@@ -245,8 +247,7 @@ body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-
  <div id="stormLocked" class="storm-locked" hidden>Storm intelligence is a Premium feature. <a href="./premium.html">View Northstar Premium</a> or sign in through the Owner Portal to test it.</div>
  <p class="storm-foot">Forecast model output, not live radar or official warnings. Low centres and pressure contours are estimated from sampled forecast points; signal tracks are indicative only. Always follow the Met Office and local authorities for warnings.</p>
 </section>
-<div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
- <div class="map-save-row"><button id="saveMapButton" class="map-save-btn" type="button">📸 Save Map Image</button><span id="saveMapStatus" class="map-save-help" role="status">Save the current map view as an image for your Facebook weather posts.</span></div>
+
 <div class="legend"><span><i class="dot" style="background:#2636b8"></i>Cold</span><span><i class="dot" style="background:#21c7b5"></i>Cool</span><span><i class="dot" style="background:#69d34b"></i>Mild</span><span><i class="dot" style="background:#f0e442"></i>Warm</span><span><i class="dot" style="background:#e52b27"></i>Hot</span></div>
 <div class="status" id="status">Loading live weather across the UK, Ireland and Europe…</div>
 <p class="note">Temperature shading blends current Open-Meteo readings from the marked towns and cities across Europe. Rain radar shows recent observed precipitation. The separate “Rain on the way” layer uses hourly forecast data to show where rain is expected over the next 6 hours. Forecasts are estimates, not live radar, and can change.</p>
