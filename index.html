@@ -218,7 +218,7 @@ const pushIds={rain:"alertRain",wind:"alertWind",snow:"alertSnow",thunder:"alert
 function pushPrefs(){const out={};for(const [key,id] of Object.entries(pushIds))out[key]=!!$(id)?.checked;return out}
 function setPushStatus(message){const el=$("pushStatus");if(el)el.textContent=message}
 function base64UrlBytes(value){const padded=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4);return Uint8Array.from(atob(padded),c=>c.charCodeAt(0))}
-async async function pushRequest(path,options={}){const response=await fetch(PUSH_WORKER+path,{...options,headers:{"content-type":"application/json",...(options.headers||{})},cache:"no-store"});let data={};try{data=await response.json()}catch{}if(!response.ok||data.error)throw Error(data.error||"Notification service returned HTTP "+response.status);return data}
+async function pushRequest(path,options={}){const response=await fetch(PUSH_WORKER+path,{...options,headers:{"content-type":"application/json",...(options.headers||{})},cache:"no-store"});let data={};try{data=await response.json()}catch{}if(!response.ok||data.error)throw Error(data.error||"Notification service returned HTTP "+response.status);return data}
 function savedPushSubscription(){try{return JSON.parse(localStorage.getItem(pushSubKey)||"null")}catch{return null}}
 async function syncPushSubscription(subscription){const prefs=pushPrefs();localStorage.setItem(pushPrefsKey,JSON.stringify(prefs));await pushRequest("/subscribe",{method:"POST",body:JSON.stringify({subscription,latitude:place.lat,longitude:place.lon,locationName:place.name+", "+(place.country||"United Kingdom"),preferences:prefs})});}
 async function refreshPushUi(){
