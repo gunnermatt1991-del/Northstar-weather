@@ -486,7 +486,7 @@ async function getCity(city){
  }
  return{name,lat,lon,current:j.current};
 }
-(async()=>{let count=0,failed=0;const bounds=[];await Promise.all(cities.map(async city=>{try{const x=await getCity(city);cityWeather.push(x);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+t+'°</div>',iconSize:[31,20],iconAnchor:[15,10]});const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
+(async()=>{let count=0,failed=0,firstError="";const bounds=[];await Promise.all(cities.map(async city=>{try{const x=await getCity(city);cityWeather.push(x);const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+t+'°</div>',iconSize:[31,20],iconAnchor:[15,10]});const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
 const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+
 "<hr style='border:0;border-top:1px solid #ffffff25;margin:7px 0'>"+
 "🌡️ Temperature: <b>"+fmt(v.temperature_2m,1)+"°C</b><br>"+
@@ -498,7 +498,7 @@ const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current
 "❄️ Snowfall: "+fmt(v.snowfall,1)+" cm<br>"+
 "☁️ Cloud: "+fmt(v.cloud_cover)+"%<br>"+
 "🌀 Pressure: "+fmt(v.pressure_msl)+" hPa";
-L.marker([x.lat,x.lon],{icon:marker}).bindPopup(popup,{maxWidth:260}).addTo(cityMarkers);bounds.push([x.lat,x.lon]);count++}catch(e){failed++}}));if(bounds.length)map.setView([54,-3],5);document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland and Europe"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";if(!count)document.getElementById("status").textContent="Weather couldn't load. Please check your connection and refresh.";setTimeout(()=>map.invalidateSize({pan:false}),250)})();
+L.marker([x.lat,x.lon],{icon:marker}).bindPopup(popup,{maxWidth:260}).addTo(cityMarkers);bounds.push([x.lat,x.lon]);count++}catch(e){failed++;if(!firstError)firstError=e.message||String(e)}}));if(bounds.length)map.setView([54,-3],5);document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland and Europe"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";if(!count)document.getElementById("status").textContent="No town temperatures loaded: "+(firstError||"weather service unavailable")+". Please refresh.";setTimeout(()=>map.invalidateSize({pan:false}),250)})();
 setInterval(async()=>{try{const updates=await Promise.allSettled(cities.map(getCity));const fresh=updates.filter(x=>x.status==="fulfilled").map(x=>x.value);if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer()}}catch(e){console.warn("Fog observation refresh failed",e)}},15*60*1000);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
