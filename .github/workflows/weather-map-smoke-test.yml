@@ -1,0 +1,60 @@
+name: Northstar map temperature smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Northstar-UK-Map-Fixed 2.html"
+      - "cloudflare/worker.js"
+      - ".github/workflows/weather-map-smoke-test.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check multi-location weather providers
+        env:
+          NORTHSTAR_PROXY: https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast
+          WEATHER_MIRROR: https://weather.tk.gg/v1/forecast
+        run: |
+          node <<'NODE'
+          const locations = [
+            [52.3984, -0.7283], [52.95, -1.15], [53.48, -2.24],
+            [54.98, -1.6], [51.5074, -0.1278], [53.8, -1.55],
+            [55.95, -3.19], [50.72, -1.88], [48.85, 2.35], [51.92, 4.48]
+          ];
+          const params = new URLSearchParams({
+            latitude: locations.map(x => x[0]).join(","),
+            longitude: locations.map(x => x[1]).join(","),
+            current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
+            hourly: "visibility",
+            timezone: "auto"
+          });
+          async function check(name, base) {
+            const url = base + "?" + params;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 25000);
+            try {
+              const response = await fetch(url, { signal: controller.signal, headers: { accept: "application/json" } });
+              const raw = await response.text();
+              let data; try { data = JSON.parse(raw); } catch {}
+              const items = Array.isArray(data) ? data : [data];
+              const valid = Array.isArray(data) && data.length === locations.length &&
+                items.every(x => x && x.current && Number.isFinite(Number(x.current.temperature_2m)));
+              console.log(JSON.stringify({
+                provider: name, status: response.status, isArray: Array.isArray(data),
+                locationsReturned: Array.isArray(data) ? data.length : 1,
+                validTemperatures: valid,
+                sample: items.slice(0, 3).map(x => x?.current?.temperature_2m ?? null),
+                error: data?.reason || data?.error || (!response.ok ? raw.slice(0, 300) : null)
+              }));
+              if (!response.ok || !valid) process.exitCode = 1;
+            } catch (error) {
+              console.log(JSON.stringify({ provider: name, error: error.name + ": " + error.message }));
+              process.exitCode = 1;
+            } finally { clearTimeout(timer); }
+          }
+          await check("weather-mirror", process.env.WEATHER_MIRROR);
+          await check("northstar-worker", process.env.NORTHSTAR_PROXY);
+          NODE
