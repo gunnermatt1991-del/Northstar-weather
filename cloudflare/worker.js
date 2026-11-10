@@ -170,7 +170,7 @@ export default {
         return new Response(stale.body, { status: 200, headers });
       };
       try {
-        const useMirror = forecast && !url.searchParams.has("models");
+        const useMirror = forecast;
         let upstreamResponse;
         // Use the independent Open-Meteo-compatible mirror for every ordinary
         // forecast request, including batched map coordinates. This keeps the
