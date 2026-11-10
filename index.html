@@ -16,7 +16,7 @@
 :root{color-scheme:dark;--bg:#081225;--panel:#142440;--line:#ffffff18;--muted:#9baac4;--text:#f5f8ff;--blue:#86c4ff;--cyan:#78e0df;--gold:#ffd58a}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#344a70 0,#142443 34%,var(--bg) 75%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px calc(35px + env(safe-area-inset-bottom))}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:11px;font-weight:750;font-size:17px}.logo{width:43px;height:43px;border-radius:15px;background:linear-gradient(145deg,#a1d6ff,#5683e7);display:grid;place-items:center;box-shadow:0 8px 26px #5389e755}.logo img{width:100%;height:100%;object-fit:cover;border-radius:inherit}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;font-weight:600}.search{display:flex;gap:8px;width:min(420px,100%)}.search input{min-width:0;flex:1;border:1px solid var(--line);border-radius:99px;background:#101e37;color:white;padding:12px 16px;outline:none}.search button,.control{border:1px solid var(--line);border-radius:99px;background:#203252;color:white;padding:10px 16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:11px;font-weight:750;font-size:17px}.logo{width:43px;height:43px;border-radius:15px;background:linear-gradient(145deg,#a1d6ff,#5683e7);display:grid;place-items:center;box-shadow:0 8px 26px #5389e755}.logo img{width:100%;height:100%;object-fit:cover;border-radius:inherit}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em;font-weight:600}.search{display:flex;gap:8px;width:min(420px,100%)}.search input{min-width:0;flex:1;border:1px solid var(--line);border-radius:99px;background:#101e37;color:white;padding:12px 16px;outline:none}.search button,.control{border:1px solid var(--line);border-radius:99px;background:#203252;color:white;padding:10px 16px}.search .location-button{flex:0 0 44px;width:44px;padding:9px 0;font-size:23px;line-height:1;border-color:#78baff77;background:#1c3557;color:#dceeff}.search .location-button:disabled{opacity:.55}.search .location-button:focus-visible{outline:2px solid #9bd7ff;outline-offset:2px}
 .notice{display:none;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#513d2055;border:1px solid #ffd58a55;color:#ffe3b3}.card{background:linear-gradient(145deg,#192b4bef,#101c34f2);border:1px solid var(--line);border-radius:23px;padding:20px;box-shadow:0 18px 50px #0002}.hero{display:grid;grid-template-columns:1.25fr .8fr;gap:14px}.eyebrow{font-size:10px;letter-spacing:.17em;color:var(--muted);font-weight:750;text-transform:uppercase}.place{font-size:21px;font-weight:700;margin-top:5px}.date,.muted{color:var(--muted);font-size:13px}.current{display:flex;align-items:center;gap:17px;margin:18px 0 8px}.temp{font-size:clamp(70px,10vw,100px);font-weight:300;letter-spacing:-.08em;line-height:1}.weather-icon{font-size:58px}.weather-icon{position:relative;display:inline-block;min-width:76px;text-align:center;isolation:isolate;transform-origin:50% 75%;filter:drop-shadow(0 5px 9px #0003)}
 /* Removed decorative animated fog overlay from the current-conditions panel. */
 .weather-icon-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:94px;min-height:82px}.weather-warning-badge{position:absolute;right:-15px;top:-5px;display:flex;align-items:center;gap:3px;padding:4px 7px;border-radius:999px;border:1px solid #ffd36b99;background:linear-gradient(120deg,#233c5eef,#13223cf2);box-shadow:0 3px 12px #0005;font-size:16px;line-height:1;z-index:3;animation:warningBadgePulse 2.2s ease-in-out infinite}.weather-warning-badge[hidden]{display:none}.warning-mist{display:inline-block;animation:warningMistDrift 2.8s ease-in-out infinite}@keyframes warningMistDrift{0%,100%{transform:translateX(-2px);opacity:.7}50%{transform:translateX(3px);opacity:1}}@keyframes warningBadgePulse{0%,100%{box-shadow:0 3px 12px #0005}50%{box-shadow:0 3px 17px #ffd36b55}}@media(prefers-reduced-motion:reduce){.weather-warning-badge,.warning-mist{animation:none}}
@@ -201,7 +201,7 @@ img,svg,canvas{max-width:100%}
 }
 </style></head>
 <body><div class="wrap">
-<header><div class="brand"><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div>Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">☀ Light mode</button><a href="./premium.html" style="color:#d8eaff;text-decoration:none;border:1px solid #8bbfff55;border-radius:99px;padding:9px 14px;background:#203252">✦ Premium</a></div><form class="search" id="searchForm"><input id="locationInput" value="Kettering" aria-label="Search town or city" placeholder="Search a town or city"><button>Search</button></form></header>
+<header><div class="brand"><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div>Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">☀ Light mode</button><a href="./premium.html" style="color:#d8eaff;text-decoration:none;border:1px solid #8bbfff55;border-radius:99px;padding:9px 14px;background:#203252">✦ Premium</a></div><form class="search" id="searchForm"><input id="locationInput" value="Kettering" aria-label="Search town or city" placeholder="Search a town or city"><button type="button" class="location-button" id="useCurrentLocation" aria-label="Use my current location" title="Use my current location">◎</button><button type="submit">Search</button></form></header>
 <div class="notice" id="notice" role="status"></div>
 <main id="app">
 <section class="hero" id="weather-home" data-view="weather"><article class="card weather-hero"><canvas id="northstarPrecipCanvas" aria-hidden="true"></canvas><div class="eyebrow">Current conditions</div><div class="place" id="place">Kettering, United Kingdom</div><div class="date" id="date">Loading forecast…</div><a id="homeWarning" class="home-warning" href="https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings" target="_blank" rel="noopener" hidden><span class="home-warning-icons" id="homeWarningIcons">⚠️</span><span class="home-warning-copy"><strong id="homeWarningTitle">Met Office weather warning</strong><span id="homeWarningDetail">Check the official warning details.</span></span><span class="home-warning-arrow">↗</span></a><div class="current"><div class="temp" id="temp">—°</div><div><div class="weather-icon-wrap"><div class="weather-icon-wrap"><div class="weather-icon" id="weatherIcon">🌤️</div><span id="weatherWarningBadge" class="weather-warning-badge" hidden><span class="warning-mist">🌫️</span><span>⚠️</span></span></div></div><div class="condition" id="condition">Loading weather</div><div class="summary" id="summary">Getting the latest forecast…</div></div></div><div class="hi-low" id="hiLow"></div><div class="metrics"><div class="metric"><span>Feels like</span><strong id="feels">—</strong></div><div class="metric"><span>Wind</span><strong id="wind">—</strong></div><div class="metric"><span>Humidity</span><strong id="humidity">—</strong></div><div class="metric"><span>Pressure</span><strong id="pressure">—</strong></div></div><div class="northstar-precip-actions"><div class="northstar-precip-demo-label">Try the precipitation effects</div><div class="northstar-precip-demo-buttons" role="group" aria-label="Choose a precipitation effect"><button class="northstar-precip-demo" type="button" data-precip-demo="snow" aria-pressed="false">❄️ Snow</button><button class="northstar-precip-demo" type="button" data-precip-demo="rain" aria-pressed="false">🌧️ Rain</button><button class="northstar-precip-demo" type="button" data-precip-demo="sleet" aria-pressed="false">🌨️ Sleet</button><button class="northstar-precip-demo" type="button" data-precip-demo="hail" aria-pressed="false">🧊 Hail</button></div><div class="northstar-precip-action-row"><button class="northstar-precip-control" id="northstarShakePrecip" type="button">↗ Shake to brush precipitation off</button><button class="northstar-precip-reset" id="northstarResetPrecip" type="button">Reset to live weather</button></div><div class="northstar-precip-status" id="northstarPrecipStatus" aria-live="polite">No precipitation at the moment.</div></div></article>
@@ -287,7 +287,22 @@ function showNorthstarView(view){
 showNorthstarView("weather");
 dockItems.forEach(item=>item.addEventListener("click",event=>{event.preventDefault();showNorthstarView(item.dataset.dock)}));
 document.getElementById("dockSettings")?.addEventListener("click",()=>showNorthstarView("settings"));
-const $=id=>document.getElementById(id);let place={lat:52.3984,lon:-0.7283,name:"Kettering",country:"United Kingdom"},weather=null;
+const $=id=>document.getElementById(id);
+const selectedPlaceKey="northstar-selected-weather-location";
+function readSavedPlace(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(selectedPlaceKey)||"null");
+  if(saved&&Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lon))&&saved.name){
+   return {lat:Number(saved.lat),lon:Number(saved.lon),name:String(saved.name),country:String(saved.country||""),admin1:saved.admin1,admin2:saved.admin2,admin3:saved.admin3,admin4:saved.admin4};
+  }
+ }catch(error){}
+ return {lat:52.3984,lon:-0.7283,name:"Kettering",country:"United Kingdom"};
+}
+let place=readSavedPlace(),weather=null;
+function saveSelectedPlace(){
+ try{localStorage.setItem(selectedPlaceKey,JSON.stringify({lat:Number(place.lat),lon:Number(place.lon),name:place.name,country:place.country||"",admin1:place.admin1||"",admin2:place.admin2||"",admin3:place.admin3||"",admin4:place.admin4||""}))}catch(error){}
+}
+$("locationInput").value=place.name==="Your current location"?"Current location":place.name;
 const PUSH_WORKER="https://northstar-weather-alerts.gunnermatt1991.workers.dev";
 const pushPrefsKey="northstar-weather-alert-preferences";
 const pushSubKey="northstar-weather-push-subscription";
@@ -654,7 +669,7 @@ function data(kind,range){const d=weather,s=Math.max(0,d.hourly.time.findIndex(t
 function draw(kind,range){const x=data(kind,range),id=kind==="temp"?"temp":"rain",w=620,h=170,p=18,mn=Math.min(0,...x.v),mx=Math.max(...x.v),sp=mx-mn||1,pts=x.v.map((v,i)=>[p+i*(w-2*p)/Math.max(1,x.v.length-1),h-p-(v-mn)/sp*(h-2*p)]),line=pts.map((q,i)=>(i?"L":"M")+q[0]+","+q[1]).join(" "),area=line+" L "+pts.at(-1)[0]+","+h+" L "+pts[0][0]+","+h+" Z";$(id+"Chart").innerHTML='<svg viewBox="0 0 '+w+' '+h+'"><defs><linearGradient id="g'+id+'" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+x.color+'" stop-opacity=".3"/><stop offset="1" stop-color="'+x.color+'" stop-opacity="0"/></linearGradient></defs><path d="'+area+'" fill="url(#g'+id+')"/><path d="'+line+'" fill="none" stroke="'+x.color+'" stroke-width="3.5" stroke-linecap="round"/>'+pts.map((q,i)=>'<circle data-i="'+i+'" cx="'+q[0]+'" cy="'+q[1]+'" r="6" fill="'+x.color+'"><title>'+x.l[i]+': '+x.v[i].toFixed(1)+x.unit+'</title></circle>').join("")+'</svg>';const labs=$(id+"Labels");labs.innerHTML=x.l.length>5?'<span>'+x.l[0]+'</span><span>'+x.l[Math.floor(x.l.length/2)]+'</span><span>'+x.l.at(-1)+'</span>':x.l.map(z=>'<span>'+z+'</span>').join("");$(id+"Tip").textContent="Tap a point to inspect the forecast.";$(id+"Chart").querySelector("svg").addEventListener("click",e=>{const c=e.target.closest("circle[data-i]");if(!c)return;const i=+c.dataset.i;$(id+"Tip").textContent=x.l[i]+": "+x.v[i].toFixed(1)+x.unit;$(id+"Chart").querySelectorAll("circle").forEach(z=>z.setAttribute("r",z===c?10:6))})}
 function charts(r){draw("temp",r);draw("rain",r)}
 document.querySelectorAll("[data-chart]").forEach(b=>b.addEventListener("click",()=>{b.parentElement.querySelectorAll("button").forEach(z=>z.classList.toggle("active",z===b));draw(b.dataset.chart,b.dataset.range)}));
-$("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$("locationInput").value.trim();if(!q)return;notice("Finding "+q+"…");try{if(/\bhenlow\b/i.test(q)){place={lat:52.03231,lon:-0.28925,name:"Henlow",country:"United Kingdom",admin2:"Central Bedfordshire"};await load();return;}const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/geocoding");u.searchParams.set("name",q);u.searchParams.set("count","10");u.searchParams.set("language","en");u.searchParams.set("countryCode","GB");const direct=new URL("https://geocoding-api.open-meteo.com/v1/search");direct.search=u.search;const g=await northstarJson(u,direct);if(!g.results?.length){
+$("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$("locationInput").value.trim();if(!q)return;notice("Finding "+q+"…");try{if(/\bhenlow\b/i.test(q)){place={lat:52.03231,lon:-0.28925,name:"Henlow",country:"United Kingdom",admin2:"Central Bedfordshire"};saveSelectedPlace();await load();return;}const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/geocoding");u.searchParams.set("name",q);u.searchParams.set("count","10");u.searchParams.set("language","en");u.searchParams.set("countryCode","GB");const direct=new URL("https://geocoding-api.open-meteo.com/v1/search");direct.search=u.search;const g=await northstarJson(u,direct);if(!g.results?.length){
  const ukAreas={
   "somerset":[51.0153,-3.1068,"Somerset"],"north somerset":[51.44,-2.77,"North Somerset"],
   "cornwall":[50.266,-5.052,"Cornwall"],"devon":[50.715,-3.53,"Devon"],"dorset":[50.715,-2.44,"Dorset"],
@@ -674,9 +689,38 @@ $("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$
  };
  const area=ukAreas[q.toLowerCase().replace(/\s+/g," ").trim()];
  if(!area)throw Error("No UK match found. Try a town, city or county name.");
- place={lat:area[0],lon:area[1],name:area[2],country:"United Kingdom"};await load();return;
-}const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
+ place={lat:area[0],lon:area[1],name:area[2],country:"United Kingdom"};saveSelectedPlace();await load();return;
+}const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};saveSelectedPlace();$("locationInput").value=x.name;await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
 
+$("useCurrentLocation")?.addEventListener("click",()=>{
+ const button=$("useCurrentLocation");
+ if(!("geolocation"in navigator)){
+  notice("Your browser does not support location services. You can still search for your town or city.");
+  return;
+ }
+ button.disabled=true;button.textContent="…";button.setAttribute("aria-busy","true");
+ notice("Finding your current location… Please allow location access if your browser asks.");
+ navigator.geolocation.getCurrentPosition(async position=>{
+  try{
+   const lat=Number(position.coords.latitude),lon=Number(position.coords.longitude);
+   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw Error("Your device returned an invalid location. Please try again.");
+   place={lat,lon,name:"Your current location",country:""};
+   saveSelectedPlace();
+   $("locationInput").value="Current location";
+   await load();
+   notice("Using your current location for forecasts and weather alerts.");
+  }catch(error){notice(error.message||"Could not use your current location. Please try again.")}
+  finally{button.disabled=false;button.textContent="◎";button.removeAttribute("aria-busy")}
+ },error=>{
+  const message=error.code===1
+   ?"Location access was denied. Allow Northstar to use your location in your browser or device settings, then try again."
+   :error.code===2
+    ?"Your device couldn't determine its location. Check Location Services and try again."
+    :"Finding your location took too long. Please try again.";
+  notice(message);
+  button.disabled=false;button.textContent="◎";button.removeAttribute("aria-busy");
+ },{enableHighAccuracy:false,timeout:15000,maximumAge:300000});
+});
 $("enableWeatherAlerts")?.addEventListener("click",enableNorthstarPush);
 $("disableWeatherAlerts")?.addEventListener("click",disableNorthstarPush);
 $("testWeatherAlert")?.addEventListener("click",testNorthstarPush);
