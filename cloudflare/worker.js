@@ -494,6 +494,7 @@ export default {
         forecastUrl.searchParams.set("latitude", sub.latitude);
         forecastUrl.searchParams.set("longitude", sub.longitude);
         forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max,temperature_2m_min");
+        forecastUrl.searchParams.set("current", "precipitation,rain,showers,weather_code");
         forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m,precipitation,precipitation_probability");
         forecastUrl.searchParams.set("forecast_hours", "36");
         forecastUrl.searchParams.set("forecast_days", "7");
@@ -514,6 +515,25 @@ export default {
           const localNow = part("year") + "-" + part("month") + "-" + part("day") + "T" + part("hour") + ":" + part("minute");
           const hourly = forecast.hourly;
           const wetCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82];
+          // A 30-minute scheduler can run after rain has already started.
+          // The old "dry hour -> wet hour" transition-only check then missed
+          // the event completely. Also inspect current conditions and send one
+          // daily "rain underway" heads-up when rain-start alerts are enabled.
+          const current = forecast.current || {};
+          const currentCode = Number(current.weather_code);
+          const currentAmount = Math.max(
+            Number(current.precipitation || 0),
+            Number(current.rain || 0),
+            Number(current.showers || 0)
+          );
+          const currentWet = currentAmount >= 0.1 || wetCodes.includes(currentCode);
+          if (currentWet) {
+            alerts.push({
+              key: "rain-now-" + localNow.slice(0, 10),
+              title: "Rain currently affecting your location",
+              body: "Current weather data indicates precipitation near " + sub.location_name + " now."
+            });
+          }
           const wet = hourly.time.map((time, index) => {
             const amount = Number(hourly.precipitation?.[index] || 0);
             const probability = Number(hourly.precipitation_probability?.[index] || 0);
