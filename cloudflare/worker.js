@@ -170,9 +170,28 @@ export default {
         return new Response(stale.body, { status: 200, headers });
       };
       try {
-        const upstreamResponse = await fetch(upstream.toString(), {
+        let upstreamResponse = await fetch(upstream.toString(), {
           headers: { "accept": "application/json" }
         });
+        // If Open-Meteo rate-limits the main forecast, try an independent
+        // Open-Meteo-compatible mirror before falling back to an older forecast.
+        // The mirror is used only for the standard single-location forecast;
+        // specialist model and multi-location requests retain the original source.
+        if (forecast && !upstreamResponse.ok &&
+            (upstreamResponse.status === 429 || upstreamResponse.status >= 500) &&
+            !url.searchParams.has("models") &&
+            !String(url.searchParams.get("latitude") || "").includes(",")) {
+          try {
+            const mirror = new URL("https://weather.tk.gg/v1/forecast");
+            mirror.search = url.search;
+            const mirrorResponse = await fetch(mirror.toString(), {
+              headers: { "accept": "application/json" }
+            });
+            if (mirrorResponse.ok) upstreamResponse = mirrorResponse;
+          } catch (mirrorError) {
+            console.warn("Weather mirror fallback failed", mirrorError);
+          }
+        }
         if (!upstreamResponse.ok) {
           if (forecast && (upstreamResponse.status === 429 || upstreamResponse.status >= 500)) {
             const staleResponse = await serveStale();
