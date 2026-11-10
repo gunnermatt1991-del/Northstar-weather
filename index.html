@@ -239,20 +239,37 @@ img,svg,canvas{max-width:100%}
 </main><nav class="northstar-dock" aria-label="Main navigation"><a href="#weather-home" class="dock-item active" data-dock="weather"><span>☀️</span><small>Weather</small></a><a href="#weather-map" class="dock-item" data-dock="radar"><span>◉</span><small>Radar</small></a><a href="#weather-charts" class="dock-item" data-dock="charts"><span>⌁</span><small>Charts</small></a><a href="#weather-warnings" class="dock-item" data-dock="warnings"><span>⚠️</span><small>Warnings</small></a><button type="button" class="dock-item" id="dockSettings"><span>⚙️</span><small>Settings</small></button></nav><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
 </div>
 <script>
-// Northstar shared Open-Meteo cache: reuse successful responses across page reloads
-// without changing the forecast fields, model choices, or displayed weather.
+// Cache successful Northstar weather responses on this device as well as at the edge.
+// This lets Wi-Fi continue showing the last good forecast if an upstream provider rate-limits.
 (function(){
  const nativeFetch=window.fetch.bind(window);
  window.fetch=async function(input,init){
   const raw=typeof input==="string"?input:(input&&input.url)||"";
   let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}
-  if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);
-  const key="northstarOpenMeteo:"+url.href,ttl=15*60*1000,staleLimit=24*60*60*1000;
+  const method=((init&&init.method)||"GET").toUpperCase();
+  const openMeteo=url.hostname==="api.open-meteo.com";
+  const northstarWeather=url.hostname==="northstar-weather-alerts.gunnermatt1991.workers.dev"&&
+   (url.pathname==="/weather/forecast"||url.pathname==="/weather/geocoding");
+  if(method!=="GET"||(!openMeteo&&!northstarWeather))return nativeFetch(input,init);
+  const key="northstarWeatherCache:"+url.href,ttl=15*60*1000,staleLimit=7*24*60*60*1000;
   let stale=null;
-  try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved);if(item&&typeof item.body==="string"&&Number.isFinite(item.time)){const age=Date.now()-item.time;if(age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});if(age<staleLimit)stale=item;else localStorage.removeItem(key)}else localStorage.removeItem(key)}}catch(e){}
+  try{
+   const saved=localStorage.getItem(key);
+   if(saved){
+    const item=JSON.parse(saved);
+    if(item&&typeof item.body==="string"&&Number.isFinite(item.time)){
+     const age=Date.now()-item.time;
+     if(age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});
+     if(age<staleLimit)stale=item;else localStorage.removeItem(key);
+    }else localStorage.removeItem(key);
+   }
+  }catch(e){}
   try{
    const response=await nativeFetch(input,init);
-   if(response.ok){try{const body=await response.clone().text();localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return response}
+   if(response.ok){
+    try{const body=await response.clone().text();localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}
+    return response;
+   }
    if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});
    return response;
   }catch(error){
