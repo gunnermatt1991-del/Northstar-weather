@@ -415,7 +415,7 @@ async function northstarModelJson(primaryUrl,fallbackUrl,timeoutMs=20000){
    const data=await response.json();
    if(data?.error)throw Error(data.reason||data.error||"Model data unavailable");
    if(data?.properties?.timeseries)throw Error("The generic backup forecast is not a model-specific forecast");
-   if(!Array.isArray(data?.hourly?.time)||!Array.isArray(data?.hourly?.temperature_2m))throw Error("Model service returned no hourly temperature series");
+   if(!Array.isArray(data?.hourly?.time)||!Object.keys(data?.hourly||{}).some(key=>key==="temperature_2m"||key.startsWith("temperature_2m_")))throw Error("Model service returned no hourly temperature series");
    return data;
   }catch(error){lastError=error}
   finally{clearTimeout(timer)}
@@ -681,53 +681,63 @@ function showModelTrendRetry(message){
 }
 async function loadModelConfidence(){
  const trend=$("modelTrend");if(!trend||modelTrendLoading)return;
- modelTrendLoading=true;trend.innerHTML='<div class="muted">Loading temperature trends from Northstar weather data…</div>';
+ modelTrendLoading=true;trend.innerHTML='<div class="muted">Loading ECMWF, GFS and ICON together…</div>';
  try{
-  // Charts can be opened before the first forecast request has finished.
+  // One upstream request avoids the free API's per-IP concurrent-request limiter.
   if(!weather?.current?.time)await load();
   if(!weather?.current?.time){showModelTrendRetry("Your location forecast has not loaded yet. Check your connection, then retry the temperature models.");return;}
-  const models=[{id:"ecmwf_ifs025",name:"ECMWF"},{id:"ncep_gfs_seamless",name:"GFS"},{id:"icon_seamless",name:"ICON"}];
-  const results=await Promise.allSettled(models.map(async m=>{
-   const q={latitude:place.lat,longitude:place.lon,hourly:"temperature_2m",forecast_days:3,timezone:"auto",models:m.id};
-   const buildUrl=base=>{const u=new URL(base);Object.entries(q).forEach(([k,v])=>u.searchParams.set(k,v));return u};
-   const primary=buildUrl("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast");
-   const direct=buildUrl("https://api.open-meteo.com/v1/forecast");
-   const j=await northstarModelJson(primary,direct,20000);
-   if(!j.hourly||!Array.isArray(j.hourly.time)||!Array.isArray(j.hourly.temperature_2m))throw Error("No hourly temperatures returned");
-   const referenceTime=weather.current.time||new Date().toISOString();
-   let start=j.hourly.time.findIndex(t=>t>=referenceTime);if(start<0)start=0;
-   const temps=j.hourly.temperature_2m.slice(start,start+48).map(v=>v===null?NaN:Number(v));
-   const times=j.hourly.time.slice(start,start+48);
-   if(temps.length<2||!temps.some(Number.isFinite))throw Error("No usable temperature data returned");
-   return {...m,times,temps};
-  }));
-  const returned=results.filter(x=>x.status==="fulfilled").map(x=>x.value);
-  modelForecasts=[];
-  const seenSeries=new Map(),duplicateFailures=[];
-  returned.forEach(model=>{
-   const signature=model.temps.map(value=>Number.isFinite(value)?value.toFixed(2):"null").join("|");
-   if(seenSeries.has(signature)){
-    duplicateFailures.push(model.name+": provider returned an identical 48-hour series to "+seenSeries.get(signature)+"; it is not being shown as a separate model");
-    return;
-   }
-   seenSeries.set(signature,model.name);modelForecasts.push(model);
+  const models=[
+   {id:"ecmwf_ifs025",name:"ECMWF"},
+   {id:"ncep_gfs_global",name:"GFS"},
+   {id:"icon_global",name:"ICON"}
+  ];
+  const q=new URLSearchParams({
+   latitude:String(place.lat),longitude:String(place.lon),
+   hourly:"temperature_2m",forecast_days:"3",timezone:"auto",
+   models:models.map(model=>model.id).join(",")
   });
-  const failures=results.map((x,i)=>x.status==="rejected"?models[i].name+": "+(x.reason?.message||"unavailable"):null).filter(Boolean).concat(duplicateFailures);
-  if(!modelForecasts.some(x=>x.name===selectedModel))selectedModel=modelForecasts[0]?.name||"ECMWF";
+  const primary="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+q.toString();
+  const direct="https://api.open-meteo.com/v1/forecast?"+q.toString();
+  const data=await northstarModelJson(primary,direct,25000);
+  const hourly=data.hourly,referenceTime=weather.current.time||new Date().toISOString();
+  if(!Array.isArray(hourly.time))throw Error("The model provider returned no hourly timeline");
+  let offset=hourly.time.findIndex(time=>time>=referenceTime);if(offset<0)offset=0;
+  modelForecasts=[];
+  const missing=[];
+  for(const model of models){
+   const key="temperature_2m_"+model.id;
+   const values=hourly[key];
+   if(!Array.isArray(values)){missing.push(model.name+": no separate model series returned");continue;}
+   const temps=values.slice(offset,offset+48).map(value=>value===null?NaN:Number(value));
+   const times=hourly.time.slice(offset,offset+48);
+   if(temps.length<2||!temps.some(Number.isFinite)){missing.push(model.name+": no usable temperatures returned");continue;}
+   modelForecasts.push({...model,times,temps});
+  }
+  if(modelForecasts.length>1){
+   const signatures=new Map(),unique=[];
+   for(const model of modelForecasts){
+    const signature=model.temps.map(value=>Number.isFinite(value)?value.toFixed(2):"null").join("|");
+    if(signatures.has(signature)){missing.push(model.name+": identical data to "+signatures.get(signature));continue;}
+    signatures.set(signature,model.name);unique.push(model);
+   }
+   modelForecasts=unique;
+  }
+  if(!modelForecasts.some(model=>model.name===selectedModel))selectedModel=modelForecasts[0]?.name||"ECMWF";
   if(modelForecasts.length){
-   for(const name of ["ECMWF","GFS","ICON"]){if(modelForecasts.some(m=>m.name===name))visibleTrendModels.add(name)}
+   for(const name of ["ECMWF","GFS","ICON"])if(modelForecasts.some(model=>model.name===name))visibleTrendModels.add(name);
    renderModelTrend();
-   if(failures.length){
+   if(missing.length){
     const note=document.createElement("div");note.className="muted";note.style.marginTop="8px";
-    note.textContent="Available: "+modelForecasts.map(m=>m.name).join(", ")+". Temporarily unavailable: "+failures.join("; ");
-    trend.appendChild(note);
-    const retry=document.createElement("button");retry.type="button";retry.className="control";retry.style.marginTop="10px";retry.textContent="Retry missing models";retry.addEventListener("click",()=>loadModelConfidence());trend.appendChild(retry);
+    note.textContent="Temporarily unavailable: "+missing.join("; ");trend.appendChild(note);
    }
   }else{
-   showModelTrendRetry("Northstar could not retrieve ECMWF, GFS or ICON temperature guidance just now. Your standard local forecast remains available. "+failures.join(" · "));
+   showModelTrendRetry("The combined model request did not return separate ECMWF, GFS and ICON forecasts. "+missing.join(" · "));
   }
  }catch(error){
-  showModelTrendRetry("Temperature model trends could not load: "+(error?.message||"temporary data error"));
+  const message=error?.message||"temporary data error";
+  showModelTrendRetry(message.includes("429")
+   ?"The free weather provider is busy. Northstar now requests all three models together; please wait a minute and retry."
+   :"Temperature model trends could not load: "+message);
  }finally{modelTrendLoading=false}
 }
 function renderModelTrend(){const el=$("modelTrend"),models=modelForecasts.filter(m=>m.temps&&m.temps.length);if(!models.length){el.innerHTML='<div class="muted">Temperature trend unavailable.</div>';return}const currentValues=models.map(m=>({name:m.name,value:Number(m.temps[0])})).filter(x=>Number.isFinite(x.value));let agreement="";if(currentValues.length>=2){const vals=currentValues.map(x=>x.value),spread=Math.max(...vals)-Math.min(...vals),mean=vals.reduce((a,b)=>a+b,0)/vals.length;const label=spread<=1?"Strong model agreement":spread<=2.5?"Some model variation":"Models disagree";const detail="Model temperatures range from "+Math.min(...vals).toFixed(1)+"° to "+Math.max(...vals).toFixed(1)+"°C · mean "+mean.toFixed(1)+"°C";agreement='<div class="model-agreement" role="status" aria-live="polite"><strong>Forecast model agreement: '+label+'</strong><span>'+detail+'</span><small>'+currentValues.map(x=>x.name+" "+x.value.toFixed(1)+"°").join(" · ")+'</small><small>Compares the selected models for this location; agreement is not a measure of verified accuracy.</small></div>'}const colors={ECMWF:"#86c4ff",GFS:"#78e0df",ICON:"#ffd58a"};const vals=models.flatMap(m=>m.temps.map(Number).filter(Number.isFinite)),min=Math.floor(Math.min(...vals)-1),max=Math.ceil(Math.max(...vals)+1),span=max-min||1,w=620,h=205,p={l:35,r:12,t:12,b:26},count=Math.max(...models.map(m=>m.temps.length)),x=i=>p.l+i*(w-p.l-p.r)/Math.max(1,count-1),y=v=>p.t+(max-v)*(h-p.t-p.b)/span;let svg=agreement+'<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:190px;overflow:visible" role="img" aria-label="48-hour temperature trends for ECMWF, GFS and ICON">';for(let k=0;k<5;k++){const v=min+span*k/4,yy=y(v);svg+='<line x1="'+p.l+'" y1="'+yy+'" x2="'+(w-p.r)+'" y2="'+yy+'" stroke="#ffffff18"/><text x="2" y="'+(yy+4)+'" fill="#9baac4" font-size="11">'+v.toFixed(0)+'°</text>'}models.forEach(m=>{if(!visibleTrendModels.has(m.name))return;const pts=m.temps.map((v,i)=>Number.isFinite(v)?[x(i),y(v),i,v]:null).filter(Boolean);if(pts.length<2)return;const color=colors[m.name]||"#86c4ff";const dash=m.name==="GFS"?"10 5":m.name==="ICON"?"2 5":"";const width=m.name==="ECMWF"?4.2:3.2;svg+='<polyline fill="none" stroke="'+color+'" stroke-width="'+width+'" stroke-dasharray="'+dash+'" stroke-linecap="round" stroke-linejoin="round" points="'+pts.map(q=>q[0]+","+q[1]).join(" ")+'"/>';pts.forEach(q=>svg+='<circle data-model="'+m.name+'" data-i="'+q[2]+'" cx="'+q[0]+'" cy="'+q[1]+'" r="'+(m.name==="ECMWF"?3.8:m.name==="GFS"?3.2:2.7)+'" fill="'+color+'" stroke="#142440" stroke-width="1.6"/>')});svg+='</svg>';const labels=[0,12,24,36,47].filter(i=>i<count);el.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+models.map(m=>{const color=colors[m.name]||"#86c4ff",on=visibleTrendModels.has(m.name);return '<button type="button" data-toggle="'+m.name+'" style="border:1px solid '+color+';border-radius:99px;padding:6px 11px;background:'+(on?color+"22":"transparent")+';color:#f5f8ff;font:inherit;font-size:12px;opacity:'+(on?"1":".55")+'"><span style="display:inline-block;width:16px;border-top:3px '+(m.name==="GFS"?"dashed":m.name==="ICON"?"dotted":"solid")+' '+color+';vertical-align:middle;margin-right:5px"></span>'+m.name+' · '+Number(m.temps[0]).toFixed(1)+'°</button>'}).join("")+'</div><div style="display:flex;justify-content:space-between;color:#9baac4;font-size:10px"><span>'+min+'°C</span><span>'+max+'°C</span></div>'+svg+'<div style="display:flex;justify-content:space-between;color:#9baac4;font-size:10px">'+labels.map(i=>'<span>'+(i===0?'Now':'+'+i+'h')+'</span>').join("")+'</div><div id="modelTrendTip" class="chart-tip">Tap a point to inspect its temperature.</div><div class="muted" style="font-size:11px;margin-top:8px">ECMWF: solid line · GFS: dashed line · ICON: dotted line. If forecasts agree, their curves may overlap.</div>';el.querySelectorAll("[data-toggle]").forEach(btn=>btn.addEventListener("click",()=>{const n=btn.dataset.toggle;if(visibleTrendModels.has(n)){if(visibleTrendModels.size>1)visibleTrendModels.delete(n)}else visibleTrendModels.add(n);renderModelTrend()}));el.querySelectorAll("circle[data-model]").forEach(c=>c.addEventListener("click",()=>{const m=models.find(q=>q.name===c.dataset.model),i=Number(c.dataset.i);$("modelTrendTip").textContent=m.name+" · "+tm(m.times[i])+" · "+m.temps[i].toFixed(1)+"°C";el.querySelectorAll("circle").forEach(z=>z.setAttribute("r",z===c?8:4.5))}))}
