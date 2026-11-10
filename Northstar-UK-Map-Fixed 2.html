@@ -756,33 +756,62 @@ rainForecastToggle.addEventListener("click",async()=>{
 rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
 
 
-async function getCitiesBatch(batch){
- const params=new URLSearchParams({
+async function requestWeather(params){
+ const query=params.toString();
+ const urls=[
+  "https://api.open-meteo.com/v1/forecast?"+query,
+  "https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+query
+ ];
+ let lastError="Weather service unavailable";
+ for(const url of urls){
+  try{
+   const response=await fetch(url,{cache:"no-store"});
+   if(!response.ok){lastError="Weather provider HTTP "+response.status;continue}
+   const data=await response.json();
+   if(data&&data.error)throw Error(data.reason||"Weather provider returned an error");
+   return data;
+  }catch(error){lastError=error.message||String(error)}
+ }
+ throw Error(lastError);
+}
+function weatherParams(batch){
+ return new URLSearchParams({
   latitude:batch.map(city=>city[1]).join(","),
   longitude:batch.map(city=>city[2]).join(","),
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
- // Request the multi-coordinate temperature batch directly from Open-Meteo.
- // The Northstar edge proxy can reject larger map batches; use it only as fallback.
- const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
- const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- let response=null,lastError="";
- // Smaller batches avoid provider query/response limits and make partial failures recoverable.
- for(let attempt=0;attempt<2;attempt++){
-  try{
-   response=await fetch(direct,{cache:"no-store"});
-   if(response.ok)break;
-   lastError="Open-Meteo HTTP "+response.status;
-   response=await fetch(proxy,{cache:"no-store"});
-   if(response.ok)break;
-   lastError="Weather proxy HTTP "+response.status;
-  }catch(error){lastError=error.message||String(error)}
+}
+function normalizeWeatherResult(batch,raw){
+ let items=Array.isArray(raw)?raw:[raw];
+ // Some compatible proxies return one object with coordinate arrays.
+ if(items.length===1&&batch.length>1&&raw&&raw.current&&Array.isArray(raw.current.temperature_2m)){
+  items=batch.map((_,i)=>({current:Object.fromEntries(Object.entries(raw.current).map(([k,v])=>[k,Array.isArray(v)?v[i]:v]))}));
  }
- if(!response||!response.ok)throw Error(lastError||"Weather provider unavailable");
- const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
- if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
- return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],current:item.current};});
+ if(items.length!==batch.length)throw Error("Expected "+batch.length+" readings; received "+items.length);
+ return batch.map((city,i)=>{
+  const current=items[i]&&items[i].current;
+  if(!current||!Number.isFinite(Number(current.temperature_2m)))throw Error("No temperature returned for "+city[0]);
+  return{name:city[0],lat:city[1],lon:city[2],current};
+ });
+}
+async function getCitiesBatch(batch){
+ const params=weatherParams(batch);
+ try{
+  return normalizeWeatherResult(batch,await requestWeather(params));
+ }catch(batchError){
+  // Recover valid readings one town at a time instead of discarding a whole failed batch.
+  if(batch.length===1)throw batchError;
+  const recovered=[];
+  const failures=[];
+  for(const city of batch){
+   try{recovered.push(...normalizeWeatherResult([city],await requestWeather(weatherParams([city]))))}
+   catch(error){failures.push(city[0]+": "+(error.message||"unavailable"))}
+  }
+  if(!recovered.length)throw Error("Batch failed ("+(batchError.message||"unknown error")+"); individual fallback failed ("+failures.slice(0,2).join("; ")+")");
+  console.warn("Partial town weather batch",failures);
+  return recovered;
+ } 
 }
 function addCityMarker(x,bounds){
  const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
@@ -810,7 +839,7 @@ function addCityMarker(x,bounds){
  }
  if(bounds.length)map.setView([54,-3],5);
  document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland, Europe and worldwide destinations"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";
- if(!count)document.getElementById("status").textContent="No town temperatures loaded: "+(firstError||"weather service unavailable")+". Please refresh.";
+ if(!count)document.getElementById("status").textContent="No town temperatures loaded: "+(firstError||"weather service unavailable")+". Please refresh. If this continues, the provider or network is rejecting the requests.";
  setTimeout(()=>map.invalidateSize({pan:false}),250)
 })();setInterval(async()=>{
  try{
