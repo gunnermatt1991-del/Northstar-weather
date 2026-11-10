@@ -838,17 +838,19 @@ async function getCitiesBatch(batch){
  ];
  const errors=[];
  for(const url of urls){
-  try{return await requestCityBatch(url,batch)}
+  try{return{readings:await requestCityBatch(url,batch),failed:[]}}
   catch(error){errors.push(error?.message||"network error")}
  }
- // A single rejected multi-point request must not wipe out every visible town.
- // Retry towns independently, with a small concurrency cap to avoid a burst.
+ // If a provider rejects a multi-location batch, split it sequentially.
+ // This isolates a problematic coordinate without creating parallel bursts
+ // against the shared free weather API.
  if(batch.length>1){
-  // Do not fan a failed batch out into parallel single-city requests: the
-  // public forecast API permits only one concurrent request per shared IP.
-  throw Error("Multi-location request failed ("+errors.join("; ")+"). Retry the map shortly.");
+  const middle=Math.ceil(batch.length/2);
+  const left=await getCitiesBatch(batch.slice(0,middle));
+  const right=await getCitiesBatch(batch.slice(middle));
+  return{readings:left.readings.concat(right.readings),failed:left.failed.concat(right.failed)};
  }
- throw Error(errors.join("; ")||"Weather provider is unavailable");
+ return{readings:[],failed:[batch[0][0]]};
 }
 function addCityMarker(x){
  const temp=Number(x.current&&x.current.temperature_2m);
@@ -869,7 +871,7 @@ function cityWeatherKey(city){return String(city[0]).toLowerCase()+"|"+Number(ci
 async function loadCityWeather(){
  if(cityWeatherLoading){cityWeatherLoadQueued=true;return}
  cityWeatherLoading=true;
- let failed=0;const failedNames=[];
+ let failed=0;const failedNames=new Set(),attemptedCityKeys=new Set();
  try{
   do{
    cityWeatherLoadQueued=false;
@@ -879,25 +881,36 @@ async function loadCityWeather(){
     const candidate={name:city[0],lat:city[1],lon:city[2],isPersonal:!!city[3]};
     return placeVisibleAtZoom(candidate)&&bounds.contains([city[1],city[2]]);
    });
-   const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
+   // Remove duplicate city records and never retry the same failed location
+   // repeatedly during a single map-load cycle (move/zoom events can queue it).
+   const pendingSeen=new Set();
+   const pending=visibleCities.filter(city=>{
+    const key=cityWeatherKey(city);
+    if(loadedCityKeys.has(key)||attemptedCityKeys.has(key)||pendingSeen.has(key))return false;
+    pendingSeen.add(key);return true;
+   });
    if(!pending.length)continue;
    setTemperatureStatus("Loading live temperatures: "+pending.length+" locations across the visible map…");
    const batches=[];
    for(let i=0;i<pending.length;i+=10)batches.push(pending.slice(i,i+10));
    for(let batchIndex=0;batchIndex<batches.length;batchIndex++){
     const batch=batches[batchIndex];
+    batch.forEach(city=>attemptedCityKeys.add(cityWeatherKey(city)));
     setTemperatureStatus("Loading live temperatures: batch "+(batchIndex+1)+" of "+batches.length+" ("+batch.length+" locations)…");
     try{
-     const readings=await getCitiesBatch(batch);
-     readings.forEach(reading=>{
-      cityWeather.push(reading);
-      loadedCityKeys.add(cityWeatherKey([reading.name,reading.lat,reading.lon]));
+     const result=await getCitiesBatch(batch);
+     result.readings.forEach(reading=>{
+      const key=cityWeatherKey([reading.name,reading.lat,reading.lon]);
+      if(!loadedCityKeys.has(key)){cityWeather.push(reading);loadedCityKeys.add(key)}
      });
+     result.failed.forEach(name=>failedNames.add(name));
+     failed=failedNames.size;
      renderCityMarkers();
      const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
-     setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations loaded.");
+     setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations loaded"+(failed?" · "+failed+" need retry.":"."));
     }catch(error){
-     failed+=batch.length;failedNames.push(...batch.map(city=>city[0]));
+     batch.forEach(city=>failedNames.add(city[0]));
+     failed=failedNames.size;
      console.warn("Northstar visible temperature batch failed:",error);
      setTemperatureStatus("Live temperatures: "+cityWeather.length+" cached; "+failed+" visible locations need retry.",true);
     }
@@ -906,7 +919,7 @@ async function loadCityWeather(){
   renderCityMarkers();
   const bounds=map.getBounds();
   const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
-  if(failed)setTemperatureStatus("Live temperatures: "+visibleCount+" visible; "+failed+" locations unavailable ("+failedNames.join(", ")+").",true);
+  if(failed)setTemperatureStatus("Live temperatures: "+visibleCount+" visible; "+failed+" unique locations unavailable ("+Array.from(failedNames).join(", ")+").",true);
   else if(visibleCount)setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations.");
   else setTemperatureStatus("No temperature locations in this view yet. Move or zoom the map to load nearby readings.",true);
  }finally{

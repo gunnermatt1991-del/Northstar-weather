@@ -19,14 +19,17 @@ jobs:
           WEATHER_MIRROR: https://weather.tk.gg/v1/forecast
         run: |
           node <<'NODE'
+          // Exact locations reported missing on the latest iPhone map screenshot.
           const locations = [
-            [52.3984, -0.7283], [52.95, -1.15], [53.48, -2.24],
-            [54.98, -1.6], [51.5074, -0.1278], [53.8, -1.55],
-            [55.95, -3.19], [50.72, -1.88], [48.85, 2.35], [51.92, 4.48]
+            ["Liverpool", 53.4084, -2.9916], ["Dublin", 53.3498, -6.2603],
+            ["Sheffield", 53.3811, -1.4701], ["Paris", 48.8566, 2.3522],
+            ["Brussels", 50.8503, 4.3517], ["Amsterdam", 52.3676, 4.9041],
+            ["Copenhagen", 55.6761, 12.5683], ["Zurich", 47.3769, 8.5417],
+            ["Rome", 41.9028, 12.4964], ["Madrid", 40.4168, -3.7038]
           ];
           const params = new URLSearchParams({
-            latitude: locations.map(x => x[0]).join(","),
-            longitude: locations.map(x => x[1]).join(","),
+            latitude: locations.map(x => x[1]).join(","),
+            longitude: locations.map(x => x[2]).join(","),
             current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
             hourly: "visibility",
             timezone: "auto"
@@ -46,7 +49,7 @@ jobs:
                 provider: name, status: response.status, isArray: Array.isArray(data),
                 locationsReturned: Array.isArray(data) ? data.length : 1,
                 validTemperatures: valid,
-                sample: items.slice(0, 3).map(x => x?.current?.temperature_2m ?? null),
+                sample: locations.map((loc, i) => ({ city: loc[0], temperature: items[i]?.current?.temperature_2m ?? null })),
                 error: data?.reason || data?.error || (!response.ok ? raw.slice(0, 300) : null)
               }));
               if (!response.ok || !valid) process.exitCode = 1;
