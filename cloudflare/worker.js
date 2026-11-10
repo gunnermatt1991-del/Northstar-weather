@@ -109,6 +109,34 @@ export default {
       });
     }
 
+    // CORS-safe MET Norway backup forecast. The browser must not call api.met.no
+    // directly: its strict client policy can reject cross-origin requests.
+    if (request.method === "GET" && url.pathname === "/weather/backup") {
+      const lat = Number(url.searchParams.get("lat"));
+      const lon = Number(url.searchParams.get("lon"));
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return json({ error: "Valid latitude and longitude are required." }, 400);
+      }
+      try {
+        const backupUrl = new URL("https://api.met.no/weatherapi/locationforecast/2.0/compact");
+        backupUrl.searchParams.set("lat", lat.toFixed(4));
+        backupUrl.searchParams.set("lon", lon.toFixed(4));
+        const backup = await fetch(backupUrl.toString(), {
+          headers: { "accept": "application/json", "user-agent": "NorthstarWeather/1.0 (https://github.com/gunnermatt1991-del/Northstar-weather)" }
+        });
+        if (!backup.ok) return json({ error: true, reason: "Backup weather provider returned " + backup.status + "." }, backup.status);
+        return new Response(await backup.text(), { status: 200, headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=600",
+          "access-control-allow-origin": "*",
+          "vary": "Origin"
+        }});
+      } catch (error) {
+        console.error("Backup forecast proxy failed", error);
+        return json({ error: true, reason: "Backup weather provider is temporarily unavailable." }, 502);
+      }
+    }
+
     // Shared edge cache for Open-Meteo requests. Browser clients call this
     // same-origin Worker instead of hitting the upstream API independently.
     if (request.method === "GET" && (url.pathname === "/weather/forecast" || url.pathname === "/weather/geocoding")) {
