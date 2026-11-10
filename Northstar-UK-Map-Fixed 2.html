@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="radar-clear-no-temperature-markers-20261110-r1">
+<meta name="northstar-map-build" content="clean-radar-no-place-markers-20261110-r1">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -642,9 +642,8 @@ function placeVisibleAtZoom(x){
  return z>=6;
 }
 function renderCityMarkers(){
- if(metricSurfaceLayer||fogVisible)return;
+ // Keep the radar unobstructed at every zoom level.
  cityMarkers.clearLayers();
- cityWeather.forEach(x=>addCityMarker(x,[]));
 }
 map.on("zoomend",renderCityMarkers);
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});document.addEventListener("click",e=>{if(!e.target.closest(".layer-menu")&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false")}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false");layerMenuToggle.focus()}});
@@ -784,21 +783,8 @@ async function getCitiesBatch(batch){
  return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],current:item.current};});
 }
 function addCityMarker(x,bounds){
- const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
- if(!placeVisibleAtZoom(x))return;const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin place-pin" style="--pin-color:'+color+'"><span class="place-weather-icon">'+ico+'</span><b>'+t+'°</b></div>',iconSize:[43,21],iconAnchor:[21,10]});
- const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
- const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+
- "<hr style='border:0;border-top:1px solid #ffffff25;margin:7px 0'>"+
- "🌡️ Temperature: <b>"+fmt(v.temperature_2m,1)+"°C</b><br>"+
- "🤗 Feels like: "+fmt(v.apparent_temperature,1)+"°C<br>"+
- "💧 Humidity: "+fmt(v.relative_humidity_2m)+"%<br>"+
- "💨 Wind: "+fmt(v.wind_speed_10m)+" km/h · gusts "+fmt(v.wind_gusts_10m)+" km/h<br>"+
- "🧭 Wind direction: "+fmt(v.wind_direction_10m)+"°<br>"+
- "🌧️ Rain: "+fmt(v.rain,1)+" mm · showers "+fmt(v.showers,1)+" mm<br>"+
- "❄️ Snowfall: "+fmt(v.snowfall,1)+" cm<br>"+
- "☁️ Cloud: "+fmt(v.cloud_cover)+"%<br>"+
- "🌀 Pressure: "+fmt(v.pressure_msl)+" hPa";
- L.marker([x.lat,x.lon],{icon:marker}).bindPopup(popup,{maxWidth:260}).addTo(cityMarkers);bounds.push([x.lat,x.lon]);
+ // Reset: do not render any town, city, temperature or weather-symbol markers.
+ return;
 }
 // Temperature markers are intentionally disabled to keep the radar map clean and
 // avoid unnecessary multi-location Open-Meteo requests. Radar layers remain active.
