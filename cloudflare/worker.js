@@ -170,15 +170,12 @@ export default {
         return new Response(stale.body, { status: 200, headers });
       };
       try {
-        const standardSingleForecast = forecast &&
-          !url.searchParams.has("models") &&
-          !String(url.searchParams.get("latitude") || "").includes(",");
+        const useMirror = forecast && !url.searchParams.has("models");
         let upstreamResponse;
-        // Prefer the independent Open-Meteo-compatible mirror for the main
-        // single-location forecast. This avoids sending every Northstar user
-        // through the same upstream free-tier quota. Keep official Open-Meteo
-        // as the immediate fallback if the mirror is unavailable.
-        if (standardSingleForecast) {
+        // Use the independent Open-Meteo-compatible mirror for every ordinary
+        // forecast request, including batched map coordinates. This keeps the
+        // map away from the shared free-tier Open-Meteo concurrency queue.
+        if (useMirror) {
           const mirror = new URL("https://weather.tk.gg/v1/forecast");
           mirror.search = url.search;
           try {
