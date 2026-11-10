@@ -1321,8 +1321,7 @@ function placeVisibleAtZoom(x){
  if(!isUkIrelandPlace(x))return false;
  const z=map.getZoom();
  if(z<=5)return nationalPlaces.has(x.name);
- if(z<=7)return nationalPlaces.has(x.name)||regionalPlaces.has(x.name);
- return true;
+ return nationalPlaces.has(x.name)||regionalPlaces.has(x.name);
 }
 function renderCityMarkers(){
  if(metricSurfaceLayer||fogVisible)return;
