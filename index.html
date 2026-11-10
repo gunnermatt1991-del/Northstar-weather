@@ -710,7 +710,7 @@ $("searchForm").addEventListener("submit",async e=>{e.preventDefault();const q=$
  const area=ukAreas[q.toLowerCase().replace(/\s+/g," ").trim()];
  if(!area)throw Error("No UK match found. Try a town, city or county name.");
  place={lat:area[0],lon:area[1],name:area[2],country:"United Kingdom"};saveSelectedPlace();await load();return;
-}const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};saveSelectedPlace();$("locationInput").value=x.name;await load()}catch(e){notice(e.message||"Location search failed. Please try again.")}});
+}const x=g.results[0];place={lat:x.latitude,lon:x.longitude,name:x.name,country:x.country,admin1:x.admin1,admin2:x.admin2,admin3:x.admin3,admin4:x.admin4};saveSelectedPlace();$("locationInput").value=x.name;await load()}catch(e){const message=e.message||"Location search failed. Please try again.";notice(message);if($("locationSettingsStatus"))$("locationSettingsStatus").textContent=message}});
 
 $("useCurrentLocation")?.addEventListener("click",()=>{
  const button=$("useCurrentLocation");
@@ -728,7 +728,7 @@ $("useCurrentLocation")?.addEventListener("click",()=>{
    saveSelectedPlace();
    $("locationInput").value="Current location";
    await load();
-   notice("Using your current location for forecasts and weather alerts.");
+   notice("Using your current location for forecasts and weather alerts.");if($("locationSettingsStatus"))$("locationSettingsStatus").textContent="Your device location is saved and now powers your forecast and alerts.";
   }catch(error){notice(error.message||"Could not use your current location. Please try again.")}
   finally{button.disabled=false;button.textContent="◎";button.removeAttribute("aria-busy")}
  },error=>{
@@ -737,7 +737,7 @@ $("useCurrentLocation")?.addEventListener("click",()=>{
    :error.code===2
     ?"Your device couldn't determine its location. Check Location Services and try again."
     :"Finding your location took too long. Please try again.";
-  notice(message);
+  notice(message);if($("locationSettingsStatus"))$("locationSettingsStatus").textContent=message;
   button.disabled=false;button.textContent="◎";button.removeAttribute("aria-busy");
  },{enableHighAccuracy:false,timeout:15000,maximumAge:300000});
 });
