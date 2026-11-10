@@ -1479,7 +1479,7 @@ function addCityMarker(x,bounds){
   }
   if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();if(radarVisible)updateSnowfallObservationLayer();}
  }catch(e){console.warn("Weather observation refresh failed",e)}
-},15*60*1000);{try{const updates=await Promise.allSettled(cities.map(getCity));const fresh=updates.filter(x=>x.status==="fulfilled").map(x=>x.value);if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();if(radarVisible)updateSnowfallObservationLayer()}}catch(e){console.warn("Weather observation refresh failed",e)}},15*60*1000);
+},15*60*1000);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
