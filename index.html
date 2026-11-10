@@ -397,19 +397,11 @@ async function loadHomeWarning(){
     const c=normalize(candidate);return c&&affected.some(a=>a===c||a.includes(c)||c.includes(a));
    });
    if(!localMatch)return null;
-   const dateMatch=String(item.link||item.guid||"").match(/[?&]date=(\d{4})-(\d{2})-(\d{2})/);
-   const times=description.match(/valid from\s+(\d{2})(\d{2})\s+[A-Za-z]{3}\s+(\d{2})\s+to\s+(\d{2})(\d{2})\s+[A-Za-z]{3}\s+(\d{2})/i);
-   let validFrom=null,validTo=null;
-   if(dateMatch&&times){
-    const year=Number(dateMatch[1]),month=Number(dateMatch[2])-1,baseDay=Number(dateMatch[3]);
-    const fromDay=Number(times[3]),toDay=Number(times[6]);
-    const fromDate=new Date(year,month,fromDay,Number(times[1]),Number(times[2]));
-    let toMonth=month,toYear=year;
-    if(toDay<fromDay){toMonth++;if(toMonth>11){toMonth=0;toYear++}}
-    validFrom=fromDate;validTo=new Date(toYear,toMonth,toDay,Number(times[4]),Number(times[5]));
-   }
-   if(validTo&&validTo.getTime()<Date.now())return null;
-   return {item,title,description,validFrom,validTo,text};
+   const validity=parseMetOfficeWarningValidity(item);
+   // Fail closed: do not display an official warning without a confirmed
+   // validity window or after its end time has passed.
+   if(!validity||validity.validTo.getTime()<=Date.now())return null;
+   return {item,title,description,validFrom:validity.validFrom,validTo:validity.validTo,text};
   }).filter(Boolean);
   if(!matches.length)return;
   const selected=matches.sort((a,b)=>{
@@ -474,7 +466,7 @@ async function loadOfficialWarnings(){
   let response;try{response=await fetch(endpoint,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Feed unavailable");
   const payload=await response.json();if(payload.status!=="ok"||!Array.isArray(payload.items))throw Error("No warning feed data");
-  const items=payload.items;
+  const items=payload.items.filter(item=>{const validity=parseMetOfficeWarningValidity(item);return !!validity&&validity.validTo.getTime()>Date.now()});
   if(!items.length){box.innerHTML='<div class="official-warning-empty">✓ No current Met Office warnings are in force anywhere in the UK. <span style="display:block;margin-top:5px"><a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Check all UK warnings ↗</a></span></div>';return}
   // Combine regional versions of the same warning (for example, the four
   // regional fog alerts) into one clean warning card.
@@ -501,6 +493,23 @@ async function loadOfficialWarnings(){
  }catch(error){
   box.innerHTML='<div class="official-warning-error">⚠️ Official warning feed could not be refreshed just now. Forecast-based alerts are shown below; check the <a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Met Office warning service ↗</a> for the authoritative latest warnings.</div>';
  }
+}
+function parseMetOfficeWarningValidity(item){
+ const description=String(item?.description||item?.content||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ");
+ const match=description.match(/valid from\s+(\d{2})(\d{2})\s+([A-Za-z]{3})\s+(\d{1,2})\s+to\s+(\d{2})(\d{2})\s+([A-Za-z]{3})\s+(\d{1,2})/i);
+ if(!match)return null;
+ const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+ const startMonth=months[match[3].slice(0,3).toLowerCase()],endMonth=months[match[7].slice(0,3).toLowerCase()];
+ if(startMonth===undefined||endMonth===undefined)return null;
+ const issued=Date.parse(item?.pubDate||"");
+ let year=Number.isFinite(issued)?new Date(issued).getUTCFullYear():new Date().getUTCFullYear();
+ let start=Date.UTC(year,startMonth,Number(match[4]),Number(match[1]),Number(match[2]));
+ if(Number.isFinite(issued)&&start<issued-183*86400000){year++;start=Date.UTC(year,startMonth,Number(match[4]),Number(match[1]),Number(match[2]));}
+ let endYear=year;
+ if(endMonth<startMonth||(endMonth===startMonth&&Number(match[8])<Number(match[4])))endYear++;
+ const end=Date.UTC(endYear,endMonth,Number(match[8]),Number(match[5]),Number(match[6]));
+ if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return null;
+ return {validFrom:new Date(start),validTo:new Date(end)};
 }
 function normalizeWarningArea(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/&/g," and ").replace(/\b(city and county of|county of|city of|borough of|district of)\b/g," ").replace(/\b(city|county|borough|district)\b/g," ").replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");}
 function decodeWarningEntities(value){const node=document.createElement("textarea");node.innerHTML=String(value||"");return node.value;}
