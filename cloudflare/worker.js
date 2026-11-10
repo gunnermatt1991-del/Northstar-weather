@@ -147,7 +147,7 @@ export default {
       upstream.search = url.search;
       const cache = caches.default;
       const cacheKey = new Request(url.toString(), { method: "GET" });
-      // Keep a separate six-hour fallback copy. The short-lived fresh cache
+      // Keep a separate seven-day fallback copy. The short-lived fresh cache
       // protects Open-Meteo from repeated requests; the fallback keeps the app
       // usable if the provider temporarily responds with HTTP 429 or 5xx.
       const staleCacheKey = new Request("https://northstar-weather-stale.local" + url.pathname + url.search, { method: "GET" });
@@ -197,7 +197,8 @@ export default {
         storedHeaders.delete("access-control-allow-origin");
         storedHeaders.delete("x-northstar-cache");
         const staleHeaders = new Headers(storedHeaders);
-        staleHeaders.set("cache-control", "public, max-age=21600");
+        // Keep the last successful forecast available for a full week if the upstream provider rate-limits.
+        staleHeaders.set("cache-control", "public, max-age=604800");
         // Fresh and fallback cache writes run in the background.
         ctx.waitUntil(Promise.all([
           cache.put(cacheKey, new Response(response.clone().body, {
