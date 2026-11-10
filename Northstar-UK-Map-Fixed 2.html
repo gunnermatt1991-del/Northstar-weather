@@ -24,8 +24,7 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 .leaflet-tile-pane{filter:saturate(1.12) contrast(1.02) brightness(.96)}#map.night-map .leaflet-tile-pane{filter:saturate(.78) contrast(1.04) brightness(1.02)}.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#245a7e}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff;border:1px solid #8ebfff35;box-shadow:0 12px 32px #0008}.leaflet-popup-content{margin:12px 15px;line-height:1.6}.leaflet-popup-content strong{font-size:14px;color:#fff}.leaflet-control-attribution{font-size:9px!important;background:#0b1728d9!important;color:#9eafc7!important}.leaflet-control-attribution a{color:#a9d5ff!important}.leaflet-bar a{background:#142440!important;color:#eff7ff!important;border-color:#ffffff20!important}.leaflet-control-zoom{border:1px solid #ffffff20!important;box-shadow:0 5px 18px #0006!important;overflow:hidden;border-radius:12px!important}
 .pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}
 .marker-cluster div{background:linear-gradient(145deg,#3979ad,#183a62)!important;color:#fff!important;border:1px solid #a9d8ff!important;box-shadow:0 4px 16px #0008,inset 0 1px #ffffff35!important;font:800 12px/26px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.marker-cluster{background:#86c4ff35!important;border-radius:50%!important}
-.temp-legend{display:none;gap:9px;align-items:center;flex-wrap:wrap;margin:10px 2px 0;color:var(--muted);font-size:11px}.temp-legend.show{display:flex}.temp-gradient{height:10px;flex:1;min-width:130px;border-radius:99px;background:linear-gradient(90deg,#2636b8,#258ee8,#21c7b5,#69d34b,#f0e442,#ff9d35,#e52b27)}
-.legend{display:flex;flex-wrap:wrap;gap:13px;margin-top:12px;color:var(--muted);font-size:11px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .status{color:var(--muted);font-size:12px;margin:12px 2px 0}.note{color:#b9c9df;font-size:11px;margin:8px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
 @media(max-width:600px){.wrap{padding-left:12px;padding-right:12px}.card{padding:13px}h1{font-size:21px}#map{height:70vh;min-height:440px}.controls{gap:7px;padding:10px}.controls button{padding:9px 11px;font-size:12px}#frameTime{width:100%;text-align:left}}
 
@@ -213,16 +212,16 @@ body.embed.storm-only .storm-panel{margin:0!important}
 <a class="back" href="./">← Back to Northstar Weather</a>
 <section class="card">
 <h1>UK & Europe weather map</h1>
-<p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. Switch on temperature shading to compare colder and warmer areas, or view recent radar and a short-range rain forecast.</p>
-<div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose a layer · menu closes after selection</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="temperature" type="button">🌡️ Temperature</button><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="warnings" type="button">⚠️ Official warning areas</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button></div></div><div class="controls" aria-label="Weather map controls">
-<button id="tempToggle" type="button">🌡️ Show temperature shading</button>
+<p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. View individual location readings, recent radar and short-range forecast layers on one interactive map.</p>
+<div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose a layer · menu closes after selection</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="warnings" type="button">⚠️ Official warning areas</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button></div></div><div class="controls" aria-label="Weather map controls">
+
 <button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="fogToggle" type="button" aria-pressed="false">🌫️ Show fog shading</button><button id="warningToggle" type="button" aria-pressed="false">⚠️ Show official warnings</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
 <button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
 <button id="latestButton" type="button" disabled>Latest</button>
 <input id="frameSlider" type="range" min="0" max="0" value="0" disabled aria-label="Radar time">
 <span id="frameTime">Radar loading…</span>
 </div>
-<div class="temp-legend" id="tempLegend"><span>Colder</span><div class="temp-gradient"></div><span>Warmer</span></div>
+
 <div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
  <div class="map-save-row"><button id="saveMapButton" class="map-save-btn" type="button">📸 Save Map Image</button><span id="saveMapStatus" class="map-save-help" role="status">Save the current map view as an image for your Facebook weather posts.</span></div>
 <section class="storm-panel" id="stormPanel" aria-label="Storm intelligence map controls">
@@ -254,9 +253,9 @@ body.embed.storm-only .storm-panel{margin:0!important}
  <p class="storm-foot">Forecast model output, not live radar or official warnings. Low centres and pressure contours are estimated from sampled forecast points; signal tracks are indicative only. Always follow the Met Office and local authorities for warnings.</p>
 </section>
 
-<div class="legend"><span><i class="dot" style="background:#2636b8"></i>Cold</span><span><i class="dot" style="background:#21c7b5"></i>Cool</span><span><i class="dot" style="background:#69d34b"></i>Mild</span><span><i class="dot" style="background:#f0e442"></i>Warm</span><span><i class="dot" style="background:#e52b27"></i>Hot</span></div>
+
 <div class="status" id="status">Loading live weather across the UK, Ireland and Europe…</div>
-<p class="note">Temperature shading blends current Open-Meteo readings from the marked towns and cities across Europe. Rain radar shows recent observed precipitation. The separate “Rain on the way” layer uses hourly forecast data to show where rain is expected over the next 6 hours. Forecasts are estimates, not live radar, and can change.</p>
+<p class="note">Live temperature labels show current Open-Meteo readings at marked towns and cities. Rain radar shows recent observed precipitation. The separate “Rain on the way” layer uses hourly forecast data to show where rain is expected over the next 6 hours. Forecasts are estimates, not live radar, and can change.</p>
 </section>
 <footer class="footer">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Radar imagery by <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">RainViewer</a>. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</footer>
 </div>
@@ -284,7 +283,6 @@ const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast
 function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
 function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73":t<20?"#bedc37":t<25?"#faa523":"#eb412d"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:8,zoomControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView([54,-3],5);
-map.createPane("temperaturePane");map.getPane("temperaturePane").style.zIndex=450;map.getPane("temperaturePane").style.pointerEvents="none";
 map.createPane("fogPane");map.getPane("fogPane").style.zIndex=650;map.getPane("fogPane").style.pointerEvents="none";
 let baseLayer;
 const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abc",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
@@ -304,8 +302,7 @@ const cityMarkers=L.markerClusterGroup({maxClusterRadius:38,disableClusteringAtZ
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});document.addEventListener("click",e=>{if(!e.target.closest(".layer-menu")&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false")}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false");layerMenuToggle.focus()}});
 let metricSurfaceLayer=null;
 function showMetricLayer(k){
- if(k==="temperature"){document.getElementById("status").textContent="Showing current temperatures. Use the temperature shading button for the colour surface.";return}
- if(k==="fog"){showFogLayer();return}
+  if(k==="fog"){showFogLayer();return}
  const cfg={snow:["snowfall"," cm","Snowfall"],precipitation:["precipitation"," mm","Precipitation"],pressure:["pressure_msl"," hPa","Pressure"],cloud:["cloud_cover","%","Cloud cover"],wind:["wind_speed_10m"," km/h","Wind speed"]}[k];
  if(!cfg)return;
  clearFogLayer();
@@ -325,7 +322,7 @@ function showMetricLayer(k){
  document.getElementById("status").textContent="Showing "+cfg[2].toLowerCase()+" at mapped towns and cities. Tap a marker for details.";
 }
 document.querySelectorAll(".layer-choice[data-layer]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.layer;layerMenuPanel.hidden=true;if(k==="warnings"){toggleOfficialWarnings();document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));return;}if(k!=="fog"){clearFogLayer();fogToggle.classList.remove("active");fogToggle.textContent="🌫️ Show fog shading";fogToggle.setAttribute("aria-pressed","false");}document.querySelectorAll(".layer-choice[data-layer]").forEach(x=>x.classList.toggle("active",x===b));if(k==="rain"){setCloudCover(false);if(radarLayer&&!radarVisible){radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active")}}else{if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}if(k==="satellite"){setSatelliteMode(true)}else if(k==="temperature"){setSatelliteMode(false);location.reload()}else{setSatelliteMode(false);showMetricLayer(k)}}}));
-let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",tempLayer=null,tempVisible=false,cityWeather=[];
+let radarFrames=[],radarLayer=null,radarVisible=false,playTimer=null,radarHost="",cityWeather=[];
 let fogLayer=null,fogHeatLayer=null,fogVisible=false;
 function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if(fogHeatLayer){map.removeLayer(fogHeatLayer);fogHeatLayer=null}fogVisible=false}
 function showFogLayer(){
@@ -370,7 +367,7 @@ function warningPopup(props){const p=props||{},find=(pattern)=>{const key=Object
 async function loadOfficialWarningsLayer(){if(officialWarningsLayer)return officialWarningsLayer;if(officialWarningsLoading)return officialWarningsLoading;officialWarningsLoading=(async()=>{const response=await fetch("https://northstar-weather-alerts.gunnermatt1991.workers.dev/warnings/geojson",{cache:"no-store"});if(!response.ok){let message="Official warning polygons unavailable ("+response.status+").";try{const body=await response.json();if(body.error)message=body.error}catch(e){}throw Error(message)}const data=await response.json();if(data.type!=="FeatureCollection"||!Array.isArray(data.features))throw Error("The Met Office returned an unexpected warning map format.");officialWarningsLayer=L.geoJSON(data,{pane:"overlayPane",style:warningStyle,onEachFeature:(feature,layer)=>layer.bindPopup(warningPopup(feature.properties))});return officialWarningsLayer})().finally(()=>{officialWarningsLoading=null});return officialWarningsLoading}
 async function toggleOfficialWarnings(force){const enabled=typeof force==="boolean"?force:!officialWarningsVisible;if(enabled===officialWarningsVisible)return;warningToggle.disabled=true;warningToggle.textContent=enabled?"⚠️ Loading official warnings…":"⚠️ Hiding warnings…";try{if(enabled){const layer=await loadOfficialWarningsLayer();layer.addTo(map);officialWarningsVisible=true;warningToggle.classList.add("active");warningToggle.setAttribute("aria-pressed","true");warningToggle.textContent="⚠️ Hide official warnings";const count=layer.getLayers().length;document.getElementById("status").textContent=count?count+" official Met Office warning area(s) shown. Tap an area for details.":"No active Met Office warning polygons are currently in force across the UK.";}else{if(officialWarningsLayer)map.removeLayer(officialWarningsLayer);officialWarningsVisible=false;warningToggle.classList.remove("active");warningToggle.setAttribute("aria-pressed","false");warningToggle.textContent="⚠️ Show official warnings";document.getElementById("status").textContent="Official warning areas hidden."}}catch(error){warningToggle.textContent="⚠️ Retry official warnings";warningToggle.setAttribute("aria-pressed","false");document.getElementById("status").textContent=error.message||"Official warning areas could not be loaded."}finally{warningToggle.disabled=false}}
 warningToggle.addEventListener("click",()=>toggleOfficialWarnings());
-const slider=document.getElementById("frameSlider"),timeLabel=document.getElementById("frameTime"),toggle=document.getElementById("radarToggle"),play=document.getElementById("playButton"),latest=document.getElementById("latestButton"),tempToggle=document.getElementById("tempToggle"),tempLegend=document.getElementById("tempLegend");
+const slider=document.getElementById("frameSlider"),timeLabel=document.getElementById("frameTime"),toggle=document.getElementById("radarToggle"),play=document.getElementById("playButton"),latest=document.getElementById("latestButton");
 let rainForecastLayer=null,rainForecastData=[],rainForecastVisible=false;
 const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForecastSlider=document.getElementById("rainForecastSlider"),rainForecastTime=document.getElementById("rainForecastTime");
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
@@ -416,54 +413,6 @@ rainForecastToggle.addEventListener("click",async()=>{
 });
 rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
 
-function createLandTemperatureLayer(readings,features){
- // Native Leaflet heat rendering is reliable on mobile and uses existing live town observations.
- const points=readings.map(p=>{
-  const t=p.t;
-  const intensity=t<=-5?.10:t<=0?.18:t<=5?.30:t<=10?.43:t<=15?.57:t<=20?.71:t<=25?.86:1;
-  return [p.lat,p.lon,intensity];
- });
- if(points.length<8||!L.heatLayer)throw Error("Temperature shading renderer or readings unavailable");
- return L.heatLayer(points,{
-  pane:"temperaturePane",radius:105,blur:88,maxZoom:8,minOpacity:0.48,max:1,
-  gradient:{
-   0.00:"#2326a8",
-   0.12:"#315de0",
-   0.28:"#39bde7",
-   0.43:"#27ad78",
-   0.57:"#b8d83c",
-   0.71:"#f5cf35",
-   0.86:"#f18428",
-   1.00:"#d92732"
-  }
- });
-}
-async function loadTemperatureShading(){
- tempToggle.disabled=true;
- tempToggle.textContent="🌡️ Preparing temperature shading…";
- try{
-  // Reuse the live observations already fetched for the map pins. This avoids
-  // a second burst of dozens of requests and keeps the heat layer in sync.
-  if(!cityWeather.length){
-   document.getElementById("status").textContent="Live town temperatures are still loading. Please try again in a moment.";
-   throw Error("Town temperature observations are not ready yet.");
-  }
-  const readings=cityWeather
-   .map(x=>({name:x.name,lat:Number(x.lat),lon:Number(x.lon),t:Number(x.current&&x.current.temperature_2m)}))
-   .filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&Number.isFinite(x.t));
-  if(readings.length<8)throw Error("Not enough valid town temperature readings ("+readings.length+").");
-  tempLayer=createLandTemperatureLayer(readings,[]);
-  tempToggle.disabled=false;
-  tempToggle.textContent="🌡️ Show temperature shading";
-  document.getElementById("status").textContent="Temperature shading ready using "+readings.length+" live town readings. Tap the button to show the colour layer.";
- }catch(error){
-  tempToggle.disabled=false;
-  tempToggle.textContent="🌡️ Try temperature shading again";
-  if(!document.getElementById("status").textContent.includes("still loading"))document.getElementById("status").textContent=error.message||"Temperature shading couldn't load. Please try again.";
-  tempLayer=null;
- }
-}
-tempToggle.addEventListener("click",async()=>{if(!tempLayer){await loadTemperatureShading();if(!tempLayer)return}tempVisible=!tempVisible;if(tempVisible){tempLayer.addTo(map);tempToggle.textContent="🌡️ Hide temperature shading";tempToggle.classList.add("active");tempLegend.classList.add("show")}else{map.removeLayer(tempLayer);tempToggle.textContent="🌡️ Show temperature shading";tempToggle.classList.remove("active");tempLegend.classList.remove("show")}});
 async function getCity(city){
  const[name,lat,lon]=city;
  const params=new URLSearchParams({
