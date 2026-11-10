@@ -350,7 +350,7 @@ const desc={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fo
 function icon(c,day=1){if(c===0)return day?"☀️":"🌙";if(c===1)return day?"🌤️":"🌙☁️";if(c===2)return day?"⛅":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return"🌦️";if(c<=86)return"🌨️";return"⛈️"}function tm(s){return new Date(s).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}function dn(s,i){return i===0?"Today":i===1?"Tomorrow":new Date(s+"T12:00:00").toLocaleDateString([],{weekday:"short"})}function dir(n){return["N","NE","E","SE","S","SW","W","NW"][Math.round(n/45)%8]}function notice(t){$("notice").textContent=t;$("notice").style.display="block"}
 async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
  let lastError=null;
- for(const target of [primaryUrl,fallbackUrl]){
+ for(const target of [fallbackUrl,primaryUrl]){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{
    const response=await fetch(target,{signal:controller.signal,cache:"no-store"});
