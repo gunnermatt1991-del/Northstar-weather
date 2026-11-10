@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="clean-radar-no-place-markers-20261110-r1">
+<meta name="northstar-map-build" content="live-temperatures-personal-location-20261110-r2">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -24,7 +24,7 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 #map{height:min(78vh,850px);min-height:520px;border-radius:18px;overflow:hidden;border:1px solid #7fc9f0aa;background:#245a7e;box-shadow:0 14px 38px #0004}
 .leaflet-tile-pane{filter:saturate(1.12) contrast(1.02) brightness(.96)}
 .northstar-radar-layer{filter:saturate(1.32) contrast(1.12) brightness(1.02)}#map.night-map .leaflet-tile-pane{filter:saturate(.78) contrast(1.04) brightness(1.02)}.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#245a7e}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff;border:1px solid #8ebfff35;box-shadow:0 12px 32px #0008}.leaflet-popup-content{margin:12px 15px;line-height:1.6}.leaflet-popup-content strong{font-size:14px;color:#fff}.leaflet-control-attribution{font-size:9px!important;background:#0b1728d9!important;color:#9eafc7!important}.leaflet-control-attribution a{color:#a9d5ff!important}.leaflet-bar a{background:#142440!important;color:#eff7ff!important;border-color:#ffffff20!important}.leaflet-control-zoom{border:1px solid #ffffff20!important;box-shadow:0 5px 18px #0006!important;overflow:hidden;border-radius:12px!important}
-.pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}.place-pin{display:flex;align-items:center;justify-content:center;gap:2px;width:38px;max-width:38px;min-width:38px;height:21px;padding:1px 2px;background:var(--pin-color,#37bee1);color:#10202a;border:1px solid #ffffffed;border-radius:7px;font-size:9px;line-height:17px;box-shadow:0 2px 7px #06132699;white-space:nowrap;overflow:hidden}.place-pin>*{display:block!important}.place-pin .place-name,.place-pin .town-name,.place-pin .city-name{display:none!important}.place-pin .place-weather-icon{flex:0 0 13px;width:13px;font-size:11px;line-height:13px;text-align:center}.place-pin b{flex:0 0 auto;color:#10202a;background:transparent;border-radius:0;padding:0;font-size:9px;line-height:15px}
+.pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}.personal-pin{outline:2px solid #ffffff;border-color:#132e50;box-shadow:0 0 0 2px #4aa8ff,0 2px 8px #06132699}.temperature-status{padding:6px 9px;border:1px solid #9bcaff55;border-radius:9px;background:#0b1a30e8;color:#eff7ff;font:700 10px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 3px 12px #0005;pointer-events:auto}.temperature-status button{display:block;margin-top:5px;padding:4px 7px;border:1px solid #9bcaff88;border-radius:7px;background:#24466d;color:#fff;font:inherit}.place-pin{display:flex;align-items:center;justify-content:center;gap:2px;width:38px;max-width:38px;min-width:38px;height:21px;padding:1px 2px;background:var(--pin-color,#37bee1);color:#10202a;border:1px solid #ffffffed;border-radius:7px;font-size:9px;line-height:17px;box-shadow:0 2px 7px #06132699;white-space:nowrap;overflow:hidden}.place-pin>*{display:block!important}.place-pin .place-name,.place-pin .town-name,.place-pin .city-name{display:none!important}.place-pin .place-weather-icon{flex:0 0 13px;width:13px;font-size:11px;line-height:13px;text-align:center}.place-pin b{flex:0 0 auto;color:#10202a;background:transparent;border-radius:0;padding:0;font-size:9px;line-height:15px}
 .marker-cluster div{background:linear-gradient(145deg,#3979ad,#183a62)!important;color:#fff!important;border:1px solid #a9d8ff!important;box-shadow:0 4px 16px #0008,inset 0 1px #ffffff35!important;font:800 12px/26px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.marker-cluster{background:#86c4ff35!important;border-radius:50%!important}
 .legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .status{color:var(--muted);font-size:12px;margin:12px 2px 0}.note{color:#b9c9df;font-size:11px;margin:8px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
@@ -603,10 +603,40 @@ const cities=[
 ["Auckland",-36.8509,174.7645],
 ["Wellington",-41.2865,174.7762]
 ];
+// Add the user's saved forecast location to the map's temperature sampling list.
+let northstarPersonalLocation=null;
+try{
+ const saved=JSON.parse(localStorage.getItem("northstar-selected-weather-location")||"null");
+ if(saved&&saved.name&&Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lon))){
+  northstarPersonalLocation={name:String(saved.name),lat:Number(saved.lat),lon:Number(saved.lon)};
+  const existing=cities.findIndex(c=>c[0].toLowerCase()===northstarPersonalLocation.name.toLowerCase());
+  if(existing>=0)cities[existing]=[northstarPersonalLocation.name,northstarPersonalLocation.lat,northstarPersonalLocation.lon,true];
+  else cities.push([northstarPersonalLocation.name,northstarPersonalLocation.lat,northstarPersonalLocation.lon,true]);
+ }
+}catch(error){console.warn("Northstar saved map location could not be read:",error)}
+
 const descriptions={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Heavy freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Rain showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Heavy snow showers",95:"Thunderstorm",96:"Thunderstorm with hail",99:"Thunderstorm with hail"};
 function weatherIcon(c,isDay=1){if(c===0)return isDay?"☀️":"🌙";if(c<=2)return isDay?"🌤️":"☁️";if(c===3)return"☁️";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"🌨️";if(c<=82)return isDay?"🌦️":"🌧️";if(c<=86)return"🌨️";return"⛈️"}
 function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73":t<20?"#bedc37":t<25?"#faa523":"#eb412d"}
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:11,zoomControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView([54,-3],5);
+const temperatureStatusControl=L.control({position:"bottomleft"});
+temperatureStatusControl.onAdd=function(){
+ const el=L.DomUtil.create("div","temperature-status");
+ el.setAttribute("role","status");el.setAttribute("aria-live","polite");
+ this._container=el;return el;
+};
+temperatureStatusControl.addTo(map);
+function setTemperatureStatus(message,canRetry=false){
+ const el=temperatureStatusControl._container;
+ if(el){
+  el.replaceChildren(document.createTextNode(message));
+  if(canRetry){
+   const button=document.createElement("button");button.type="button";button.textContent="Retry temperatures";
+   L.DomEvent.disableClickPropagation(button);button.addEventListener("click",()=>loadCityWeather());el.appendChild(button);
+  }
+ }
+ const status=document.getElementById("status");if(status)status.textContent=message;
+}
 map.createPane("fogPane");map.getPane("fogPane").style.zIndex=650;map.getPane("fogPane").style.pointerEvents="none";
 let baseLayer;
 const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abc",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
@@ -630,6 +660,7 @@ const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwi
 const nonTownPlaces=new Set(["Somerset","North Somerset","Cornwall","Devon","Dorset","Wiltshire","Gloucestershire","Oxfordshire","Buckinghamshire","Berkshire","Hampshire","Surrey","Sussex","East Sussex","West Sussex","Kent","Essex","Suffolk","Norfolk","Cambridgeshire","Bedfordshire","Northamptonshire","Warwickshire","Worcestershire","Herefordshire","Staffordshire","Shropshire","Cheshire","Lancashire","Cumbria","Northumberland","County Durham","Yorkshire","Nottinghamshire","Derbyshire","Leicestershire","Lincolnshire","Greater Manchester","Merseyside","Scotland","Wales","Northern Ireland"]);
 function isUkIrelandPlace(x){return x.lat>=49.8&&x.lat<=59.6&&x.lon>=-11.2&&x.lon<=2.2&&!nonTownPlaces.has(x.name);}
 function placeVisibleAtZoom(x){
+ if(x.isPersonal)return true;
  const z=map.getZoom();
  // At the UK-wide view show only the national cities. Reveal regional towns
  // at closer zoom, then the remaining curated places when users zoom further.
@@ -778,12 +809,12 @@ async function getCitiesBatch(batch){
  // The Northstar edge proxy can reject larger map batches; use it only as fallback.
  const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
  const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- let response=await fetch(direct,{cache:"no-store"});
- if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
+ let response=await fetch(proxy,{cache:"no-store"});
+ if(!response.ok)response=await fetch(direct,{cache:"no-store"});
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
- return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],current:item.current};});
+ return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],isPersonal:!!city[3],current:item.current};});
 }
 function addCityMarker(x){
  const temp=Number(x.current&&x.current.temperature_2m);
@@ -791,7 +822,7 @@ function addCityMarker(x){
  const label=Math.round(temp)+"°";
  const marker=L.divIcon({
   className:"pin-wrap",
-  html:'<div class="pin" style="--pin-color:'+tone(temp)+'">'+label+'</div>',
+  html:'<div class="pin'+(x.isPersonal?' personal-pin':'')+'" style="--pin-color:'+tone(temp)+'">'+label+'</div>',
   iconSize:[34,20],
   iconAnchor:[17,10]
  });
@@ -802,24 +833,26 @@ async function loadCityWeather(){
  const batchSize=20;
  const batches=[];
  for(let i=0;i<cities.length;i+=batchSize)batches.push(cities.slice(i,i+batchSize));
- cityWeather=[];
+ cityWeather=[];renderCityMarkers();
  let failed=0;
+ setTemperatureStatus("Live temperatures: loading…");
  for(const batch of batches){
   try{
    const readings=await getCitiesBatch(batch);
-   cityWeather.push(...readings);
-   renderCityMarkers();
-   document.getElementById("status").textContent="Loading temperature readings… "+cityWeather.length+" of "+cities.length+" locations.";
+   cityWeather.push(...readings);renderCityMarkers();
+   setTemperatureStatus("Live temperatures: "+cityWeather.length+" locations loaded"+(failed?"; "+failed+" awaiting retry":"")+".");
   }catch(error){
    failed+=batch.length;
    console.warn("Northstar temperature batch failed:",error);
-   document.getElementById("status").textContent="Loading temperature readings… "+cityWeather.length+" available; "+failed+" locations need retry.";
+   setTemperatureStatus("Live temperatures: "+cityWeather.length+" loaded; "+failed+" locations need retry.",true);
   }
  }
  renderCityMarkers();
- document.getElementById("status").textContent=cityWeather.length
-  ?"Temperature readings shown at "+cityWeather.length+" locations. Town names and weather symbols remain hidden."+(failed?" "+failed+" locations could not be updated.":"")
-  :"Temperature readings could not be loaded. "+(failed?"Check your connection or refresh the map.":"Please refresh the map.");
+ if(cityWeather.length){
+  setTemperatureStatus("Live temperatures: "+cityWeather.length+" locations"+(failed?"; "+failed+" unavailable":"")+".",failed>0);
+ }else{
+  setTemperatureStatus("Live temperatures unavailable. Check Northstar's weather connection.",true);
+ }
 }
 // Fetch temperatures independently from the rain-radar layer.
 loadCityWeather();
