@@ -627,12 +627,11 @@ const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Le
 const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Kettering","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
 const nonTownPlaces=new Set(["Somerset","North Somerset","Cornwall","Devon","Dorset","Wiltshire","Gloucestershire","Oxfordshire","Buckinghamshire","Berkshire","Hampshire","Surrey","Sussex","East Sussex","West Sussex","Kent","Essex","Suffolk","Norfolk","Cambridgeshire","Bedfordshire","Northamptonshire","Warwickshire","Worcestershire","Herefordshire","Staffordshire","Shropshire","Cheshire","Lancashire","Cumbria","Northumberland","County Durham","Yorkshire","Nottinghamshire","Derbyshire","Leicestershire","Lincolnshire","Greater Manchester","Merseyside","Scotland","Wales","Northern Ireland"]);
 function isUkIrelandPlace(x){return x.lat>=49.8&&x.lat<=59.6&&x.lon>=-11.2&&x.lon<=2.2&&!nonTownPlaces.has(x.name);}
-const europeanDisplayPlaces=new Set(["Paris","Lille","Bordeaux","Lyon","Marseille","Brussels","Amsterdam","Rotterdam","Luxembourg","Berlin","Hamburg","Munich","Frankfurt","Copenhagen","Oslo","Stockholm","Helsinki","Zurich","Geneva","Vienna","Prague","Warsaw","Milan","Rome","Madrid","Barcelona","Lisbon","Porto","Athens","Budapest","Reykjavik","Bergen","Nantes","Rennes","Toulouse","Montpellier","Nice","Grenoble","Strasbourg","Antwerp","Ghent","Cologne","Dusseldorf","Stuttgart","Basel","Bern","Turin","Florence","Naples","Valencia","Bilbao","Malaga","Seville","Aarhus","Gothenburg","Malmo"]);
-function isDisplayedWeatherPlace(x){
- if(isUkIrelandPlace(x))return nationalPlaces.has(x.name)||regionalPlaces.has(x.name);
- return europeanDisplayPlaces.has(x.name);
+function placeVisibleAtZoom(x){
+ // The 319 curated locations are the complete marker set.
+ // Keep their live temperature labels visible at every zoom level.
+ return true;
 }
-function placeVisibleAtZoom(x){return isDisplayedWeatherPlace(x);}
 function renderCityMarkers(){
  if(metricSurfaceLayer||fogVisible)return;
  cityMarkers.clearLayers();
@@ -730,21 +729,10 @@ async function loadRainForecast(){
   url.searchParams.set("longitude",grid.map(p=>p.lon).join(","));
   url.searchParams.set("hourly","precipitation,precipitation_probability");
   url.searchParams.set("forecast_hours","7");url.searchParams.set("timezone","UTC");
-  const locations=[];
-  for(let i=0;i<grid.length;i+=40){
-   const points=grid.slice(i,i+40),params=new URLSearchParams({
-    latitude:points.map(p=>p.lat).join(","),longitude:points.map(p=>p.lon).join(","),
-    hourly:"precipitation,precipitation_probability",forecast_hours:"7",timezone:"UTC"
-   });
-   let response=await fetch("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString());
-   if(!response.ok)response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString());
-   if(!response.ok)throw Error("Forecast service returned HTTP "+response.status);
-   const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
-   if(items.length!==points.length)throw Error("Incomplete forecast response");
-   items.forEach((item,j)=>locations.push({point:points[j],hourly:item.hourly}));
-  }
+  const response=await fetch(url);if(!response.ok)throw Error("Forecast unavailable");
+  const raw=await response.json(),locations=Array.isArray(raw)?raw:[raw];
   if(!locations.length||!locations[0].hourly)throw Error("No forecast data");
-  rainForecastData=locations.map(({point,hourly})=>({lat:point.lat,lon:point.lon,times:hourly.time,amount:hourly.precipitation||[],probability:hourly.precipitation_probability||[]}));
+  rainForecastData=locations.map((location,i)=>({lat:grid[i].lat,lon:grid[i].lon,times:location.hourly.time,amount:location.hourly.precipitation||[],probability:location.hourly.precipitation_probability||[]}));
   rainForecastSlider.disabled=false;rainForecastSlider.max=String(Math.min(6,...rainForecastData.map(p=>p.times.length-1)));
   rainForecastSlider.value="1";updateRainForecast(1);rainForecastToggle.disabled=false;
   rainForecastToggle.textContent="🌦️ Hide rain forecast";
@@ -775,10 +763,10 @@ async function getCitiesBatch(batch){
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
+ // Request the multi-coordinate temperature batch directly from Open-Meteo.
+ // The Northstar edge proxy can reject larger map batches; use it only as fallback.
  const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
  const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- // Multi-coordinate radar batches use the public forecast endpoint first;
- // keep Northstar's shared proxy as a fallback for transient provider failures.
  let response=await fetch(direct,{cache:"no-store"});
  if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
@@ -805,9 +793,8 @@ function addCityMarker(x,bounds){
 }
 (async()=>{
  let count=0,failed=0,firstError="";const bounds=[];
- const displayedCities=cities.filter(isDisplayedWeatherPlace);
- for(let i=0;i<displayedCities.length;i+=50){
-  const batch=displayedCities.slice(i,i+50);
+ for(let i=0;i<cities.length;i+=50){
+  const batch=cities.slice(i,i+50);
   try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
   catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
  }
@@ -818,9 +805,8 @@ function addCityMarker(x,bounds){
 })();setInterval(async()=>{
  try{
   const fresh=[];
-  const displayedCities=cities.filter(isDisplayedWeatherPlace);
-  for(let i=0;i<displayedCities.length;i+=50){
-   const batch=displayedCities.slice(i,i+50);
+  for(let i=0;i<cities.length;i+=50){
+   const batch=cities.slice(i,i+50);
    try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
   }
   if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
