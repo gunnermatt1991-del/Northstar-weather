@@ -244,7 +244,7 @@ img,svg,canvas{max-width:100%}
  <div class="mini-stat"><span>🌫️ Fog and poor visibility</span><input type="checkbox" id="alertFog" checked aria-label="Fog alerts"></div>
  <div class="mini-stat"><span>🥶 Frost and freezing temperatures</span><input type="checkbox" id="alertFrost" checked aria-label="Frost and freezing temperature alerts"></div></div>
  <p class="muted" id="pushStatus" role="status" aria-live="polite" style="margin:14px 0 0">Alerts are currently off on this device.</p>
- <p class="muted" style="font-size:11px;margin-top:12px">Northstar checks subscribed locations every 30 minutes. Your browser must allow notifications. On iPhone, install Northstar to your Home Screen and open it there before enabling push alerts.</p>
+ <p class="muted" style="font-size:11px;margin-top:12px">Northstar checks subscribed locations every 10 minutes. Your browser must allow notifications. On iPhone, install Northstar to your Home Screen and open it there before enabling push alerts.</p>
  </section>
  <section class="section card integrated-weather" id="weather-map" data-view="radar"><div class="section-head"><div><h2>Northstar Weather Map</h2><p class="muted" style="margin:5px 0 0;font-size:13px">One interactive UK, Ireland and Europe map for current conditions, radar, forecast layers and Premium storm intelligence. Switch storm models and forecast hours on the same map.</p></div><span class="tag">One unified map</span></div><iframe class="integrated-frame map-frame" src="./Northstar-UK-Map-Fixed%202.html?embed=1&layout=radar-first-v3&view=map&mapbuild=20261110-kettering-model-lines-r4" title="Northstar unified weather and storm map" loading="lazy"></iframe></section>
 </main><nav class="northstar-dock" aria-label="Main navigation"><a href="#weather-home" class="dock-item active" data-dock="weather"><span>☀️</span><small>Weather</small></a><a href="#weather-map" class="dock-item" data-dock="radar"><span>◉</span><small>Radar</small></a><a href="#weather-charts" class="dock-item" data-dock="charts"><span>⌁</span><small>Charts</small></a><a href="#weather-warnings" class="dock-item" data-dock="warnings"><span>⚠️</span><small>Warnings</small></a><button type="button" class="dock-item" id="dockSettings"><span>⚙️</span><small>Settings</small></button></nav><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
@@ -356,7 +356,7 @@ async function refreshPushUi(){
  const active=!!sub&&Notification.permission==="granted";
  support.textContent=active?"Notifications are enabled on this device.":Notification.permission==="denied"?"Notifications are blocked in this device's browser settings.":"Notifications are not enabled on this device.";
  status.textContent=active
-  ?"This device has notification permission and a push subscription. Send a test alert to verify delivery; weather checks run every 30 minutes and alerts depend on forecast conditions."
+  ?"This device has notification permission and a push subscription. Send a test alert to verify delivery; weather checks run every 10 minutes and alerts depend on forecast conditions."
   :"Alerts are currently off on this device. Tap Enable weather alerts to switch them on.";
  enable.textContent=active?"Refresh alert settings":"Enable weather alerts";
  enable.disabled=false;test.disabled=!active;off.disabled=!active;
@@ -379,7 +379,7 @@ async function enableNorthstarPush(){
   }
   await syncPushSubscription(subscription.toJSON());
   localStorage.setItem(pushSubKey,JSON.stringify(subscription.toJSON()));
-  setPushStatus("You're all set. Northstar will check your selected weather alerts every 30 minutes.");
+  setPushStatus("You're all set. Northstar will check your selected weather alerts every 10 minutes.");
   await refreshPushUi();
  }catch(error){setPushStatus(error.message||"Could not enable notifications. Please try again.");}
  finally{button.disabled=false}
