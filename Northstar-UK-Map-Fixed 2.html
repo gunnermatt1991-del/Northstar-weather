@@ -622,8 +622,8 @@ applyMapTheme(mapMode==="night");
 modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
 updateAutomaticTheme();setInterval(updateAutomaticTheme,60000);
-// Temperature marker layer intentionally detached from the map: keep the radar clear and fully visible.
-const cityMarkers=L.layerGroup();
+// Keep the temperature marker layer mounted above radar tiles so labels remain visible.
+const cityMarkers=L.layerGroup().addTo(map);
 /* UK & Ireland first: curated national and regional place tiers keep the map legible. */
 const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Leeds","Sheffield","Newcastle upon Tyne","Edinburgh","Glasgow","Cardiff","Bristol","Belfast","Dublin","Aberdeen"]);
 const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Kettering","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
@@ -799,7 +799,7 @@ function addCityMarker(x){
  L.marker([x.lat,x.lon],{icon:marker,keyboard:false,interactive:false}).addTo(cityMarkers);
 }
 async function loadCityWeather(){
- const batchSize=50;
+ const batchSize=20;
  const batches=[];
  for(let i=0;i<cities.length;i+=batchSize)batches.push(cities.slice(i,i+batchSize));
  cityWeather=[];
@@ -812,12 +812,14 @@ async function loadCityWeather(){
    document.getElementById("status").textContent="Loading temperature readings… "+cityWeather.length+" of "+cities.length+" locations.";
   }catch(error){
    failed+=batch.length;
+   console.warn("Northstar temperature batch failed:",error);
+   document.getElementById("status").textContent="Loading temperature readings… "+cityWeather.length+" available; "+failed+" locations need retry.";
   }
  }
  renderCityMarkers();
  document.getElementById("status").textContent=cityWeather.length
   ?"Temperature readings shown at "+cityWeather.length+" locations. Town names and weather symbols remain hidden."+(failed?" "+failed+" locations could not be updated.":"")
-  :"Temperature readings could not be loaded. Rain radar remains available.";
+  :"Temperature readings could not be loaded. "+(failed?"Check your connection or refresh the map.":"Please refresh the map.");
 }
 // Fetch temperatures independently from the rain-radar layer.
 loadCityWeather();
