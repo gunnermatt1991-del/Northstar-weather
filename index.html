@@ -207,6 +207,7 @@ img,svg,canvas{max-width:100%}
  <div class="section" style="margin-top:18px"><h3 style="font-size:15px;margin:0 0 8px">Alert location</h3><div class="muted" id="alertLocationName">Using your selected forecast location</div><p class="muted" style="font-size:11px;margin:5px 0">Search for a different town on the Weather tab to change this location.</p></div>
  <div class="section" style="margin-top:18px"><h3 style="font-size:15px;margin:0 0 8px">Choose your alerts</h3>
  <div class="mini-stat"><span>🌧️ Heavy rain</span><input type="checkbox" id="alertRain" checked aria-label="Heavy rain alerts"></div>
+ <div class="mini-stat"><span>🌦️ Rain starting soon (within 3 hours)</span><input type="checkbox" id="alertRainStart" checked aria-label="Rain starting soon alerts"></div>
  <div class="mini-stat"><span>💨 Strong winds</span><input type="checkbox" id="alertWind" checked aria-label="Strong wind alerts"></div>
  <div class="mini-stat"><span>❄️ Snow and ice</span><input type="checkbox" id="alertSnow" checked aria-label="Snow and ice alerts"></div>
  <div class="mini-stat"><span>⛈️ Thunderstorms</span><input type="checkbox" id="alertThunder" checked aria-label="Thunderstorm alerts"></div>
@@ -256,7 +257,7 @@ const $=id=>document.getElementById(id);let place={lat:52.3984,lon:-0.7283,name:
 const PUSH_WORKER="https://northstar-weather-alerts.gunnermatt1991.workers.dev";
 const pushPrefsKey="northstar-weather-alert-preferences";
 const pushSubKey="northstar-weather-push-subscription";
-const pushIds={rain:"alertRain",wind:"alertWind",snow:"alertSnow",thunder:"alertThunder",fog:"alertFog",frost:"alertFrost"};
+const pushIds={rain:"alertRain",rainStart:"alertRainStart",wind:"alertWind",snow:"alertSnow",thunder:"alertThunder",fog:"alertFog",frost:"alertFrost"};
 function pushPrefs(){const out={};for(const [key,id] of Object.entries(pushIds))out[key]=!!$(id)?.checked;return out}
 function setPushStatus(message){const el=$("pushStatus");if(el)el.textContent=message}
 function base64UrlBytes(value){const padded=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4);return Uint8Array.from(atob(padded),c=>c.charCodeAt(0))}
