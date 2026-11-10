@@ -356,7 +356,7 @@ async function refreshPushUi(){
  const active=!!sub&&Notification.permission==="granted";
  support.textContent=active?"Notifications are enabled on this device.":Notification.permission==="denied"?"Notifications are blocked in this device's browser settings.":"Notifications are not enabled on this device.";
  status.textContent=active
-  ?"You're all set. Weather alerts remain enabled when you close Northstar, provided this device still allows notifications."
+  ?"This device has notification permission and a push subscription. Send a test alert to verify delivery; weather checks run every 30 minutes and alerts depend on forecast conditions."
   :"Alerts are currently off on this device. Tap Enable weather alerts to switch them on.";
  enable.textContent=active?"Refresh alert settings":"Enable weather alerts";
  enable.disabled=false;test.disabled=!active;off.disabled=!active;
