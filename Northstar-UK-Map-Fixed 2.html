@@ -277,8 +277,8 @@ body.embed.storm-only .storm-panel{margin:0!important}
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script>
- // Northstar shared Open-Meteo cache: reuse successful responses across page reloads.
- (function(){const nativeFetch=window.fetch.bind(window);window.fetch=async function(input,init){const raw=typeof input==="string"?input:(input&&input.url)||"";let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);const key="northstarOpenMeteo:"+url.href,ttl=15*60*1000;try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved);if(item&&Date.now()-item.time<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json"}});localStorage.removeItem(key)}}catch(e){}const response=await nativeFetch(input,init);if(response.ok){try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body:await response.clone().text()}))}catch(e){}}return response}})();
+ // Keep the last successful map forecast available when Open-Meteo rate-limits requests.
+ (function(){const nativeFetch=window.fetch.bind(window),inflight=new Map();window.fetch=async function(input,init){const raw=typeof input==="string"?input:(input&&input.url)||"";let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);const key="northstarOpenMeteo:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;let stale=null;try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved),age=Date.now()-item.time;if(item&&typeof item.body==="string"&&age>=0&&age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});if(item&&typeof item.body==="string"&&age>=0&&age<staleLimit)stale=item;}}catch(e){}if(inflight.has(key)){try{return new Response(await inflight.get(key),{status:200,headers:{"content-type":"application/json","x-northstar-cache":"SHARED"}})}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}}const task=(async()=>{const response=await nativeFetch(input,init);if(response.ok){const body=await response.clone().text();try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return {response,body}}if(stale)return {response:new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}}),body:stale.body};return {response,body:null}})();inflight.set(key,task.then(x=>{if(!x.response.ok)throw Error("HTTP "+x.response.status);return x.body}));try{return (await task).response}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}finally{inflight.delete(key)}}})();
 
 const pageView=new URLSearchParams(location.search).get("view");
 if(new URLSearchParams(location.search).get("embed")==="1"){document.body.classList.add("embed");if(pageView==="map")document.body.classList.add("map-only");if(pageView==="storm")document.body.classList.add("storm-only");}else location.replace("./index.html#weather-map");
@@ -800,27 +800,11 @@ function addCityMarker(x,bounds){
  "🌀 Pressure: "+fmt(v.pressure_msl)+" hPa";
  L.marker([x.lat,x.lon],{icon:marker}).bindPopup(popup,{maxWidth:260}).addTo(cityMarkers);bounds.push([x.lat,x.lon]);
 }
-(async()=>{
- let count=0,failed=0,firstError="";const bounds=[];
- for(let i=0;i<cities.length;i+=50){
-  const batch=cities.slice(i,i+50);
-  try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
-  catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
- }
- if(bounds.length)map.setView([54,-3],5);
- document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland, Europe and worldwide destinations"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";
- if(!count)document.getElementById("status").textContent="No town temperatures loaded: "+(firstError||"weather service unavailable")+". Please refresh.";
- setTimeout(()=>map.invalidateSize({pan:false}),250)
-})();setInterval(async()=>{
- try{
-  const fresh=[];
-  for(let i=0;i<cities.length;i+=50){
-   const batch=cities.slice(i,i+50);
-   try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
-  }
-  if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
- }catch(e){console.warn("Weather observation refresh failed",e)}
-},15*60*1000);
+// Temperature markers are intentionally disabled to keep the radar map clean and
+// avoid unnecessary multi-location Open-Meteo requests. Radar layers remain active.
+cityWeather=[];
+document.getElementById("status").textContent="Temperature markers are off. Rain radar and map layers remain available.";
+setTimeout(()=>map.invalidateSize({pan:false}),250);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
