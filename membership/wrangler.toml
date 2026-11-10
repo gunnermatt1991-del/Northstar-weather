@@ -2,3 +2,9 @@ name = "northstar-premium-membership"
 main = "worker.js"
 compatibility_date = "2026-11-06"
 workers_dev = true
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = "northstar-notifications"
+database_id = "437a7b4b-85b0-4af8-8abc-a0e6b25249ce"

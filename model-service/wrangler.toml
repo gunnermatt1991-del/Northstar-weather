@@ -1,3 +1,6 @@
 name = "northstar-model-data"
 main = "worker.js"
 compatibility_date = "2026-11-08"
+
+[vars]
+MODEL_API_MODE = "development"

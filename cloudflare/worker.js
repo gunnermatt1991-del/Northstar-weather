@@ -2,12 +2,15 @@
 // Build trigger after correcting Cloudflare root directory
 import webpush from "web-push";
 
-const APP_ORIGIN = "https://gunnermatt1991-del.github.io";
-const json = (data, status = 200, origin = APP_ORIGIN) => new Response(JSON.stringify(data), {
+const APP_ORIGINS = new Set([
+  "https://gunnermatt1991-del.github.io",
+  "https://northstar-weather.pages.dev"
+]);
+const json = (data, status = 200, origin = "*") => new Response(JSON.stringify(data), {
   status,
   headers: {
     "content-type": "application/json; charset=utf-8",
-    "access-control-allow-origin": origin,
+    "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
     "access-control-allow-headers": "content-type",
     "vary": "Origin"
@@ -15,7 +18,7 @@ const json = (data, status = 200, origin = APP_ORIGIN) => new Response(JSON.stri
 });
 const fail = (message, status = 400) => json({ error: message }, status);
 const ctxWaitUntilSafe = promise => { try { /* cache write is awaited by the runtime */ return promise; } catch { return Promise.resolve(); } };
-const allowed = request => request.headers.get("Origin") === APP_ORIGIN;
+const allowed = request => APP_ORIGINS.has(request.headers.get("Origin"));
 const b64url = value => btoa(String.fromCharCode(...new Uint8Array(value)))
   .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 
@@ -28,20 +31,56 @@ function vapid(env) {
 
 function validSubscription(s) {
   try {
+    if (!s || typeof s.endpoint !== "string" || s.endpoint.length > 2048) return false;
     const u = new URL(s.endpoint);
-    return u.protocol === "https:" && typeof s.keys?.p256dh === "string" &&
-      typeof s.keys?.auth === "string" && s.keys.p256dh.length < 200 &&
-      s.keys.auth.length < 100;
+    const host = u.hostname.toLowerCase();
+    const browserPushHost =
+      host === "fcm.googleapis.com" ||
+      host === "push.services.mozilla.com" ||
+      host.endsWith(".push.services.mozilla.com") ||
+      host.endsWith(".push.apple.com") ||
+      host.endsWith(".notify.windows.com");
+    return u.protocol === "https:" && u.username === "" && u.password === "" &&
+      (u.port === "" || u.port === "443") && browserPushHost &&
+      typeof s.keys?.p256dh === "string" && s.keys.p256dh.length >= 40 && s.keys.p256dh.length <= 200 &&
+      typeof s.keys?.auth === "string" && s.keys.auth.length >= 16 && s.keys.auth.length <= 100;
   } catch { return false; }
+}
+async function limitedJson(request, maxBytes = 16384) {
+  const raw = await request.text();
+  if (raw.length > maxBytes) throw new Error("Request body is too large.");
+  return JSON.parse(raw);
+}
+async function rateLimited(request, env, route, limit, windowSeconds = 600) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip + "|" + route));
+  const key = b64url(digest);
+  const window = Math.floor(Date.now() / (windowSeconds * 1000));
+  const row = await env.DB.prepare(`
+    INSERT INTO api_rate_limits (bucket, window_start, hits)
+    VALUES (?, ?, 1)
+    ON CONFLICT(bucket) DO UPDATE SET
+      hits = CASE WHEN api_rate_limits.window_start = excluded.window_start
+        THEN api_rate_limits.hits + 1 ELSE 1 END,
+      window_start = excluded.window_start
+    RETURNING hits
+  `).bind(key, window).first();
+  return Number(row?.hits || 0) > limit;
+}
+function sameSecret(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
-      if (origin !== APP_ORIGIN) return new Response(null, { status: 403 });
+      if (!APP_ORIGINS.has(origin)) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: {
-        "access-control-allow-origin": APP_ORIGIN,
+        "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
         "access-control-allow-headers": "content-type",
         "access-control-max-age": "86400",
@@ -70,6 +109,34 @@ export default {
       });
     }
 
+    // CORS-safe MET Norway backup forecast. The browser must not call api.met.no
+    // directly: its strict client policy can reject cross-origin requests.
+    if (request.method === "GET" && url.pathname === "/weather/backup") {
+      const lat = Number(url.searchParams.get("lat"));
+      const lon = Number(url.searchParams.get("lon"));
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return json({ error: "Valid latitude and longitude are required." }, 400);
+      }
+      try {
+        const backupUrl = new URL("https://api.met.no/weatherapi/locationforecast/2.0/compact");
+        backupUrl.searchParams.set("lat", lat.toFixed(4));
+        backupUrl.searchParams.set("lon", lon.toFixed(4));
+        const backup = await fetch(backupUrl.toString(), {
+          headers: { "accept": "application/json", "user-agent": "NorthstarWeather/1.0 (https://github.com/gunnermatt1991-del/Northstar-weather)" }
+        });
+        if (!backup.ok) return json({ error: true, reason: "Backup weather provider returned " + backup.status + "." }, backup.status);
+        return new Response(await backup.text(), { status: 200, headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=600",
+          "access-control-allow-origin": "*",
+          "vary": "Origin"
+        }});
+      } catch (error) {
+        console.error("Backup forecast proxy failed", error);
+        return json({ error: true, reason: "Backup weather provider is temporarily unavailable." }, 502);
+      }
+    }
+
     // Shared edge cache for Open-Meteo requests. Browser clients call this
     // same-origin Worker instead of hitting the upstream API independently.
     if (request.method === "GET" && (url.pathname === "/weather/forecast" || url.pathname === "/weather/geocoding")) {
@@ -80,19 +147,62 @@ export default {
       upstream.search = url.search;
       const cache = caches.default;
       const cacheKey = new Request(url.toString(), { method: "GET" });
+      // Keep a separate seven-day fallback copy. The short-lived fresh cache
+      // protects Open-Meteo from repeated requests; the fallback keeps the app
+      // usable if the provider temporarily responds with HTTP 429 or 5xx.
+      const staleCacheKey = new Request("https://northstar-weather-stale.local" + url.pathname + url.search, { method: "GET" });
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
       }
+      const serveStale = async () => {
+        const stale = await cache.match(staleCacheKey);
+        if (!stale) return null;
+        const headers = new Headers(stale.headers);
+        headers.set("access-control-allow-origin", "*");
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "STALE");
+        headers.set("warning", '110 - "Response is stale"');
+        return new Response(stale.body, { status: 200, headers });
+      };
       try {
-        const upstreamResponse = await fetch(upstream.toString(), {
-          headers: { "accept": "application/json" }
-        });
+        const standardSingleForecast = forecast &&
+          !url.searchParams.has("models") &&
+          !String(url.searchParams.get("latitude") || "").includes(",");
+        let upstreamResponse;
+        // Prefer the independent Open-Meteo-compatible mirror for the main
+        // single-location forecast. This avoids sending every Northstar user
+        // through the same upstream free-tier quota. Keep official Open-Meteo
+        // as the immediate fallback if the mirror is unavailable.
+        if (standardSingleForecast) {
+          const mirror = new URL("https://weather.tk.gg/v1/forecast");
+          mirror.search = url.search;
+          try {
+            upstreamResponse = await fetch(mirror.toString(), {
+              headers: { "accept": "application/json" }
+            });
+          } catch (mirrorError) {
+            console.warn("Primary weather mirror request failed", mirrorError);
+          }
+          if (!upstreamResponse || !upstreamResponse.ok) {
+            upstreamResponse = await fetch(upstream.toString(), {
+              headers: { "accept": "application/json" }
+            });
+          }
+        } else {
+          upstreamResponse = await fetch(upstream.toString(), {
+            headers: { "accept": "application/json" }
+          });
+        }
         if (!upstreamResponse.ok) {
+          if (forecast && (upstreamResponse.status === 429 || upstreamResponse.status >= 500)) {
+            const staleResponse = await serveStale();
+            if (staleResponse) return staleResponse;
+          }
           return json({ error: true, reason: "Weather provider returned " + upstreamResponse.status + ". Please try again shortly." }, upstreamResponse.status);
         }
         const ttl = forecast
@@ -101,7 +211,7 @@ export default {
         const headers = new Headers(upstreamResponse.headers);
         headers.set("content-type", "application/json; charset=utf-8");
         headers.set("cache-control", "public, max-age=" + ttl);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "MISS");
         const response = new Response(await upstreamResponse.arrayBuffer(), {
@@ -111,15 +221,27 @@ export default {
         const storedHeaders = new Headers(response.headers);
         storedHeaders.delete("access-control-allow-origin");
         storedHeaders.delete("x-northstar-cache");
-        // Cache writes run in the background so a slow cache store cannot
-        // hold the user's live forecast response open.
-        ctx.waitUntil(cache.put(cacheKey, new Response(response.clone().body, {
-          status: response.status,
-          headers: storedHeaders
-        })).catch(error => console.error("Weather cache write failed", error)));
+        const staleHeaders = new Headers(storedHeaders);
+        // Keep the last successful forecast available for a full week if the upstream provider rate-limits.
+        staleHeaders.set("cache-control", "public, max-age=604800");
+        // Fresh and fallback cache writes run in the background.
+        ctx.waitUntil(Promise.all([
+          cache.put(cacheKey, new Response(response.clone().body, {
+            status: response.status,
+            headers: storedHeaders
+          })),
+          ...(forecast ? [cache.put(staleCacheKey, new Response(response.clone().body, {
+            status: response.status,
+            headers: staleHeaders
+          }))] : [])
+        ]).catch(error => console.error("Weather cache write failed", error)));
         return response;
       } catch (error) {
         console.error("Weather proxy failed", error);
+        if (forecast) {
+          const staleResponse = await serveStale();
+          if (staleResponse) return staleResponse;
+        }
         return json({ error: true, reason: "Weather data is temporarily unavailable." }, 502);
       }
     }
@@ -141,7 +263,7 @@ export default {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
@@ -179,7 +301,7 @@ export default {
         const response = new Response(body, { status: 200, headers: {
           "content-type": "application/json; charset=utf-8",
           "cache-control": "public, max-age=1800",
-          "access-control-allow-origin": APP_ORIGIN,
+          "access-control-allow-origin": "*",
           "vary": "Origin"
         }});
         ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
@@ -202,7 +324,7 @@ export default {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
-        headers.set("access-control-allow-origin", APP_ORIGIN);
+        headers.set("access-control-allow-origin", "*");
         headers.set("vary", "Origin");
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
@@ -241,7 +363,7 @@ export default {
         const response = new Response(body, { status: 200, headers: {
           "content-type": "application/geo+json; charset=utf-8",
           "cache-control": "public, max-age=300",
-          "access-control-allow-origin": APP_ORIGIN,
+          "access-control-allow-origin": "*",
           "vary": "Origin"
         }});
         ctx.waitUntil(cache.put(cacheKey, new Response(body, { status: 200, headers: {
@@ -261,50 +383,79 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/subscribe") {
+      try {
+        if (await rateLimited(request, env, "/subscribe", 12)) return fail("Too many subscription changes. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Subscription rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
       const { subscription, latitude, longitude, locationName, preferences } = body || {};
       if (!validSubscription(subscription)) return fail("Invalid push subscription.");
+      const existing = await env.DB.prepare("SELECT p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(subscription.endpoint).first();
+      if (existing && (!sameSecret(existing.p256dh, subscription.keys.p256dh) || !sameSecret(existing.auth, subscription.keys.auth))) {
+        return fail("This notification subscription could not be verified.", 403);
+      }
       if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
           !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
         return fail("A valid location is required.");
       }
       const prefs = {
         rain: preferences?.rain !== false,
+        rainStart: preferences?.rainStart !== false,
         wind: preferences?.wind !== false,
         snow: preferences?.snow !== false,
         thunder: preferences?.thunder !== false,
-        fog: preferences?.fog !== false
+        fog: preferences?.fog !== false,
+        frost: preferences?.frost !== false
       };
       const id = crypto.randomUUID();
-      await env.DB.prepare(`
-        INSERT INTO subscriptions (id, endpoint, p256dh, auth, latitude, longitude, location_name, preferences, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(endpoint) DO UPDATE SET
-          p256dh=excluded.p256dh, auth=excluded.auth, latitude=excluded.latitude,
-          longitude=excluded.longitude, location_name=excluded.location_name,
-          preferences=excluded.preferences, updated_at=datetime('now')
-      `).bind(id, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth,
-        latitude, longitude, String(locationName || "Saved location").slice(0, 80),
-        JSON.stringify(prefs)).run();
-      return json({ ok: true });
+      try {
+        await env.DB.prepare(`
+          INSERT INTO subscriptions (id, endpoint, p256dh, auth, latitude, longitude, location_name, preferences, alert_state, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', datetime('now'), datetime('now'))
+          ON CONFLICT(endpoint) DO UPDATE SET
+            p256dh=excluded.p256dh, auth=excluded.auth, latitude=excluded.latitude,
+            longitude=excluded.longitude, location_name=excluded.location_name,
+            preferences=excluded.preferences, updated_at=datetime('now')
+        `).bind(id, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth,
+          latitude, longitude, String(locationName || "Saved location").slice(0, 80),
+          JSON.stringify(prefs)).run();
+        return json({ ok: true, saved: true });
+      } catch (error) {
+        console.error("Push subscription save failed", error);
+        return json({ error: "Could not save alert settings: " + String(error?.message || error).slice(0, 240) }, 500);
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/unsubscribe") {
+      try {
+        if (await rateLimited(request, env, "/unsubscribe", 20)) return fail("Too many requests. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Unsubscribe rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
-      if (typeof body?.endpoint !== "string") return fail("Subscription endpoint is required.");
-      await env.DB.prepare("DELETE FROM subscriptions WHERE endpoint = ?").bind(body.endpoint).run();
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
+      const sub = body?.subscription;
+      if (!validSubscription(sub)) return fail("A valid device subscription is required.");
+      const existing = await env.DB.prepare("SELECT id, p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(sub.endpoint).first();
+      if (existing && sameSecret(existing.p256dh, sub.keys.p256dh) && sameSecret(existing.auth, sub.keys.auth)) {
+        await env.DB.prepare("DELETE FROM subscriptions WHERE id = ?").bind(existing.id).run();
+      }
       return json({ ok: true });
     }
 
     if (request.method === "POST" && url.pathname === "/test") {
+      try {
+        if (await rateLimited(request, env, "/test", 3)) return fail("Too many test alerts. Please wait a few minutes and try again.", 429);
+      } catch (error) { console.error("Test alert rate limit unavailable", error); return fail("Alert service is temporarily unavailable. Please try again shortly.", 503); }
       let body;
-      try { body = await request.json(); } catch { return fail("Invalid JSON."); }
-      if (!validSubscription(body?.subscription)) return fail("Valid subscription required.");
+      try { body = await limitedJson(request); } catch (error) { return fail(error.message === "Request body is too large." ? error.message : "Invalid JSON."); }
+      const sub = body?.subscription;
+      if (!validSubscription(sub)) return fail("Valid device subscription required.");
+      const saved = await env.DB.prepare("SELECT endpoint, p256dh, auth FROM subscriptions WHERE endpoint = ?").bind(sub.endpoint).first();
+      if (!saved || !sameSecret(saved.p256dh, sub.keys.p256dh) || !sameSecret(saved.auth, sub.keys.auth)) {
+        return fail("This device is not registered for Northstar alerts. Refresh alert settings first.", 403);
+      }
       try {
         vapid(env);
-        await webpush.sendNotification(body.subscription, JSON.stringify({
+        await webpush.sendNotification({ endpoint: saved.endpoint, keys: { p256dh: saved.p256dh, auth: saved.auth } }, JSON.stringify({
           title: "Northstar Weather",
           body: "Your weather notifications are switched on. This is a test alert.",
           tag: "northstar-test",
@@ -331,10 +482,10 @@ export default {
         const forecastUrl = new URL("https://api.open-meteo.com/v1/forecast");
         forecastUrl.searchParams.set("latitude", sub.latitude);
         forecastUrl.searchParams.set("longitude", sub.longitude);
-        forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max");
-        forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m");
+        forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max,temperature_2m_min");
+        forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m,precipitation,precipitation_probability");
         forecastUrl.searchParams.set("forecast_hours", "36");
-        forecastUrl.searchParams.set("forecast_days", "2");
+        forecastUrl.searchParams.set("forecast_days", "7");
         forecastUrl.searchParams.set("timezone", "auto");
         const response = await fetch(forecastUrl);
         if (!response.ok) continue;
@@ -342,6 +493,38 @@ export default {
         const prefs = JSON.parse(sub.preferences || "{}");
         const previous = JSON.parse(sub.alert_state || "{}");
         const alerts = [];
+        if (prefs.rainStart !== false && forecast.hourly?.time && forecast.hourly?.precipitation) {
+          const timezone = forecast.timezone || "UTC";
+          const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+          }).formatToParts(new Date());
+          const part = key => parts.find(item => item.type === key)?.value || "00";
+          const localNow = part("year") + "-" + part("month") + "-" + part("day") + "T" + part("hour") + ":" + part("minute");
+          const hourly = forecast.hourly;
+          const wetCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82];
+          const wet = hourly.time.map((time, index) => {
+            const amount = Number(hourly.precipitation?.[index] || 0);
+            const probability = Number(hourly.precipitation_probability?.[index] || 0);
+            const code = Number(hourly.weather_code?.[index] || 0);
+            return { time, amount, probability, wet: amount >= 0.2 || (probability >= 60 && wetCodes.includes(code)) };
+          });
+          for (let i = 1; i < wet.length; i++) {
+            const row = wet[i];
+            if (row.time <= localNow || !row.wet || wet[i - 1].wet) continue;
+            const leadMinutes = (Date.parse(row.time + ":00Z") - Date.parse(localNow + ":00Z")) / 60000;
+            if (leadMinutes < 0 || leadMinutes > 180) continue;
+            const startTime = row.time.slice(11, 16);
+            const chanceText = row.probability ? " There is around a " + Math.round(row.probability) + "% chance of precipitation." : "";
+            alerts.push({
+              key: "rain-start-" + row.time,
+              title: "Rain expected to start soon",
+              body: "Rain is forecast to begin near " + sub.location_name + " around " + startTime + " local time." + chanceText
+            });
+            break;
+          }
+        }
+        const frostOutlook = [];
         for (let i = 0; i < forecast.daily.time.length; i++) {
           const day = forecast.daily.time[i];
           const rain = Number(forecast.daily.precipitation_sum?.[i] || 0);
@@ -359,9 +542,28 @@ export default {
           if (prefs.wind !== false && wind >= 55) {
             alerts.push({ key: "wind-" + day, title: "Strong winds possible", body: dayLabel + " near " + sub.location_name + ": gusty conditions are possible, with forecast wind around " + Math.round(wind) + " km/h." });
           }
+          const overnightLow = Number(forecast.daily.temperature_2m_min?.[i]);
+          if (prefs.frost !== false && Number.isFinite(overnightLow) && overnightLow <= 0) {
+            const weekday = new Date(day + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+            frostOutlook.push({ day: weekday, low: Math.round(overnightLow) });
+          }
           if (prefs.thunder !== false && [95,96,99].includes(code)) {
             alerts.push({ key: "thunder-" + day, title: "Thunderstorms possible", body: dayLabel + " near " + sub.location_name + ": thunderstorms appear in the forecast." });
           }
+        }
+
+        if (frostOutlook.length) {
+          const coldest = Math.min(...frostOutlook.map(item => item.low));
+          const title = coldest <= -5 ? "Severe frost risk ahead" : coldest <= -2 ? "Hard frost possible" : "Frost and icy patches possible";
+          const nights = frostOutlook.map(item => item.day + " " + item.low + "°C").join(", ");
+          const advice = coldest <= -2
+            ? "Protect plants and check exposed pipes; watch for icy surfaces."
+            : "Take care on roads and paths, especially on exposed surfaces.";
+          alerts.push({
+            key: "frost-outlook",
+            title,
+            body: "Overnight lows near " + sub.location_name + ": " + nights + ". " + advice
+          });
         }
 
         if (prefs.fog !== false && forecast.hourly?.time && forecast.hourly?.visibility) {

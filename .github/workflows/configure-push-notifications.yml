@@ -1,0 +1,109 @@
+name: Configure and deploy Northstar push notifications
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Worker dependencies
+        working-directory: cloudflare
+        run: npm install --no-audit --no-fund
+
+      - name: Configure Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Add CLOUDFLARE_API_TOKEN to GitHub Actions secrets."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Add CLOUDFLARE_ACCOUNT_ID to GitHub Actions secrets."; exit 1; }
+
+      - name: Apply notification database schema and migrate existing table
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute northstar-notifications --remote --file=schema.sql
+          COLUMNS="$(npx wrangler d1 execute northstar-notifications --remote --command="PRAGMA table_info(subscriptions)" --json)"
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"id"'; then
+            echo "Adding missing id column required by subscription upserts."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN id TEXT"
+            npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET id = lower(hex(randomblob(16))) WHERE id IS NULL OR id = ''"
+          fi
+          npx wrangler d1 execute northstar-notifications --remote --command="CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_id ON subscriptions(id)"
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"location_name"'; then
+            echo "Adding missing location_name column required by subscription saves and scheduled checks."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN location_name TEXT NOT NULL DEFAULT 'Saved location'"
+          fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"preferences"'; then
+            echo "Adding missing preferences column required by alert subscriptions."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN preferences TEXT NOT NULL DEFAULT '{}'"
+          fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"created_at"'; then
+            echo "Adding missing created_at column required by subscription saves."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN created_at TEXT"
+            npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''"
+          fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"updated_at"'; then
+            echo "Adding missing updated_at column to existing subscriptions."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN updated_at TEXT"
+            npx wrangler d1 execute northstar-notifications --remote --command="UPDATE subscriptions SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = ''"
+          fi
+          if ! printf '%s' "$COLUMNS" | grep -q '"name"[[:space:]]*:[[:space:]]*"alert_state"'; then
+            echo "Adding missing alert_state column required by the scheduled alert checker."
+            npx wrangler d1 execute northstar-notifications --remote --command="ALTER TABLE subscriptions ADD COLUMN alert_state TEXT NOT NULL DEFAULT '{}'"
+          fi
+          npx wrangler d1 execute northstar-notifications --remote --command="CREATE INDEX IF NOT EXISTS idx_subscriptions_updated_at ON subscriptions(updated_at)"
+
+      - name: Generate and install VAPID credentials if missing
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          HEALTH="$(curl --fail --silent --show-error https://northstar-weather-alerts.gunnermatt1991.workers.dev/health)"
+          if node -e 'const h=JSON.parse(process.argv[1]);process.exit(h.vapidConfigured ? 0 : 1)' "$HEALTH"; then
+            echo "VAPID is already configured; preserving existing credentials."
+            exit 0
+          fi
+          KEYS="$(npx web-push generate-vapid-keys --json)"
+          PUBLIC_KEY="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).publicKey)' "$KEYS")"
+          PRIVATE_KEY="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).privateKey)' "$KEYS")"
+          echo "::add-mask::$PUBLIC_KEY"
+          echo "::add-mask::$PRIVATE_KEY"
+          printf '%s' "$PUBLIC_KEY" | npx wrangler secret put VAPID_PUBLIC_KEY
+          printf '%s' "$PRIVATE_KEY" | npx wrangler secret put VAPID_PRIVATE_KEY
+          printf '%s' 'https://gunnermatt1991-del.github.io/Northstar-weather/' | npx wrangler secret put VAPID_SUBJECT
+
+      - name: Deploy notification Worker
+        working-directory: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      - name: Verify live push configuration
+        run: |
+          set -euo pipefail
+          HEALTH="$(curl --fail --silent --show-error https://northstar-weather-alerts.gunnermatt1991.workers.dev/health)"
+          echo "$HEALTH"
+          node -e 'const h=JSON.parse(process.argv[1]); if (!h.ok || !h.vapidConfigured || !h.databaseConfigured) process.exit(1)' "$HEALTH"
+          echo "Worker reports VAPID and database configured. A real-device delivery test is still required."

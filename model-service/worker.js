@@ -1,49 +1,12 @@
-const ORIGIN = "https://gunnermatt1991-del.github.io";
-const MODELS = {
-  gfs: "ncep_gfs_global",
-  ecmwf: "ecmwf_ifs025",
-  ukmo_global: "ukmo_global_deterministic_10km",
-  ukmo_uk: "ukmo_uk_deterministic_2km"
-};
-const HOURLY = "temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,cloud_cover,geopotential_height_500hPa";
-function reply(data, status=200) {
-  return new Response(JSON.stringify(data), {status, headers:{
-    "content-type":"application/json; charset=utf-8",
-    "access-control-allow-origin":ORIGIN,
-    "access-control-allow-methods":"GET, OPTIONS",
-    "access-control-allow-headers":"content-type",
-    "cache-control":"public, max-age=900"
-  }});
-}
-export default {
- async fetch(request, env) {
-  const url=new URL(request.url);
-  if(request.method==="OPTIONS") return new Response(null,{status:204,headers:{
-   "access-control-allow-origin":ORIGIN,"access-control-allow-methods":"GET, OPTIONS",
-   "access-control-allow-headers":"content-type","access-control-max-age":"86400"
-  }});
-  if(request.headers.get("Origin")!==ORIGIN) return reply({error:"Origin not allowed"},403);
-  if(request.method!=="GET" || url.pathname!=="/model") return reply({error:"Not found"},404);
-  if(!env.OPEN_METEO_API_KEY) return reply({error:"Model service is not configured. Add the commercial Open-Meteo API key to the Worker secret OPEN_METEO_API_KEY."},503);
-  const model=url.searchParams.get("model")||"gfs";
-  const modelId=MODELS[model];
-  if(!modelId) return reply({error:"Unsupported model"},400);
-  const lat=Number(url.searchParams.get("latitude")??54.5);
-  const lon=Number(url.searchParams.get("longitude")??-2.5);
-  if(!Number.isFinite(lat)||lat < -90||lat>90||!Number.isFinite(lon)||lon < -180||lon>180) return reply({error:"Invalid coordinates"},400);
-  const target=new URL("https://customer-api.open-meteo.com/v1/forecast");
-  target.searchParams.set("latitude",String(lat));
-  target.searchParams.set("longitude",String(lon));
-  target.searchParams.set("hourly",HOURLY);
-  target.searchParams.set("forecast_days","7");
-  target.searchParams.set("timezone","UTC");
-  target.searchParams.set("models",modelId);
-  target.searchParams.set("apikey",env.OPEN_METEO_API_KEY);
-  try {
-   const response=await fetch(target,{headers:{"accept":"application/json"}});
-   if(!response.ok) return reply({error:"Upstream model provider returned "+response.status},502);
-   const data=await response.json();
-   return reply({model,modelId,provider:"Open-Meteo model interface",retrievedAt:new Date().toISOString(),attribution:"Forecast model data provided via Open-Meteo. Model source: "+({gfs:"NOAA/NCEP GFS",ecmwf:"ECMWF IFS",ukmo_global:"UK Met Office Global 10 km",ukmo_uk:"UK Met Office UK 2 km"}[model]),data});
-  } catch(e) { return reply({error:"Unable to retrieve model data"},502); }
- }
-};
+const ORIGIN="https://gunnermatt1991-del.github.io";
+const MODELS={gfs:"ncep_gfs_global",ecmwf:"ecmwf_ifs025",ukmo_global:"ukmo_global_deterministic_10km",ukmo_uk:"ukmo_uk_deterministic_2km"};
+const HOURLY="temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,cloud_cover";
+const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","access-control-allow-origin":ORIGIN,"access-control-allow-methods":"GET, OPTIONS","access-control-allow-headers":"content-type","cache-control":"public, max-age=900"}});
+export default {async fetch(request,env){const u=new URL(request.url);if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"access-control-allow-origin":ORIGIN,"access-control-allow-methods":"GET, OPTIONS","access-control-allow-headers":"content-type"}});if(request.headers.get("Origin")!==ORIGIN)return reply({error:"Origin not allowed"},403);if(request.method!=="GET"||u.pathname!=="/model")return reply({error:"Not found"},404);
+const model=u.searchParams.get("model")||"gfs",modelId=MODELS[model],lat=Number(u.searchParams.get("latitude")??54.5),lon=Number(u.searchParams.get("longitude")??-2.5);
+if(!modelId)return reply({error:"Unsupported model"},400);if(!Number.isFinite(lat)||lat < -90||lat>90||!Number.isFinite(lon)||lon < -180||lon>180)return reply({error:"Invalid coordinates"},400);
+const development=env.MODEL_API_MODE==="development";if(!development&&!env.OPEN_METEO_API_KEY)return reply({error:"Commercial model service is not configured. Add the licensed OPEN_METEO_API_KEY secret."},503);
+const target=new URL(development?"https://api.open-meteo.com/v1/forecast":"https://customer-api.open-meteo.com/v1/forecast");
+for(const [k,v] of Object.entries({latitude:lat,longitude:lon,hourly:HOURLY,forecast_days:7,timezone:"UTC",models:modelId}))target.searchParams.set(k,String(v));
+if(!development)target.searchParams.set("apikey",env.OPEN_METEO_API_KEY);
+try{const r=await fetch(target);if(!r.ok)return reply({error:"Upstream provider returned "+r.status,mode:development?"development":"commercial"},502);const data=await r.json();return reply({model,modelId,mode:development?"NON-COMMERCIAL DEVELOPMENT TEST":"commercial",retrievedAt:new Date().toISOString(),attribution:"Weather data by Open-Meteo · model source "+({gfs:"NOAA/NCEP GFS",ecmwf:"ECMWF IFS",ukmo_global:"UK Met Office Global 10 km",ukmo_uk:"UK Met Office UK 2 km"}[model]),data});}catch{return reply({error:"Unable to retrieve model data"},502)}}};
