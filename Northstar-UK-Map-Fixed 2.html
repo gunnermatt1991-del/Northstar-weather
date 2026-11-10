@@ -801,8 +801,8 @@ function addCityMarker(x,bounds){
 }
 (async()=>{
  let count=0,failed=0,firstError="";const bounds=[];
- for(let i=0;i<cities.length;i+=50){
-  const batch=cities.slice(i,i+50);
+ for(let i=0;i<cities.length;i+=20){
+  const batch=cities.slice(i,i+20);
   try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
   catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
  }
@@ -813,8 +813,8 @@ function addCityMarker(x,bounds){
 })();setInterval(async()=>{
  try{
   const fresh=[];
-  for(let i=0;i<cities.length;i+=50){
-   const batch=cities.slice(i,i+50);
+  for(let i=0;i<cities.length;i+=20){
+   const batch=cities.slice(i,i+20);
    try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
   }
   if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
