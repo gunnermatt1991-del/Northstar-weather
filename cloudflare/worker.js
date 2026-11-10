@@ -317,10 +317,12 @@ export default {
       }
       const prefs = {
         rain: preferences?.rain !== false,
+        rainStart: preferences?.rainStart !== false,
         wind: preferences?.wind !== false,
         snow: preferences?.snow !== false,
         thunder: preferences?.thunder !== false,
-        fog: preferences?.fog !== false
+        fog: preferences?.fog !== false,
+        frost: preferences?.frost !== false
       };
       const id = crypto.randomUUID();
       try {
@@ -398,7 +400,7 @@ export default {
         forecastUrl.searchParams.set("latitude", sub.latitude);
         forecastUrl.searchParams.set("longitude", sub.longitude);
         forecastUrl.searchParams.set("daily", "weather_code,precipitation_sum,precipitation_probability_max,snowfall_sum,wind_speed_10m_max,temperature_2m_min");
-        forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m");
+        forecastUrl.searchParams.set("hourly", "visibility,weather_code,temperature_2m,precipitation,precipitation_probability");
         forecastUrl.searchParams.set("forecast_hours", "36");
         forecastUrl.searchParams.set("forecast_days", "7");
         forecastUrl.searchParams.set("timezone", "auto");
@@ -408,6 +410,37 @@ export default {
         const prefs = JSON.parse(sub.preferences || "{}");
         const previous = JSON.parse(sub.alert_state || "{}");
         const alerts = [];
+        if (prefs.rainStart !== false && forecast.hourly?.time && forecast.hourly?.precipitation) {
+          const timezone = forecast.timezone || "UTC";
+          const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+          }).formatToParts(new Date());
+          const part = key => parts.find(item => item.type === key)?.value || "00";
+          const localNow = part("year") + "-" + part("month") + "-" + part("day") + "T" + part("hour") + ":" + part("minute");
+          const hourly = forecast.hourly;
+          const wetCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82];
+          const wet = hourly.time.map((time, index) => {
+            const amount = Number(hourly.precipitation?.[index] || 0);
+            const probability = Number(hourly.precipitation_probability?.[index] || 0);
+            const code = Number(hourly.weather_code?.[index] || 0);
+            return { time, amount, probability, wet: amount >= 0.2 || (probability >= 60 && wetCodes.includes(code)) };
+          });
+          for (let i = 1; i < wet.length; i++) {
+            const row = wet[i];
+            if (row.time <= localNow || !row.wet || wet[i - 1].wet) continue;
+            const leadMinutes = (Date.parse(row.time + ":00Z") - Date.parse(localNow + ":00Z")) / 60000;
+            if (leadMinutes < 0 || leadMinutes > 180) continue;
+            const startTime = row.time.slice(11, 16);
+            const chanceText = row.probability ? " There is around a " + Math.round(row.probability) + "% chance of precipitation." : "";
+            alerts.push({
+              key: "rain-start-" + row.time,
+              title: "Rain expected to start soon",
+              body: "Rain is forecast to begin near " + sub.location_name + " around " + startTime + " local time." + chanceText
+            });
+            break;
+          }
+        }
         for (let i = 0; i < forecast.daily.time.length; i++) {
           const day = forecast.daily.time[i];
           const rain = Number(forecast.daily.precipitation_sum?.[i] || 0);
