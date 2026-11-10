@@ -801,7 +801,7 @@ rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainFo
 
 
 async function requestCityBatch(url,batch){
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
  try{
   const response=await fetch(url,{signal:controller.signal,cache:"no-store"});
   if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
@@ -873,9 +873,12 @@ async function loadCityWeather(){
    });
    const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
    if(!pending.length)continue;
+   setTemperatureStatus("Loading live temperatures: "+pending.length+" locations across the visible map…");
    const batches=[];
    for(let i=0;i<pending.length;i+=10)batches.push(pending.slice(i,i+10));
-   for(const batch of batches){
+   for(let batchIndex=0;batchIndex<batches.length;batchIndex++){
+    const batch=batches[batchIndex];
+    setTemperatureStatus("Loading live temperatures: batch "+(batchIndex+1)+" of "+batches.length+" ("+batch.length+" locations)…");
     try{
      const readings=await getCitiesBatch(batch);
      readings.forEach(reading=>{
