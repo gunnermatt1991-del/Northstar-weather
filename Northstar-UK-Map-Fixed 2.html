@@ -642,10 +642,14 @@ function placeVisibleAtZoom(x){
  return z>=6;
 }
 function renderCityMarkers(){
- // Keep the radar unobstructed at every zoom level.
+ // Show temperature-only labels, keeping town names and weather symbols off the radar.
  cityMarkers.clearLayers();
+ if(!cityMarkers._map)cityMarkers.addTo(map);
+ if(!cityWeather.length)return;
+ const bounds=map.getBounds();
+ cityWeather.forEach(x=>{if(placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon]))addCityMarker(x);});
 }
-map.on("zoomend",renderCityMarkers);
+map.on("zoomend",renderCityMarkers);map.on("moveend",renderCityMarkers);
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});document.addEventListener("click",e=>{if(!e.target.closest(".layer-menu")&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false")}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false");layerMenuToggle.focus()}});
 let metricSurfaceLayer=null;
 function showMetricLayer(k){
@@ -654,7 +658,6 @@ function showMetricLayer(k){
  if(!cfg)return;
  clearFogLayer();
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
- cityMarkers.clearLayers();
  if(k==="snow"||k==="precipitation"||k==="cloud"){
   const points=[];
   cityWeather.forEach(x=>{const v=Number(x.current&&x.current[cfg[0]]);if(!Number.isFinite(v)||v<=0)return;let intensity=k==="cloud"?Math.max(.08,Math.min(1,v/100)):Math.min(1,Math.max(.12,v/(k==="snow"?2.5:2.8)));points.push([x.lat,x.lon,intensity])});
@@ -677,7 +680,7 @@ function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if
 function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
- clearFogLayer();cityMarkers.clearLayers();
+ clearFogLayer();
  fogLayer=L.layerGroup().addTo(map);fogVisible=true;fogToggle.classList.add("active");fogToggle.textContent="☁️ Hide fog shading";fogToggle.setAttribute("aria-pressed","true");
  const summary=[],heat=[];
  cityWeather.forEach(x=>{
@@ -782,14 +785,42 @@ async function getCitiesBatch(batch){
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
  return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],current:item.current};});
 }
-function addCityMarker(x,bounds){
- // Reset: do not render any town, city, temperature or weather-symbol markers.
- return;
+function addCityMarker(x){
+ const temp=Number(x.current&&x.current.temperature_2m);
+ if(!Number.isFinite(temp))return;
+ const label=Math.round(temp)+"°";
+ const marker=L.divIcon({
+  className:"pin-wrap",
+  html:'<div class="pin" style="--pin-color:'+tone(temp)+'">'+label+'</div>',
+  iconSize:[34,20],
+  iconAnchor:[17,10]
+ });
+ // Numeric temperature only: no place name and no weather-condition symbol.
+ L.marker([x.lat,x.lon],{icon:marker,keyboard:false,interactive:false}).addTo(cityMarkers);
 }
-// Temperature markers are intentionally disabled to keep the radar map clean and
-// avoid unnecessary multi-location Open-Meteo requests. Radar layers remain active.
-cityWeather=[];
-document.getElementById("status").textContent="Temperature markers are off. Rain radar and map layers remain available.";
+async function loadCityWeather(){
+ const batchSize=50;
+ const batches=[];
+ for(let i=0;i<cities.length;i+=batchSize)batches.push(cities.slice(i,i+batchSize));
+ cityWeather=[];
+ let failed=0;
+ for(const batch of batches){
+  try{
+   const readings=await getCitiesBatch(batch);
+   cityWeather.push(...readings);
+   renderCityMarkers();
+   document.getElementById("status").textContent="Loading temperature readings… "+cityWeather.length+" of "+cities.length+" locations.";
+  }catch(error){
+   failed+=batch.length;
+  }
+ }
+ renderCityMarkers();
+ document.getElementById("status").textContent=cityWeather.length
+  ?"Temperature readings shown at "+cityWeather.length+" locations. Town names and weather symbols remain hidden."+(failed?" "+failed+" locations could not be updated.":"")
+  :"Temperature readings could not be loaded. Rain radar remains available.";
+}
+// Fetch temperatures independently from the rain-radar layer.
+loadCityWeather();
 setTimeout(()=>map.invalidateSize({pan:false}),250);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
