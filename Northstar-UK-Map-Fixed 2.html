@@ -777,9 +777,10 @@ async function getCitiesBatch(batch){
  });
  const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
  const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- // Use Northstar's shared edge cache first to avoid every visitor hitting Open-Meteo directly.
- let response=await fetch(proxy,{cache:"no-store"});
- if(!response.ok)response=await fetch(direct,{cache:"no-store"});
+ // Multi-coordinate radar batches use the public forecast endpoint first;
+ // keep Northstar's shared proxy as a fallback for transient provider failures.
+ let response=await fetch(direct,{cache:"no-store"});
+ if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
