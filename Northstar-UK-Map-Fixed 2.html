@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
 <title>Northstar Weather — UK & Europe Weather Map</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <style>
@@ -270,7 +270,7 @@ body.embed.storm-only .storm-panel{margin:0!important}
 </section>
 <footer class="footer">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. Radar imagery by <a href="https://www.rainviewer.com/" target="_blank" rel="noreferrer">RainViewer</a>. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</footer>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="" onerror="this.onerror=null;this.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
@@ -627,9 +627,12 @@ const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Le
 const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Kettering","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
 const nonTownPlaces=new Set(["Somerset","North Somerset","Cornwall","Devon","Dorset","Wiltshire","Gloucestershire","Oxfordshire","Buckinghamshire","Berkshire","Hampshire","Surrey","Sussex","East Sussex","West Sussex","Kent","Essex","Suffolk","Norfolk","Cambridgeshire","Bedfordshire","Northamptonshire","Warwickshire","Worcestershire","Herefordshire","Staffordshire","Shropshire","Cheshire","Lancashire","Cumbria","Northumberland","County Durham","Yorkshire","Nottinghamshire","Derbyshire","Leicestershire","Lincolnshire","Greater Manchester","Merseyside","Scotland","Wales","Northern Ireland"]);
 function isUkIrelandPlace(x){return x.lat>=49.8&&x.lat<=59.6&&x.lon>=-11.2&&x.lon<=2.2&&!nonTownPlaces.has(x.name);}
+const overviewPlaces=new Set(["London","Birmingham","Manchester","Edinburgh","Glasgow","Cardiff","Belfast","Dublin","Paris","Amsterdam","Brussels","Berlin","Copenhagen","Oslo","Stockholm","Madrid","Lisbon","Rome","Vienna","Prague","Warsaw","Zurich","Geneva","Reykjavik"]);
 function placeVisibleAtZoom(x){
- // The 319 curated locations are the complete marker set.
- // Keep their live temperature labels visible at every zoom level.
+ // Keep the overview readable: national centres first, regional towns as users zoom in.
+ const z=map.getZoom();
+ if(z<=5)return overviewPlaces.has(x.name);
+ if(z<=6)return nationalPlaces.has(x.name)||overviewPlaces.has(x.name)||(regionalPlaces.has(x.name)&&isUkIrelandPlace(x));
  return true;
 }
 function renderCityMarkers(){
@@ -763,12 +766,13 @@ async function getCitiesBatch(batch){
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
- // Request the multi-coordinate temperature batch directly from Open-Meteo.
- // The Northstar edge proxy can reject larger map batches; use it only as fallback.
+ // Use Northstar's edge service first so restrictive Wi-Fi networks do not
+ // need direct access to the upstream weather API. Fall back to Open-Meteo.
  const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
  const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- let response=await fetch(direct,{cache:"no-store"});
- if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
+ let response;
+ try{response=await fetch(proxy,{cache:"no-store"});if(!response.ok)throw Error("Northstar weather service returned HTTP "+response.status);}
+ catch(proxyError){try{response=await fetch(direct,{cache:"no-store"});}catch(directError){throw Error("Weather data could not be reached. Check your Wi-Fi connection or try mobile data.");}}
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
@@ -776,7 +780,7 @@ async function getCitiesBatch(batch){
 }
 function addCityMarker(x,bounds){
  const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
- if(!placeVisibleAtZoom(x))return;const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin place-pin" style="--pin-color:'+color+'"><span>'+x.name+'</span><b>'+t+'°</b></div>',iconSize:[94,22],iconAnchor:[47,11]});
+ if(!placeVisibleAtZoom(x))return;const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'" aria-label="'+x.name+' '+t+' degrees">'+t+'°</div>',iconSize:[29,19],iconAnchor:[14,9]});
  const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
  const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+
  "<hr style='border:0;border-top:1px solid #ffffff25;margin:7px 0'>"+
