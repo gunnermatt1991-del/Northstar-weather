@@ -441,6 +441,7 @@ export default {
             break;
           }
         }
+        const frostOutlook = [];
         for (let i = 0; i < forecast.daily.time.length; i++) {
           const day = forecast.daily.time[i];
           const rain = Number(forecast.daily.precipitation_sum?.[i] || 0);
@@ -460,17 +461,26 @@ export default {
           }
           const overnightLow = Number(forecast.daily.temperature_2m_min?.[i]);
           if (prefs.frost !== false && Number.isFinite(overnightLow) && overnightLow <= 0) {
-            const severity = overnightLow <= -5 ? "severe" : overnightLow <= -2 ? "hard" : "frost";
-            const title = severity === "severe" ? "Severe frost risk" : severity === "hard" ? "Hard frost possible" : "Frost and icy patches possible";
-            const body = dayLabel + " near " + sub.location_name + ": overnight minimum around " + Math.round(overnightLow) + "°C is forecast. " +
-              (severity === "severe" ? "Severe frost is possible; protect plants, check exposed pipes and take extra care on untreated roads." :
-               severity === "hard" ? "A hard frost is possible; protect plants and watch for icy surfaces." :
-               "A light frost is possible, especially on exposed surfaces. Watch for icy patches.");
-            alerts.push({ key: "frost-" + severity + "-" + day, title, body });
+            const weekday = new Date(day + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+            frostOutlook.push({ day: weekday, low: Math.round(overnightLow) });
           }
           if (prefs.thunder !== false && [95,96,99].includes(code)) {
             alerts.push({ key: "thunder-" + day, title: "Thunderstorms possible", body: dayLabel + " near " + sub.location_name + ": thunderstorms appear in the forecast." });
           }
+        }
+
+        if (frostOutlook.length) {
+          const coldest = Math.min(...frostOutlook.map(item => item.low));
+          const title = coldest <= -5 ? "Severe frost risk ahead" : coldest <= -2 ? "Hard frost possible" : "Frost and icy patches possible";
+          const nights = frostOutlook.map(item => item.day + " " + item.low + "°C").join(", ");
+          const advice = coldest <= -2
+            ? "Protect plants and check exposed pipes; watch for icy surfaces."
+            : "Take care on roads and paths, especially on exposed surfaces.";
+          alerts.push({
+            key: "frost-outlook",
+            title,
+            body: "Overnight lows near " + sub.location_name + ": " + nights + ". " + advice
+          });
         }
 
         if (prefs.fog !== false && forecast.hourly?.time && forecast.hourly?.visibility) {
