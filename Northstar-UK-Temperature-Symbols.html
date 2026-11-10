@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="temperature-symbol-map-20261110-r3">
+<meta name="northstar-map-build" content="radar-clear-no-temperature-markers-20261110-r2">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -622,7 +622,8 @@ applyMapTheme(mapMode==="night");
 modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
 updateAutomaticTheme();setInterval(updateAutomaticTheme,60000);
-const cityMarkers=L.layerGroup().addTo(map);
+// Temperature markers intentionally detached: the radar view must remain unobstructed.
+const cityMarkers=L.layerGroup();
 /* UK & Ireland first: curated national and regional place tiers keep the map legible. */
 const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Leeds","Sheffield","Newcastle upon Tyne","Edinburgh","Glasgow","Cardiff","Bristol","Belfast","Dublin","Aberdeen"]);
 const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Kettering","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
