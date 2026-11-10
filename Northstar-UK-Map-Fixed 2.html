@@ -763,9 +763,12 @@ async function getCitiesBatch(batch){
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
- const endpoint="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?";
- let response=await fetch(endpoint+params.toString());
- if(!response.ok)response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString());
+ // Request the multi-coordinate temperature batch directly from Open-Meteo.
+ // The Northstar edge proxy can reject larger map batches; use it only as fallback.
+ const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
+ const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
+ let response=await fetch(direct,{cache:"no-store"});
+ if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
