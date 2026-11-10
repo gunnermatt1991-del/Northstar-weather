@@ -36,7 +36,7 @@ jobs:
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 25000);
             try {
-              const response = await fetch(url, { signal: controller.signal, headers: { accept: "application/json" } });
+              const response = await fetch(url, { signal: controller.signal, headers: { accept: "application/json", origin: "https://gunnermatt1991-del.github.io" } });
               const raw = await response.text();
               let data; try { data = JSON.parse(raw); } catch {}
               const items = Array.isArray(data) ? data : [data];
