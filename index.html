@@ -249,14 +249,15 @@ img,svg,canvas{max-width:100%}
   const method=((init&&init.method)||"GET").toUpperCase();
   const cacheable=method==="GET"&&(url.hostname==="api.open-meteo.com"||(url.hostname==="northstar-weather-alerts.gunnermatt1991.workers.dev"&&url.pathname==="/weather/forecast"));
   if(!cacheable)return nativeFetch(input,init);
-  const key="northstarForecastV2:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;
+  const key="northstarForecastV2:"+url.href,legacyKey="northstarOpenMeteo:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;
   let stale=null;
   try{
-   const saved=localStorage.getItem(key);
+   let saved=localStorage.getItem(key);
+   if(!saved&&url.hostname==="api.open-meteo.com")saved=localStorage.getItem(legacyKey);
    if(saved){const item=JSON.parse(saved);if(item&&typeof item.body==="string"&&Number.isFinite(item.time)){
     const age=Date.now()-item.time;
-    if(age>=0&&age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});
-    if(age>=0&&age<staleLimit)stale=item;else localStorage.removeItem(key);
+    if(age>=0&&age<ttl){try{localStorage.setItem(key,saved)}catch(e){}return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});}
+    if(age>=0&&age<staleLimit)stale=item;else if(url.hostname!=="api.open-meteo.com")localStorage.removeItem(key);
    }else localStorage.removeItem(key)}
   }catch(e){}
   if(inflight.has(key)){
