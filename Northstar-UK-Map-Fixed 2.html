@@ -836,16 +836,9 @@ async function getCitiesBatch(batch){
  // A single rejected multi-point request must not wipe out every visible town.
  // Retry towns independently, with a small concurrency cap to avoid a burst.
  if(batch.length>1){
-  const recovered=new Array(batch.length);let cursor=0;const failures=[];
-  await Promise.all(Array.from({length:Math.min(3,batch.length)},async()=>{
-   while(cursor<batch.length){
-    const index=cursor++,city=batch[index];
-    try{recovered[index]=(await getCitiesBatch([city]))[0]}
-    catch(error){failures.push(city[0]+": "+(error?.message||"unavailable"))}
-   }
-  }));
-  if(!failures.length)return recovered;
-  throw Error("Batch failed ("+errors.join("; ")+"). Individual retries failed: "+failures.join(", "));
+  // Do not fan a failed batch out into parallel single-city requests: the
+  // public forecast API permits only one concurrent request per shared IP.
+  throw Error("Multi-location request failed ("+errors.join("; ")+"). Retry the map shortly.");
  }
  throw Error(errors.join("; ")||"Weather provider is unavailable");
 }
@@ -881,7 +874,7 @@ async function loadCityWeather(){
    const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
    if(!pending.length)continue;
    const batches=[];
-   for(let i=0;i<pending.length;i+=5)batches.push(pending.slice(i,i+5));
+   if(pending.length)batches.push(pending);
    for(const batch of batches){
     try{
      const readings=await getCitiesBatch(batch);
