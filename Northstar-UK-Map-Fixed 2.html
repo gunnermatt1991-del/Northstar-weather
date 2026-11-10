@@ -874,7 +874,7 @@ async function loadCityWeather(){
    const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
    if(!pending.length)continue;
    const batches=[];
-   if(pending.length)batches.push(pending);
+   for(let i=0;i<pending.length;i+=10)batches.push(pending.slice(i,i+10));
    for(const batch of batches){
     try{
      const readings=await getCitiesBatch(batch);
