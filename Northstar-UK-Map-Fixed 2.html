@@ -800,6 +800,22 @@ rainForecastToggle.addEventListener("click",async()=>{
 rainForecastSlider.addEventListener("input",()=>updateRainForecast(Number(rainForecastSlider.value)));
 
 
+async function requestCityBatch(url,batch){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+ try{
+  const response=await fetch(url,{signal:controller.signal,cache:"no-store"});
+  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
+  const raw=await response.json();
+  if(raw?.error)throw Error(raw.reason||raw.error||"Weather provider rejected the request");
+  const items=Array.isArray(raw)?raw:[raw];
+  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
+  return batch.map((city,i)=>{
+   const item=items[i],temperature=Number(item?.current?.temperature_2m);
+   if(!item?.current||!Number.isFinite(temperature))throw Error("Missing temperature for "+city[0]);
+   return{name:city[0],lat:city[1],lon:city[2],isPersonal:!!city[3],current:item.current};
+  });
+ }finally{clearTimeout(timer)}
+}
 async function getCitiesBatch(batch){
  const params=new URLSearchParams({
   latitude:batch.map(city=>city[1]).join(","),
@@ -807,16 +823,31 @@ async function getCitiesBatch(batch){
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
- // Request the multi-coordinate temperature batch directly from Open-Meteo.
- // The Northstar edge proxy can reject larger map batches; use it only as fallback.
- const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
- const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- let response=await fetch(proxy,{cache:"no-store"});
- if(!response.ok)response=await fetch(direct,{cache:"no-store"});
- if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
- const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
- if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
- return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],isPersonal:!!city[3],current:item.current};});
+ const query=params.toString();
+ const urls=[
+  "https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+query,
+  "https://api.open-meteo.com/v1/forecast?"+query
+ ];
+ const errors=[];
+ for(const url of urls){
+  try{return await requestCityBatch(url,batch)}
+  catch(error){errors.push(error?.message||"network error")}
+ }
+ // A single rejected multi-point request must not wipe out every visible town.
+ // Retry towns independently, with a small concurrency cap to avoid a burst.
+ if(batch.length>1){
+  const recovered=new Array(batch.length);let cursor=0;const failures=[];
+  await Promise.all(Array.from({length:Math.min(3,batch.length)},async()=>{
+   while(cursor<batch.length){
+    const index=cursor++,city=batch[index];
+    try{recovered[index]=(await getCitiesBatch([city]))[0]}
+    catch(error){failures.push(city[0]+": "+(error?.message||"unavailable"))}
+   }
+  }));
+  if(!failures.length)return recovered;
+  throw Error("Batch failed ("+errors.join("; ")+"). Individual retries failed: "+failures.join(", "));
+ }
+ throw Error(errors.join("; ")||"Weather provider is unavailable");
 }
 function addCityMarker(x){
  const temp=Number(x.current&&x.current.temperature_2m);
@@ -837,7 +868,7 @@ function cityWeatherKey(city){return String(city[0]).toLowerCase()+"|"+Number(ci
 async function loadCityWeather(){
  if(cityWeatherLoading){cityWeatherLoadQueued=true;return}
  cityWeatherLoading=true;
- let failed=0;
+ let failed=0;const failedNames=[];
  try{
   do{
    cityWeatherLoadQueued=false;
@@ -850,7 +881,7 @@ async function loadCityWeather(){
    const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
    if(!pending.length)continue;
    const batches=[];
-   for(let i=0;i<pending.length;i+=20)batches.push(pending.slice(i,i+20));
+   for(let i=0;i<pending.length;i+=5)batches.push(pending.slice(i,i+5));
    for(const batch of batches){
     try{
      const readings=await getCitiesBatch(batch);
@@ -862,7 +893,7 @@ async function loadCityWeather(){
      const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
      setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations loaded.");
     }catch(error){
-     failed+=batch.length;
+     failed+=batch.length;failedNames.push(...batch.map(city=>city[0]));
      console.warn("Northstar visible temperature batch failed:",error);
      setTemperatureStatus("Live temperatures: "+cityWeather.length+" cached; "+failed+" visible locations need retry.",true);
     }
@@ -871,7 +902,7 @@ async function loadCityWeather(){
   renderCityMarkers();
   const bounds=map.getBounds();
   const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
-  if(failed)setTemperatureStatus("Live temperatures: "+visibleCount+" visible; "+failed+" locations unavailable.",true);
+  if(failed)setTemperatureStatus("Live temperatures: "+visibleCount+" visible; "+failed+" locations unavailable ("+failedNames.join(", ")+").",true);
   else if(visibleCount)setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations.");
   else setTemperatureStatus("No temperature locations in this view yet. Move or zoom the map to load nearby readings.",true);
  }finally{
@@ -903,9 +934,24 @@ window.addEventListener("storage",event=>{
 });
 // Fetch temperatures independently from the rain-radar layer.
 loadCityWeather();
-map.on("zoomend moveend",()=>{renderCityMarkers();loadCityWeather()});
-setTimeout(()=>map.invalidateSize({pan:false}),250);
-const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
+let cityWeatherLoadTimer=0;
+function scheduleCityWeatherLoad(){
+ clearTimeout(cityWeatherLoadTimer);
+ cityWeatherLoadTimer=setTimeout(()=>{renderCityMarkers();loadCityWeather()},180);
+}
+map.on("zoomend moveend",scheduleCityWeatherLoad);
+let mapResizePending=false;
+function scheduleMapResize(){
+ if(mapResizePending)return;
+ mapResizePending=true;
+ requestAnimationFrame(()=>{mapResizePending=false;map.invalidateSize({pan:false})});
+}
+setTimeout(scheduleMapResize,250);
+const mapElement=document.getElementById("map");
+if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(scheduleMapResize);mapResizeObserver.observe(mapElement);}
+window.addEventListener("orientationchange",()=>setTimeout(scheduleMapResize,350),{passive:true});
+window.addEventListener("resize",scheduleMapResize,{passive:true});
+loadRadar();
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
 const stormLocs=[[60,-16,"N Atlantic west"],[57,-15,"N Atlantic"],[54,-15,"Mid Atlantic"],[51,-14,"SW Atlantic"],[60,-10,"NW approaches"],[57,-10,"Western approaches"],[54,-10,"Atlantic approaches"],[51,-10,"SW approaches"],[58.6,-3.5,"N Highlands"],[57.5,-4.2,"Inverness"],[57.1,-2.1,"Aberdeen"],[56.5,-4.2,"Highlands"],[55.95,-3.2,"Edinburgh"],[55,-1.6,"Newcastle"],[54.6,-5.9,"Belfast"],[54,-2.8,"Lake District"],[53.8,-1.55,"Leeds"],[53.4,-3,"Liverpool"],[53,-2.2,"Manchester"],[52.95,-1.15,"Nottingham"],[52.4,-1.9,"Birmingham"],[52.4,-.7,"Kettering"],[52,-4,"Mid Wales"],[51.75,-1.25,"Oxford"],[51.5,-3.2,"Cardiff"],[51.45,-.1,"London"],[51,-1.4,"Southampton"],[50.7,-3.5,"Exeter"],[50.4,-4.1,"Plymouth"],[50.3,-5.2,"Cornwall"],[50.8,.3,"East Sussex"],[51.9,1.2,"Suffolk"],[54.2,-4.5,"Isle of Man"],[56,-4,"Glasgow"],[57,-5.7,"West Highlands"]];
