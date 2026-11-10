@@ -9,4 +9,4 @@ database_name = "northstar-notifications"
 database_id = "437a7b4b-85b0-4af8-8abc-a0e6b25249ce"
 
 [triggers]
-crons = ["*/30 * * * *"]
+crons = ["*/10 * * * *"]
