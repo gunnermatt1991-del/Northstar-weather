@@ -604,11 +604,13 @@ const cities=[
 ["Wellington",-41.2865,174.7762]
 ];
 // Add the user's saved forecast location to the map's temperature sampling list.
+const northstarBaseCities=cities.map(city=>city.slice(0,3));
 let northstarPersonalLocation=null;
 try{
  const saved=JSON.parse(localStorage.getItem("northstar-selected-weather-location")||"null");
  if(saved&&saved.name&&Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lon))){
   northstarPersonalLocation={name:String(saved.name),lat:Number(saved.lat),lon:Number(saved.lon)};
+  map.setView([northstarPersonalLocation.lat,northstarPersonalLocation.lon],Math.max(map.getZoom(),6),{animate:false});
   const existing=cities.findIndex(c=>c[0].toLowerCase()===northstarPersonalLocation.name.toLowerCase());
   if(existing>=0)cities[existing]=[northstarPersonalLocation.name,northstarPersonalLocation.lat,northstarPersonalLocation.lon,true];
   else cities.push([northstarPersonalLocation.name,northstarPersonalLocation.lat,northstarPersonalLocation.lon,true]);
@@ -879,12 +881,12 @@ async function loadCityWeather(){
 }
 // Keep the map's personal location in sync with the main app when the user saves a new town.
 function syncPersonalLocationFromStorage(){
- const oldPersonal=cities.findIndex(city=>!!city[3]);
- if(oldPersonal>=0){loadedCityKeys.delete(cityWeatherKey(cities[oldPersonal]));cities.splice(oldPersonal,1)}
+ cities.splice(0,cities.length,...northstarBaseCities.map(city=>city.slice()));
+ loadedCityKeys.clear();
+ cityWeather=[];
  let saved=null;
  try{saved=JSON.parse(localStorage.getItem("northstar-selected-weather-location")||"null")}catch(error){}
  northstarPersonalLocation=null;
- cityWeather=cityWeather.filter(x=>!x.isPersonal);
  if(saved&&saved.name&&Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lon))){
   northstarPersonalLocation={name:String(saved.name),lat:Number(saved.lat),lon:Number(saved.lon)};
   const existing=cities.findIndex(city=>city[0].toLowerCase()===northstarPersonalLocation.name.toLowerCase());
