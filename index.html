@@ -405,37 +405,38 @@ function icon(c,day=1){if(c===0)return day?"☀️":"🌙";if(c===1)return day?"
 // Model comparison must never fall back to the generic MET Norway forecast:
 // that fallback is useful for the home screen, but it would label one forecast
 // as ECMWF, GFS and ICON and make all three curves identical.
-async function northstarModelJson(url,timeoutMs=30000){
+async function northstarModelJson(primaryUrl,fallbackUrl,timeoutMs=22000){
  let lastError=null;
- // Use the Northstar Worker only: it tries the independent mirror first and
- // serves cached forecasts where available. Do not double traffic by
- // immediately bypassing it with a direct browser request to Open-Meteo.
- for(let attempt=0;attempt<3;attempt++){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
-  try{
-   const response=await fetch(url,{signal:controller.signal,cache:"no-store"});
-   if(!response.ok){
-    let detail="";
-    try{const body=await response.json();detail=body?.reason||body?.error||""}catch{}
-    const error=new Error("Model service returned HTTP "+response.status+(detail?": "+detail:""));
-    error.status=response.status;throw error;
-   }
-   const data=await response.json();
-   if(data?.error)throw Error(data.reason||data.error||"Model data unavailable");
-   if(data?.properties?.timeseries)throw Error("The generic backup forecast is not a model-specific forecast");
-   if(!Array.isArray(data?.hourly?.time)||!Object.keys(data?.hourly||{}).some(key=>key==="temperature_2m"||key.startsWith("temperature_2m_")))throw Error("Model service returned no hourly temperature series");
-   return data;
-  }catch(error){
-   lastError=error;
-   const retryable=error?.status===429||error?.status>=500||error?.name==="AbortError"||/network|fetch failed|temporarily unavailable/i.test(error?.message||"");
-   if(!retryable||attempt===2)break;
-   const delay=attempt===0?12000:25000;
-   const trend=$("modelTrend");
-   if(trend){const note=trend.querySelector(".model-retry-status")||document.createElement("div");note.className="muted model-retry-status";note.style.marginTop="8px";note.textContent="The model provider is busy. Northstar is waiting "+Math.round(delay/1000)+" seconds before a careful retry…";if(!note.parentNode)trend.appendChild(note)}
-   await new Promise(resolve=>setTimeout(resolve,delay));
-  }finally{clearTimeout(timer)}
+ const targets=[{url:primaryUrl,name:"Northstar weather service"},{url:fallbackUrl,name:"Open-Meteo direct fallback"}].filter(x=>x.url);
+ // Prefer Northstar's shared cache and mirror. Only contact Open-Meteo
+ // directly if that route fails, so healthy requests still make one call.
+ for(let attempt=0;attempt<2;attempt++){
+  for(const target of targets){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+   try{
+    const response=await fetch(target.url,{signal:controller.signal,cache:"no-store"});
+    if(!response.ok){
+     let detail="";
+     try{const body=await response.json();detail=body?.reason||body?.error||""}catch{}
+     const error=new Error(target.name+" returned HTTP "+response.status+(detail?": "+detail:""));
+     error.status=response.status;throw error;
+    }
+    const data=await response.json();
+    if(data?.error)throw Error(data.reason||data.error||target.name+" returned an error");
+    if(data?.properties?.timeseries)throw Error("The generic backup forecast is not a model-specific forecast");
+    if(!Array.isArray(data?.hourly?.time)||!Object.keys(data?.hourly||{}).some(key=>key==="temperature_2m"||key.startsWith("temperature_2m_")))throw Error(target.name+" returned no hourly temperature series");
+    return data;
+   }catch(error){lastError=error}
+   finally{clearTimeout(timer)}
+  }
+  const retryable=lastError?.status===429||lastError?.status>=500||lastError?.name==="AbortError"||/network|fetch failed|temporarily unavailable/i.test(lastError?.message||"");
+  if(!retryable||attempt===1)break;
+  const delay=12000;
+  const trend=$("modelTrend");
+  if(trend){const note=trend.querySelector(".model-retry-status")||document.createElement("div");note.className="muted model-retry-status";note.style.marginTop="8px";note.textContent="Both model routes are temporarily unavailable. Northstar is waiting "+Math.round(delay/1000)+" seconds before trying again…";if(!note.parentNode)trend.appendChild(note)}
+  await new Promise(resolve=>setTimeout(resolve,delay));
  }
- throw Error(lastError?.name==="AbortError"?"The model service timed out after retries.":(lastError?.message||"Model data is temporarily unavailable after retries."));
+ throw Error(lastError?.name==="AbortError"?"Both model routes timed out after retrying.":(lastError?.message||"Temperature model data is temporarily unavailable."));
 }
 async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
  let lastError=null;
@@ -712,7 +713,8 @@ async function loadModelConfidence(){
    models:models.map(model=>model.id).join(",")
   });
   const northstar="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+q.toString();
-  const data=await northstarModelJson(northstar,30000);
+  const direct="https://api.open-meteo.com/v1/forecast?"+q.toString();
+  const data=await northstarModelJson(northstar,direct,22000);
   const hourly=data.hourly,referenceTime=weather.current.time||new Date().toISOString();
   if(!Array.isArray(hourly.time))throw Error("The model provider returned no hourly timeline");
   let offset=hourly.time.findIndex(time=>time>=referenceTime);if(offset<0)offset=0;
@@ -818,9 +820,11 @@ $("locationSettingsForm")?.addEventListener("submit",event=>{
  event.preventDefault();
  const query=$("locationSettingsInput").value.trim();
  if(!query){$("locationSettingsStatus").textContent="Enter a town or city to save your location.";return;}
+ // Set the searching state before dispatch. The search handler may
+ // resolve Kettering immediately and update the status to the saved location.
+ $("locationSettingsStatus").textContent="Finding "+query+"…";
  $("locationInput").value=query;
  $("searchForm").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
- $("locationSettingsStatus").textContent="Finding "+query+"…";
 });
 $("locationSettingsUseGps")?.addEventListener("click",()=>{
  $("useCurrentLocation")?.click();
