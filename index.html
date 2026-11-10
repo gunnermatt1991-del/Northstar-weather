@@ -239,26 +239,39 @@ img,svg,canvas{max-width:100%}
 </main><nav class="northstar-dock" aria-label="Main navigation"><a href="#weather-home" class="dock-item active" data-dock="weather"><span>☀️</span><small>Weather</small></a><a href="#weather-map" class="dock-item" data-dock="radar"><span>◉</span><small>Radar</small></a><a href="#weather-charts" class="dock-item" data-dock="charts"><span>⌁</span><small>Charts</small></a><a href="#weather-warnings" class="dock-item" data-dock="warnings"><span>⚠️</span><small>Warnings</small></a><button type="button" class="dock-item" id="dockSettings"><span>⚙️</span><small>Settings</small></button></nav><footer class="footer">Forecast data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a>. These forecast-based heads-up alerts are not official emergency warnings.</footer>
 </div>
 <script>
-// Northstar shared Open-Meteo cache: reuse successful responses across page reloads
-// without changing the forecast fields, model choices, or displayed weather.
+// Northstar forecast cache: cache the worker and direct Open-Meteo responses,
+// reuse in-flight requests, and serve the last good forecast during rate limits.
 (function(){
- const nativeFetch=window.fetch.bind(window);
+ const nativeFetch=window.fetch.bind(window),inflight=new Map();
  window.fetch=async function(input,init){
   const raw=typeof input==="string"?input:(input&&input.url)||"";
   let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}
-  if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);
-  const key="northstarOpenMeteo:"+url.href,ttl=15*60*1000,staleLimit=24*60*60*1000;
+  const method=((init&&init.method)||"GET").toUpperCase();
+  const cacheable=method==="GET"&&(url.hostname==="api.open-meteo.com"||(url.hostname==="northstar-weather-alerts.gunnermatt1991.workers.dev"&&url.pathname==="/weather/forecast"));
+  if(!cacheable)return nativeFetch(input,init);
+  const key="northstarForecastV2:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;
   let stale=null;
-  try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved);if(item&&typeof item.body==="string"&&Number.isFinite(item.time)){const age=Date.now()-item.time;if(age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});if(age<staleLimit)stale=item;else localStorage.removeItem(key)}else localStorage.removeItem(key)}}catch(e){}
   try{
-   const response=await nativeFetch(input,init);
-   if(response.ok){try{const body=await response.clone().text();localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return response}
-   if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});
-   return response;
-  }catch(error){
-   if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});
-   throw error;
+   const saved=localStorage.getItem(key);
+   if(saved){const item=JSON.parse(saved);if(item&&typeof item.body==="string"&&Number.isFinite(item.time)){
+    const age=Date.now()-item.time;
+    if(age>=0&&age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});
+    if(age>=0&&age<staleLimit)stale=item;else localStorage.removeItem(key);
+   }else localStorage.removeItem(key)}
+  }catch(e){}
+  if(inflight.has(key)){
+   try{const body=await inflight.get(key);return new Response(body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"SHARED"}})}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}
   }
+  const request=(async()=>{
+   const response=await nativeFetch(input,init);
+   if(response.ok){const body=await response.clone().text();try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return {response,body}}
+   if(stale)return {response:new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}}),body:stale.body};
+   return {response,body:null};
+  })();
+  inflight.set(key,request.then(x=>{if(!x.response.ok)throw Error("Forecast HTTP "+x.response.status);return x.body}));
+  try{const result=await request;return result.response}
+  catch(error){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw error}
+  finally{inflight.delete(key)}
  };
 })();
 
@@ -267,6 +280,7 @@ const viewSections=[...document.querySelectorAll("#app [data-view]")];
 function showNorthstarView(view){
  viewSections.forEach(section=>section.classList.toggle("view-active",section.dataset.view===view));
  dockItems.forEach(item=>item.classList.toggle("active",item.dataset.dock===view));
+ if(view==="charts"&&!window.__northstarModelsRequested){window.__northstarModelsRequested=true;loadModelConfidence()}
  window.scrollTo({top:0,behavior:"smooth"});
 }
 showNorthstarView("weather");
@@ -561,7 +575,7 @@ function updateDayNightIcon(){if(!weather?.current||!weather?.daily)return;const
 function updateFogWarningBadge(){const badge=$("weatherWarningBadge");if(badge){badge.hidden=true;badge.removeAttribute("aria-label");badge.removeAttribute("title");}}
 function render(){const d=weather,c=d.current,h=d.hourly,day=d.daily,n=new Date(c.time);$("place").textContent=place.name+(place.country?", "+place.country:"");$("date").textContent=n.toLocaleDateString([],{weekday:"long",day:"numeric",month:"long"})+" · Updated "+tm(c.time);$("temp").textContent=Number(c.temperature_2m).toFixed(1)+"°";updateFogWarningBadge(c);initNorthstarPrecipitation();window.northstarSetPrecipitation?.(Number(c.weather_code));updateDayNightIcon();const wi=$("weatherIcon");wi.className="weather-icon";if(c.weather_code===45||c.weather_code===48){wi.classList.add("weather-fog")}else if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(c.weather_code)){wi.classList.add("weather-rain")}else if([71,73,75,77,85,86].includes(c.weather_code)){wi.classList.add("weather-snow")}else if([95,96,99].includes(c.weather_code)){wi.classList.add("weather-storm")}else{wi.classList.add("weather-float",c.weather_code===0||c.weather_code===1?"weather-cloud":"weather-cloud")}wi.setAttribute("aria-label",desc[c.weather_code]||"Current weather");$("condition").textContent=desc[c.weather_code]||"Current conditions";$("summary").textContent=Math.round(c.wind_speed_10m)+" km/h wind · "+Math.round(c.relative_humidity_2m)+"% humidity";$("hiLow").textContent="Today's high "+Math.round(day.temperature_2m_max[0])+"° · low "+Math.round(day.temperature_2m_min[0])+"°";$("feels").textContent=Math.round(c.apparent_temperature)+"°";$("wind").textContent=Math.round(c.wind_speed_10m)+" km/h";$("humidity").textContent=Math.round(c.relative_humidity_2m)+"%";$("pressure").textContent=Math.round(c.pressure_msl)+" hPa";$("sunrise").textContent=tm(day.sunrise[0]);$("sunset").textContent=tm(day.sunset[0]);$("rainChance").textContent=(day.precipitation_probability_max[0]??0)+"%";$("cloud").textContent=Math.round(c.cloud_cover)+"%";$("windDir").textContent=dir(c.wind_direction_10m);const visIndex=h.time.findIndex(t=>t>=c.time);const hourlyVis=visIndex>=0?h.visibility?.[visIndex]:null;const vis=Number.isFinite(c.visibility)?c.visibility:hourlyVis;if(Number.isFinite(vis)){const km=vis/1000;const quality=km>=10?"Very good":km>=5?"Good":km>=2?"Moderate":km>=1?"Poor":"Very poor";$("visibility").textContent=km.toFixed(1)+" km · "+quality}else{$("visibility").textContent="Not available"}const rise=new Date(day.sunrise[0]).getTime(),set=new Date(day.sunset[0]).getTime();$("sunbar").style.width=Math.max(0,Math.min(100,(Date.now()-rise)/(set-rise)*100))+"%";
 let s=h.time.findIndex(t=>t>=c.time);if(s<0)s=0;$("hours").innerHTML=Array.from({length:24},(_,i)=>{let j=s+i;if(j>=h.time.length)return"";return '<div class="hour"><div class="time">'+(i===0?"Now":tm(h.time[j]))+'</div><div class="ico">'+icon(h.weather_code[j],h.is_day[j])+'</div><strong>'+Math.round(h.temperature_2m[j])+'°</strong><small>'+(h.precipitation_probability[j]??0)+'% rain</small></div>'}).join("");
-renderSevenDay(day);alerts(d);loadOfficialWarnings();renderFog(d);dailyBriefing(d);charts("24");loadModelConfidence();updateDayNightIcon()}
+renderSevenDay(day);alerts(d);loadOfficialWarnings();renderFog(d);dailyBriefing(d);charts("24");updateDayNightIcon()}
 
 function renderSevenDay(day){
  const box=$("forecast"),times=Array.isArray(day?.time)?day.time:[],highs=day?.temperature_2m_max||[],lows=day?.temperature_2m_min||[],codes=day?.weather_code||[],rain=day?.precipitation_probability_max||[];
