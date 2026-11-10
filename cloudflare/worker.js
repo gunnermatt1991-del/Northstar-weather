@@ -119,6 +119,10 @@ export default {
       upstream.search = url.search;
       const cache = caches.default;
       const cacheKey = new Request(url.toString(), { method: "GET" });
+      // Keep a separate six-hour fallback copy. The short-lived fresh cache
+      // protects Open-Meteo from repeated requests; the fallback keeps the app
+      // usable if the provider temporarily responds with HTTP 429 or 5xx.
+      const staleCacheKey = new Request("https://northstar-weather-stale.local" + url.pathname + url.search, { method: "GET" });
       const cached = await cache.match(cacheKey);
       if (cached) {
         const headers = new Headers(cached.headers);
@@ -127,11 +131,25 @@ export default {
         headers.set("x-northstar-cache", "HIT");
         return new Response(cached.body, { status: cached.status, headers });
       }
+      const serveStale = async () => {
+        const stale = await cache.match(staleCacheKey);
+        if (!stale) return null;
+        const headers = new Headers(stale.headers);
+        headers.set("access-control-allow-origin", "*");
+        headers.set("vary", "Origin");
+        headers.set("x-northstar-cache", "STALE");
+        headers.set("warning", '110 - "Response is stale"');
+        return new Response(stale.body, { status: 200, headers });
+      };
       try {
         const upstreamResponse = await fetch(upstream.toString(), {
           headers: { "accept": "application/json" }
         });
         if (!upstreamResponse.ok) {
+          if (forecast && (upstreamResponse.status === 429 || upstreamResponse.status >= 500)) {
+            const staleResponse = await serveStale();
+            if (staleResponse) return staleResponse;
+          }
           return json({ error: true, reason: "Weather provider returned " + upstreamResponse.status + ". Please try again shortly." }, upstreamResponse.status);
         }
         const ttl = forecast
@@ -150,15 +168,26 @@ export default {
         const storedHeaders = new Headers(response.headers);
         storedHeaders.delete("access-control-allow-origin");
         storedHeaders.delete("x-northstar-cache");
-        // Cache writes run in the background so a slow cache store cannot
-        // hold the user's live forecast response open.
-        ctx.waitUntil(cache.put(cacheKey, new Response(response.clone().body, {
-          status: response.status,
-          headers: storedHeaders
-        })).catch(error => console.error("Weather cache write failed", error)));
+        const staleHeaders = new Headers(storedHeaders);
+        staleHeaders.set("cache-control", "public, max-age=21600");
+        // Fresh and fallback cache writes run in the background.
+        ctx.waitUntil(Promise.all([
+          cache.put(cacheKey, new Response(response.clone().body, {
+            status: response.status,
+            headers: storedHeaders
+          })),
+          ...(forecast ? [cache.put(staleCacheKey, new Response(response.clone().body, {
+            status: response.status,
+            headers: staleHeaders
+          }))] : [])
+        ]).catch(error => console.error("Weather cache write failed", error)));
         return response;
       } catch (error) {
         console.error("Weather proxy failed", error);
+        if (forecast) {
+          const staleResponse = await serveStale();
+          if (staleResponse) return staleResponse;
+        }
         return json({ error: true, reason: "Weather data is temporarily unavailable." }, 502);
       }
     }
