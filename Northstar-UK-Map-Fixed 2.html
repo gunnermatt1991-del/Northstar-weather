@@ -627,10 +627,13 @@ const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Le
 const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Kettering","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
 const nonTownPlaces=new Set(["Somerset","North Somerset","Cornwall","Devon","Dorset","Wiltshire","Gloucestershire","Oxfordshire","Buckinghamshire","Berkshire","Hampshire","Surrey","Sussex","East Sussex","West Sussex","Kent","Essex","Suffolk","Norfolk","Cambridgeshire","Bedfordshire","Northamptonshire","Warwickshire","Worcestershire","Herefordshire","Staffordshire","Shropshire","Cheshire","Lancashire","Cumbria","Northumberland","County Durham","Yorkshire","Nottinghamshire","Derbyshire","Leicestershire","Lincolnshire","Greater Manchester","Merseyside","Scotland","Wales","Northern Ireland"]);
 function isUkIrelandPlace(x){return x.lat>=49.8&&x.lat<=59.6&&x.lon>=-11.2&&x.lon<=2.2&&!nonTownPlaces.has(x.name);}
+// Only request and retain populated places within the British Isles; no European/global temperature feeds.
+const ukIrelandCities=cities.filter(isUkIrelandPlace);
 function placeVisibleAtZoom(x){
- // The 319 curated locations are the complete marker set.
- // Keep their live temperature labels visible at every zoom level.
- return true;
+ // Keep the UK and Ireland map readable and light on mobile Safari.
+ const z=map.getZoom();
+ if(z<=5)return nationalPlaces.has(x.name);
+ return nationalPlaces.has(x.name)||regionalPlaces.has(x.name);
 }
 function renderCityMarkers(){
  if(metricSurfaceLayer||fogVisible)return;
@@ -832,20 +835,20 @@ function addCityMarker(x,bounds){
 }
 (async()=>{
  let count=0,failed=0,firstError="";const bounds=[];
- for(let i=0;i<cities.length;i+=10){
-  const batch=cities.slice(i,i+10);
+ for(let i=0;i<ukIrelandCities.length;i+=10){
+  const batch=ukIrelandCities.slice(i,i+10);
   try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
   catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
  }
  if(bounds.length)map.setView([54,-3],5);
- document.getElementById("status").textContent=count+" locations loaded across the UK, Ireland, Europe and worldwide destinations"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";
+ document.getElementById("status").textContent=count+" UK and Ireland town and city temperatures loaded"+(failed?", "+failed+" unavailable":"")+". Choose satellite imagery from Weather layers if desired.";
  if(!count)document.getElementById("status").textContent="No town temperatures loaded: "+(firstError||"weather service unavailable")+". Please refresh. If this continues, the provider or network is rejecting the requests.";
  setTimeout(()=>map.invalidateSize({pan:false}),250)
 })();setInterval(async()=>{
  try{
   const fresh=[];
-  for(let i=0;i<cities.length;i+=50){
-   const batch=cities.slice(i,i+50);
+  for(let i=0;i<ukIrelandCities.length;i+=50){
+   const batch=ukIrelandCities.slice(i,i+50);
    try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
   }
   if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
