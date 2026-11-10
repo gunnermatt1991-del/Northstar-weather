@@ -658,7 +658,6 @@ function showMetricLayer(k){
  if(!cfg)return;
  clearFogLayer();
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
- cityMarkers.clearLayers();
  if(k==="snow"||k==="precipitation"||k==="cloud"){
   const points=[];
   cityWeather.forEach(x=>{const v=Number(x.current&&x.current[cfg[0]]);if(!Number.isFinite(v)||v<=0)return;let intensity=k==="cloud"?Math.max(.08,Math.min(1,v/100)):Math.min(1,Math.max(.12,v/(k==="snow"?2.5:2.8)));points.push([x.lat,x.lon,intensity])});
@@ -681,7 +680,7 @@ function clearFogLayer(){if(fogLayer){map.removeLayer(fogLayer);fogLayer=null}if
 function showFogLayer(){
  if(!cityWeather.length){document.getElementById("status").textContent="Fog and visibility observations are still loading. Please try again shortly.";return}
  if(metricSurfaceLayer){map.removeLayer(metricSurfaceLayer);metricSurfaceLayer=null}
- clearFogLayer();cityMarkers.clearLayers();
+ clearFogLayer();
  fogLayer=L.layerGroup().addTo(map);fogVisible=true;fogToggle.classList.add("active");fogToggle.textContent="☁️ Hide fog shading";fogToggle.setAttribute("aria-pressed","true");
  const summary=[],heat=[];
  cityWeather.forEach(x=>{
