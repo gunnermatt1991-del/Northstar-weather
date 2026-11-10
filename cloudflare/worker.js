@@ -178,17 +178,31 @@ export default {
         if (useMirror) {
           const mirror = new URL("https://weather.tk.gg/v1/forecast");
           mirror.search = url.search;
+          // The public mirror can occasionally stall. Bound its latency so the
+          // browser never sits on the initial "Loading live weather" message.
+          const mirrorController = new AbortController();
+          const mirrorTimer = setTimeout(() => mirrorController.abort(), 5000);
           try {
             upstreamResponse = await fetch(mirror.toString(), {
+              signal: mirrorController.signal,
               headers: { "accept": "application/json" }
             });
           } catch (mirrorError) {
-            console.warn("Primary weather mirror request failed", mirrorError);
+            console.warn("Primary weather mirror request failed or timed out", mirrorError);
+          } finally {
+            clearTimeout(mirrorTimer);
           }
           if (!upstreamResponse || !upstreamResponse.ok) {
-            upstreamResponse = await fetch(upstream.toString(), {
-              headers: { "accept": "application/json" }
-            });
+            const officialController = new AbortController();
+            const officialTimer = setTimeout(() => officialController.abort(), 15000);
+            try {
+              upstreamResponse = await fetch(upstream.toString(), {
+                signal: officialController.signal,
+                headers: { "accept": "application/json" }
+              });
+            } finally {
+              clearTimeout(officialTimer);
+            }
           }
         } else {
           upstreamResponse = await fetch(upstream.toString(), {
