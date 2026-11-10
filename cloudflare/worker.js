@@ -170,27 +170,33 @@ export default {
         return new Response(stale.body, { status: 200, headers });
       };
       try {
-        let upstreamResponse = await fetch(upstream.toString(), {
-          headers: { "accept": "application/json" }
-        });
-        // If Open-Meteo rate-limits the main forecast, try an independent
-        // Open-Meteo-compatible mirror before falling back to an older forecast.
-        // The mirror is used only for the standard single-location forecast;
-        // specialist model and multi-location requests retain the original source.
-        if (forecast && !upstreamResponse.ok &&
-            (upstreamResponse.status === 429 || upstreamResponse.status >= 500) &&
-            !url.searchParams.has("models") &&
-            !String(url.searchParams.get("latitude") || "").includes(",")) {
+        const standardSingleForecast = forecast &&
+          !url.searchParams.has("models") &&
+          !String(url.searchParams.get("latitude") || "").includes(",");
+        let upstreamResponse;
+        // Prefer the independent Open-Meteo-compatible mirror for the main
+        // single-location forecast. This avoids sending every Northstar user
+        // through the same upstream free-tier quota. Keep official Open-Meteo
+        // as the immediate fallback if the mirror is unavailable.
+        if (standardSingleForecast) {
+          const mirror = new URL("https://weather.tk.gg/v1/forecast");
+          mirror.search = url.search;
           try {
-            const mirror = new URL("https://weather.tk.gg/v1/forecast");
-            mirror.search = url.search;
-            const mirrorResponse = await fetch(mirror.toString(), {
+            upstreamResponse = await fetch(mirror.toString(), {
               headers: { "accept": "application/json" }
             });
-            if (mirrorResponse.ok) upstreamResponse = mirrorResponse;
           } catch (mirrorError) {
-            console.warn("Weather mirror fallback failed", mirrorError);
+            console.warn("Primary weather mirror request failed", mirrorError);
           }
+          if (!upstreamResponse || !upstreamResponse.ok) {
+            upstreamResponse = await fetch(upstream.toString(), {
+              headers: { "accept": "application/json" }
+            });
+          }
+        } else {
+          upstreamResponse = await fetch(upstream.toString(), {
+            headers: { "accept": "application/json" }
+          });
         }
         if (!upstreamResponse.ok) {
           if (forecast && (upstreamResponse.status === 429 || upstreamResponse.status >= 500)) {
