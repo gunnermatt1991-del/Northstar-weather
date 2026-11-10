@@ -23,7 +23,7 @@ h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0
 #map{height:min(78vh,850px);min-height:520px;border-radius:18px;overflow:hidden;border:1px solid #7fc9f0aa;background:#245a7e;box-shadow:0 14px 38px #0004}
 .leaflet-tile-pane{filter:saturate(1.12) contrast(1.02) brightness(.96)}
 .northstar-radar-layer{filter:saturate(1.32) contrast(1.12) brightness(1.02)}#map.night-map .leaflet-tile-pane{filter:saturate(.78) contrast(1.04) brightness(1.02)}.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#245a7e}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff;border:1px solid #8ebfff35;box-shadow:0 12px 32px #0008}.leaflet-popup-content{margin:12px 15px;line-height:1.6}.leaflet-popup-content strong{font-size:14px;color:#fff}.leaflet-control-attribution{font-size:9px!important;background:#0b1728d9!important;color:#9eafc7!important}.leaflet-control-attribution a{color:#a9d5ff!important}.leaflet-bar a{background:#142440!important;color:#eff7ff!important;border-color:#ffffff20!important}.leaflet-control-zoom{border:1px solid #ffffff20!important;box-shadow:0 5px 18px #0006!important;overflow:hidden;border-radius:12px!important}
-.pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}
+.pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}.place-pin{display:flex;align-items:center;justify-content:space-between;gap:5px;max-width:94px;min-width:70px;padding:2px 5px;background:#10243beF;color:#f6fbff;border:1px solid #b9d9ef;border-radius:6px;font-size:9px;line-height:14px;box-shadow:0 2px 7px #06132699}.place-pin span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:750}.place-pin b{flex:0 0 auto;color:#10202a;background:var(--pin-color,#a8ed61);border-radius:3px;padding:0 3px;font-size:9px}
 .marker-cluster div{background:linear-gradient(145deg,#3979ad,#183a62)!important;color:#fff!important;border:1px solid #a9d8ff!important;box-shadow:0 4px 16px #0008,inset 0 1px #ffffff35!important;font:800 12px/26px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.marker-cluster{background:#86c4ff35!important;border-radius:50%!important}
 .legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .status{color:var(--muted);font-size:12px;margin:12px 2px 0}.note{color:#b9c9df;font-size:11px;margin:8px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
@@ -1311,7 +1311,24 @@ applyMapTheme(mapMode==="night");
 modeToggle.addEventListener("click",()=>{mapMode=mapMode==="auto"?"day":mapMode==="day"?"night":"auto";try{localStorage.setItem("northstar-map-mode",mapMode);}catch(e){}if(mapMode==="auto")updateAutomaticTheme();else applyMapTheme(mapMode==="night");});
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{solarLocation={lat:p.coords.latitude,lon:p.coords.longitude};updateAutomaticTheme();},()=>updateAutomaticTheme(),{maximumAge:3600000,timeout:5000});
 updateAutomaticTheme();setInterval(updateAutomaticTheme,60000);
-const cityMarkers=L.markerClusterGroup({maxClusterRadius:function(zoom){return zoom<=5?60:zoom<=7?48:36;},disableClusteringAtZoom:9,spiderfyOnMaxZoom:true,showCoverageOnHover:false,zoomToBoundsOnClick:true,animate:true,animateAddingMarkers:false,iconCreateFunction:function(cluster){const n=cluster.getChildCount();const zoom=map.getZoom();const grouped=zoom<=6;const size=n>=100?"large":n>=20?"medium":"small";const label=grouped?"Zoom in":String(n);return L.divIcon({html:"<span>"+label+"</span>",className:"northstar-city-cluster "+size+(grouped?" zoomed-out":"") ,iconSize:grouped?L.point(62,30):L.point(42,30)});}}).addTo(map);
+const cityMarkers=L.layerGroup().addTo(map);
+/* UK & Ireland first: curated national and regional place tiers keep the map legible. */
+const nationalPlaces=new Set(["London","Birmingham","Manchester","Liverpool","Leeds","Sheffield","Newcastle upon Tyne","Edinburgh","Glasgow","Cardiff","Bristol","Belfast","Dublin","Aberdeen"]);
+const regionalPlaces=new Set(["Nottingham","Leicester","York","Newcastle","Norwich","Southampton","Plymouth","Exeter","Brighton","Swansea","Inverness","Dundee","Perth","Stirling","Carlisle","Blackpool","Bradford","Coventry","Kingston upon Hull","Preston","Derby","Wolverhampton","Stoke-on-Trent","Milton Keynes","Northampton","Luton","Portsmouth","Swindon","Ipswich","Wigan","Warrington","Sunderland","Bournemouth","Peterborough","Telford","Huddersfield","Middlesbrough","Bolton","Stockport","Gloucester","Salford","Solihull","Watford","Crawley","Rotherham","Doncaster","Lincoln","Eastbourne","Worcester","Bath","Rochdale","Darlington","Southport","Chester","Harrogate","Hartlepool","Grimsby","South Shields","Weston-super-Mare","Halifax","Scunthorpe","Stockton-on-Tees","Gateshead","Shrewsbury","Crewe","Barnsley","Maidenhead","Corby","Paignton","Loughborough","Great Yarmouth","Bury","Hereford","Wrexham","Aberystwyth","Derry","Sligo","Donegal","Cork","Galway","Limerick","Waterford"]);
+function isUkIrelandPlace(x){return x.lat>=49.8&&x.lat<=59.6&&x.lon>=-11.2&&x.lon<=2.2;}
+function placeVisibleAtZoom(x){
+ if(!isUkIrelandPlace(x))return false;
+ const z=map.getZoom();
+ if(z<=5)return nationalPlaces.has(x.name);
+ if(z<=7)return nationalPlaces.has(x.name)||regionalPlaces.has(x.name);
+ return true;
+}
+function renderCityMarkers(){
+ if(metricSurfaceLayer||fogVisible)return;
+ cityMarkers.clearLayers();
+ cityWeather.forEach(x=>addCityMarker(x,[]));
+}
+map.on("zoomend",renderCityMarkers);
 const layerMenuToggle=document.getElementById("layerMenuToggle"),layerMenuPanel=document.getElementById("layerMenuPanel");layerMenuToggle.addEventListener("click",()=>{layerMenuPanel.hidden=!layerMenuPanel.hidden;layerMenuToggle.setAttribute("aria-expanded",String(!layerMenuPanel.hidden))});document.addEventListener("click",e=>{if(!e.target.closest(".layer-menu")&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false")}});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!layerMenuPanel.hidden){layerMenuPanel.hidden=true;layerMenuToggle.setAttribute("aria-expanded","false");layerMenuToggle.focus()}});
 let metricSurfaceLayer=null;
 function showMetricLayer(k){
@@ -1445,7 +1462,7 @@ async function getCitiesBatch(batch){
 }
 function addCityMarker(x,bounds){
  const t=Math.round(x.current.temperature_2m),c=x.current.weather_code,ico=weatherIcon(c,x.current.is_day),color=tone(t);
- const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+t+'°</div>',iconSize:[31,20],iconAnchor:[15,10]});
+ if(!placeVisibleAtZoom(x))return;const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin place-pin" style="--pin-color:'+color+'"><span>'+x.name+'</span><b>'+t+'°</b></div>',iconSize:[94,22],iconAnchor:[47,11]});
  const v=x.current,fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
  const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+
  "<hr style='border:0;border-top:1px solid #ffffff25;margin:7px 0'>"+
@@ -1478,7 +1495,7 @@ function addCityMarker(x,bounds){
    const batch=cities.slice(i,i+50);
    try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
   }
-  if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();if(radarVisible)updateSnowfallObservationLayer();}
+  if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
  }catch(e){console.warn("Weather observation refresh failed",e)}
 },15*60*1000);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
