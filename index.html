@@ -381,7 +381,7 @@ async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
   try{
    const lat=Number(primaryUrl.searchParams.get("latitude")),lon=Number(primaryUrl.searchParams.get("longitude"));
    if(!Number.isFinite(lat)||!Number.isFinite(lon))throw Error("Invalid forecast coordinates");
-   const u=new URL("https://api.met.no/weatherapi/locationforecast/2.0/compact");
+   const u=new URL("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/backup");
    u.searchParams.set("lat",lat.toFixed(4));u.searchParams.set("lon",lon.toFixed(4));
    const response=await fetch(u,{cache:"no-store"});
    if(!response.ok)throw Error("Backup weather service returned HTTP "+response.status);
