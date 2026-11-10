@@ -774,9 +774,11 @@ async function getCitiesBatch(batch){
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
   hourly:"visibility",timezone:"auto"
  });
- const endpoint="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?";
- let response=await fetch(endpoint+params.toString());
- if(!response.ok)response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString());
+ const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
+ const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
+ // Prefer the public forecast endpoint; the Northstar proxy can be rate-limited independently.
+ let response=await fetch(direct,{cache:"no-store"});
+ if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
  if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
@@ -801,8 +803,8 @@ function addCityMarker(x,bounds){
 }
 (async()=>{
  let count=0,failed=0,firstError="";const bounds=[];
- for(let i=0;i<cities.length;i+=20){
-  const batch=cities.slice(i,i+20);
+ for(let i=0;i<cities.length;i+=10){
+  const batch=cities.slice(i,i+10);
   try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
   catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
  }
@@ -813,8 +815,8 @@ function addCityMarker(x,bounds){
 })();setInterval(async()=>{
  try{
   const fresh=[];
-  for(let i=0;i<cities.length;i+=20){
-   const batch=cities.slice(i,i+20);
+  for(let i=0;i<cities.length;i+=10){
+   const batch=cities.slice(i,i+10);
    try{fresh.push(...await getCitiesBatch(batch));}catch(error){console.warn("Weather refresh batch failed",error);}
   }
   if(fresh.length){cityWeather=fresh;if(fogVisible)showFogLayer();else if(!metricSurfaceLayer)renderCityMarkers();if(radarVisible)updateSnowfallObservationLayer();}
