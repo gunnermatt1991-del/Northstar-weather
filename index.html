@@ -249,7 +249,7 @@ img,svg,canvas{max-width:100%}
   const method=((init&&init.method)||"GET").toUpperCase();
   const cacheable=method==="GET"&&(url.hostname==="api.open-meteo.com"||(url.hostname==="northstar-weather-alerts.gunnermatt1991.workers.dev"&&url.pathname==="/weather/forecast"));
   if(!cacheable)return nativeFetch(input,init);
-  const key="northstarForecastV2:"+url.href,legacyKey="northstarOpenMeteo:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;
+  const key="northstarForecastV2:"+url.href,legacyKey="northstarOpenMeteo:"+url.href,ttl=60*60*1000,staleLimit=7*24*60*60*1000;
   let stale=null;
   try{
    let saved=localStorage.getItem(key);
