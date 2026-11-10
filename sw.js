@@ -1,4 +1,4 @@
-const CACHE = "northstar-weather-v106";
+const CACHE = "northstar-weather-v107";
 const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png", "./uk-map.html", "./uk-map-radar.html", "./Northstar-UK-Map-Fixed.html", "./Northstar-UK-Map-Fixed%202.html", "./premium-storm-analysis.html"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new Request(new URL(path, self.registration.scope), {cache:"reload"})))).then(() => self.skipWaiting()));
@@ -27,7 +27,8 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clients => {
     for (const client of clients) {
       if (client.url.startsWith(self.location.origin) && "focus" in client) {
-        client.navigate(target.href);
+        // Keep the user in the Northstar page they already have open.
+        // Only open the app URL when no Northstar window exists.
         return client.focus();
       }
     }
