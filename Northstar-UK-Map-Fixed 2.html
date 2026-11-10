@@ -608,7 +608,7 @@ function tone(t){return t<0?"#2330be":t<5?"#3769eb":t<10?"#37bee1":t<15?"#23af73
 const map=L.map("map",{scrollWheelZoom:false,maxZoom:11,zoomControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView([54,-3],5);
 map.createPane("fogPane");map.getPane("fogPane").style.zIndex=650;map.getPane("fogPane").style.pointerEvents="none";
 let baseLayer;
-const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abc",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+const dayTiles=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abcd",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'});
 let cloudCoverLayer=null,cloudCoverVisible=false;
 function setCloudCover(enabled){if(enabled&&!cloudCoverLayer){const points=cityWeather.filter(x=>Number.isFinite(Number(x.current&&x.current.cloud_cover))).map(x=>[x.lat,x.lon,Math.max(.08,Math.min(1,Number(x.current.cloud_cover)/100))]);if(!points.length){document.getElementById("status").textContent="Cloud cover data is still loading. Please try again shortly.";return false;}cloudCoverLayer=L.heatLayer(points,{radius:42,blur:32,maxZoom:11,minOpacity:.09,gradient:{0.12:"#d8e1ec",0.35:"#c0ccd9",0.58:"#a5b4c5",0.78:"#8999ad",1:"#64758b"}});}if(!cloudCoverLayer)return false;if(enabled&&!cloudCoverVisible){cloudCoverLayer.addTo(map);cloudCoverVisible=true;}else if(!enabled&&cloudCoverVisible){map.removeLayer(cloudCoverLayer);cloudCoverVisible=false;}return true;}
 let mapMode="day",nightMode=false,solarLocation=null;
@@ -729,10 +729,21 @@ async function loadRainForecast(){
   url.searchParams.set("longitude",grid.map(p=>p.lon).join(","));
   url.searchParams.set("hourly","precipitation,precipitation_probability");
   url.searchParams.set("forecast_hours","7");url.searchParams.set("timezone","UTC");
-  const response=await fetch(url);if(!response.ok)throw Error("Forecast unavailable");
-  const raw=await response.json(),locations=Array.isArray(raw)?raw:[raw];
+  const locations=[];
+  for(let i=0;i<grid.length;i+=40){
+   const points=grid.slice(i,i+40),params=new URLSearchParams({
+    latitude:points.map(p=>p.lat).join(","),longitude:points.map(p=>p.lon).join(","),
+    hourly:"precipitation,precipitation_probability",forecast_hours:"7",timezone:"UTC"
+   });
+   let response=await fetch("https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString());
+   if(!response.ok)response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString());
+   if(!response.ok)throw Error("Forecast service returned HTTP "+response.status);
+   const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
+   if(items.length!==points.length)throw Error("Incomplete forecast response");
+   items.forEach((item,j)=>locations.push({point:points[j],hourly:item.hourly}));
+  }
   if(!locations.length||!locations[0].hourly)throw Error("No forecast data");
-  rainForecastData=locations.map((location,i)=>({lat:grid[i].lat,lon:grid[i].lon,times:location.hourly.time,amount:location.hourly.precipitation||[],probability:location.hourly.precipitation_probability||[]}));
+  rainForecastData=locations.map(({point,hourly})=>({lat:point.lat,lon:point.lon,times:hourly.time,amount:hourly.precipitation||[],probability:hourly.precipitation_probability||[]}));
   rainForecastSlider.disabled=false;rainForecastSlider.max=String(Math.min(6,...rainForecastData.map(p=>p.times.length-1)));
   rainForecastSlider.value="1";updateRainForecast(1);rainForecastToggle.disabled=false;
   rainForecastToggle.textContent="🌦️ Hide rain forecast";
