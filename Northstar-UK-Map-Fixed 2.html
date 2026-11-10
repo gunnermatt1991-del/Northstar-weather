@@ -829,33 +829,79 @@ function addCityMarker(x){
  // Numeric temperature only: no place name and no weather-condition symbol.
  L.marker([x.lat,x.lon],{icon:marker,keyboard:false,interactive:false}).addTo(cityMarkers);
 }
+let cityWeatherLoading=false,cityWeatherLoadQueued=false;
+const loadedCityKeys=new Set();
+function cityWeatherKey(city){return String(city[0]).toLowerCase()+"|"+Number(city[1]).toFixed(4)+"|"+Number(city[2]).toFixed(4)}
 async function loadCityWeather(){
- const batchSize=20;
- const batches=[];
- for(let i=0;i<cities.length;i+=batchSize)batches.push(cities.slice(i,i+batchSize));
- cityWeather=[];renderCityMarkers();
+ if(cityWeatherLoading){cityWeatherLoadQueued=true;return}
+ cityWeatherLoading=true;
  let failed=0;
- setTemperatureStatus("Live temperatures: loading…");
- for(const batch of batches){
-  try{
-   const readings=await getCitiesBatch(batch);
-   cityWeather.push(...readings);renderCityMarkers();
-   setTemperatureStatus("Live temperatures: "+cityWeather.length+" locations loaded"+(failed?"; "+failed+" awaiting retry":"")+".");
-  }catch(error){
-   failed+=batch.length;
-   console.warn("Northstar temperature batch failed:",error);
-   setTemperatureStatus("Live temperatures: "+cityWeather.length+" loaded; "+failed+" locations need retry.",true);
-  }
- }
- renderCityMarkers();
- if(cityWeather.length){
-  setTemperatureStatus("Live temperatures: "+cityWeather.length+" locations"+(failed?"; "+failed+" unavailable":"")+".",failed>0);
- }else{
-  setTemperatureStatus("Live temperatures unavailable. Check Northstar's weather connection.",true);
+ try{
+  do{
+   cityWeatherLoadQueued=false;
+   const bounds=map.getBounds();
+   // Only request locations visible at the current map zoom and inside the current viewport.
+   const visibleCities=cities.filter(city=>{
+    const candidate={name:city[0],lat:city[1],lon:city[2],isPersonal:!!city[3]};
+    return placeVisibleAtZoom(candidate)&&bounds.contains([city[1],city[2]]);
+   });
+   const pending=visibleCities.filter(city=>!loadedCityKeys.has(cityWeatherKey(city)));
+   if(!pending.length)continue;
+   const batches=[];
+   for(let i=0;i<pending.length;i+=20)batches.push(pending.slice(i,i+20));
+   for(const batch of batches){
+    try{
+     const readings=await getCitiesBatch(batch);
+     readings.forEach(reading=>{
+      cityWeather.push(reading);
+      loadedCityKeys.add(cityWeatherKey([reading.name,reading.lat,reading.lon]));
+     });
+     renderCityMarkers();
+     const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
+     setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations loaded.");
+    }catch(error){
+     failed+=batch.length;
+     console.warn("Northstar visible temperature batch failed:",error);
+     setTemperatureStatus("Live temperatures: "+cityWeather.length+" cached; "+failed+" visible locations need retry.",true);
+    }
+   }
+  }while(cityWeatherLoadQueued);
+  renderCityMarkers();
+  const bounds=map.getBounds();
+  const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
+  if(failed)setTemperatureStatus("Live temperatures: "+visibleCount+" visible; "+failed+" locations unavailable.",true);
+  else if(visibleCount)setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations.");
+  else setTemperatureStatus("No temperature locations in this view yet. Move or zoom the map to load nearby readings.",true);
+ }finally{
+  cityWeatherLoading=false;
+  if(cityWeatherLoadQueued){cityWeatherLoadQueued=false;loadCityWeather()}
  }
 }
+// Keep the map's personal location in sync with the main app when the user saves a new town.
+function syncPersonalLocationFromStorage(){
+ const oldPersonal=cities.findIndex(city=>!!city[3]);
+ if(oldPersonal>=0){loadedCityKeys.delete(cityWeatherKey(cities[oldPersonal]));cities.splice(oldPersonal,1)}
+ let saved=null;
+ try{saved=JSON.parse(localStorage.getItem("northstar-selected-weather-location")||"null")}catch(error){}
+ northstarPersonalLocation=null;
+ cityWeather=cityWeather.filter(x=>!x.isPersonal);
+ if(saved&&saved.name&&Number.isFinite(Number(saved.lat))&&Number.isFinite(Number(saved.lon))){
+  northstarPersonalLocation={name:String(saved.name),lat:Number(saved.lat),lon:Number(saved.lon)};
+  const existing=cities.findIndex(city=>city[0].toLowerCase()===northstarPersonalLocation.name.toLowerCase());
+  const personal=[northstarPersonalLocation.name,northstarPersonalLocation.lat,northstarPersonalLocation.lon,true];
+  if(existing>=0){loadedCityKeys.delete(cityWeatherKey(cities[existing]));cities[existing]=personal}
+  else cities.push(personal);
+  cityWeather=cityWeather.filter(x=>x.name.toLowerCase()!==northstarPersonalLocation.name.toLowerCase());
+  map.setView([northstarPersonalLocation.lat,northstarPersonalLocation.lon],Math.max(map.getZoom(),6),{animate:false});
+ }
+ renderCityMarkers();loadCityWeather();
+}
+window.addEventListener("storage",event=>{
+ if(event.key==="northstar-selected-weather-location")syncPersonalLocationFromStorage();
+});
 // Fetch temperatures independently from the rain-radar layer.
 loadCityWeather();
+map.on("zoomend moveend",()=>{renderCityMarkers();loadCityWeather()});
 setTimeout(()=>map.invalidateSize({pan:false}),250);
 const mapElement=document.getElementById("map");if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));mapResizeObserver.observe(mapElement);}window.addEventListener("orientationchange",()=>setTimeout(()=>map.invalidateSize({pan:false}),350),{passive:true});window.addEventListener("resize",()=>map.invalidateSize({pan:false}),{passive:true});loadRadar();
 
