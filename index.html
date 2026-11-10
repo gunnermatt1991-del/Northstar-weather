@@ -405,22 +405,37 @@ function icon(c,day=1){if(c===0)return day?"☀️":"🌙";if(c===1)return day?"
 // Model comparison must never fall back to the generic MET Norway forecast:
 // that fallback is useful for the home screen, but it would label one forecast
 // as ECMWF, GFS and ICON and make all three curves identical.
-async function northstarModelJson(primaryUrl,fallbackUrl,timeoutMs=20000){
+async function northstarModelJson(url,timeoutMs=30000){
  let lastError=null;
- for(const target of [primaryUrl,fallbackUrl]){
+ // Use the Northstar Worker only: it tries the independent mirror first and
+ // serves cached forecasts where available. Do not double traffic by
+ // immediately bypassing it with a direct browser request to Open-Meteo.
+ for(let attempt=0;attempt<3;attempt++){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{
-   const response=await fetch(target,{signal:controller.signal,cache:"no-store"});
-   if(!response.ok)throw Error("Model service returned HTTP "+response.status);
+   const response=await fetch(url,{signal:controller.signal,cache:"no-store"});
+   if(!response.ok){
+    let detail="";
+    try{const body=await response.json();detail=body?.reason||body?.error||""}catch{}
+    const error=new Error("Model service returned HTTP "+response.status+(detail?": "+detail:""));
+    error.status=response.status;throw error;
+   }
    const data=await response.json();
    if(data?.error)throw Error(data.reason||data.error||"Model data unavailable");
    if(data?.properties?.timeseries)throw Error("The generic backup forecast is not a model-specific forecast");
    if(!Array.isArray(data?.hourly?.time)||!Object.keys(data?.hourly||{}).some(key=>key==="temperature_2m"||key.startsWith("temperature_2m_")))throw Error("Model service returned no hourly temperature series");
    return data;
-  }catch(error){lastError=error}
-  finally{clearTimeout(timer)}
+  }catch(error){
+   lastError=error;
+   const retryable=error?.status===429||error?.status>=500||error?.name==="AbortError"||/network|fetch failed|temporarily unavailable/i.test(error?.message||"");
+   if(!retryable||attempt===2)break;
+   const delay=attempt===0?12000:25000;
+   const trend=$("modelTrend");
+   if(trend){const note=trend.querySelector(".model-retry-status")||document.createElement("div");note.className="muted model-retry-status";note.style.marginTop="8px";note.textContent="The model provider is busy. Northstar is waiting "+Math.round(delay/1000)+" seconds before a careful retry…";if(!note.parentNode)trend.appendChild(note)}
+   await new Promise(resolve=>setTimeout(resolve,delay));
+  }finally{clearTimeout(timer)}
  }
- throw Error(lastError?.name==="AbortError"?"The model service timed out.":(lastError?.message||"Model data is temporarily unavailable."));
+ throw Error(lastError?.name==="AbortError"?"The model service timed out after retries.":(lastError?.message||"Model data is temporarily unavailable after retries."));
 }
 async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
  let lastError=null;
@@ -696,9 +711,8 @@ async function loadModelConfidence(){
    hourly:"temperature_2m",forecast_days:"3",timezone:"auto",
    models:models.map(model=>model.id).join(",")
   });
-  const primary="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+q.toString();
-  const direct="https://api.open-meteo.com/v1/forecast?"+q.toString();
-  const data=await northstarModelJson(primary,direct,25000);
+  const northstar="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+q.toString();
+  const data=await northstarModelJson(northstar,30000);
   const hourly=data.hourly,referenceTime=weather.current.time||new Date().toISOString();
   if(!Array.isArray(hourly.time))throw Error("The model provider returned no hourly timeline");
   let offset=hourly.time.findIndex(time=>time>=referenceTime);if(offset<0)offset=0;
@@ -736,7 +750,7 @@ async function loadModelConfidence(){
  }catch(error){
   const message=error?.message||"temporary data error";
   showModelTrendRetry(message.includes("429")
-   ?"The free weather provider is busy. Northstar now requests all three models together; please wait a minute and retry."
+   ?"The model provider is still rate-limiting requests after Northstar's automatic retries. Your normal forecast remains available; wait a little and retry the model comparison."
    :"Temperature model trends could not load: "+message);
  }finally{modelTrendLoading=false}
 }
