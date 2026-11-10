@@ -776,8 +776,9 @@ async function getCitiesBatch(batch){
 }
 function addCityMarker(x,bounds){
  if(!nationalPlaces.has(x.name))return;
- const marker=L.divIcon({className:"major-city-label-wrap",html:'<span class="major-city-label">'+x.name+'</span>',iconSize:[1,1],iconAnchor:[0,0]});
  const v=x.current,c=v.weather_code,ico=weatherIcon(c,v.is_day),fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toFixed(d):"—";
+ const temp=fmt(v.temperature_2m,0)+"°";
+ const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin place-pin" style="--pin-color:#37bee1"><span class="place-weather-icon">'+ico+'</span><b>'+temp+'</b></div>',iconSize:[40,22],iconAnchor:[20,11]});
  const popup="<strong>"+x.name+"</strong><br>"+ico+" "+(descriptions[c]||"Current conditions")+
  "<hr style='border:0;border-top:1px solid #ffffff25;margin:7px 0'>"+
  "🌡️ Temperature: <b>"+fmt(v.temperature_2m,1)+"°C</b><br>"+
