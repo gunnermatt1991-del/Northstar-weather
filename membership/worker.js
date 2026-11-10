@@ -123,6 +123,39 @@ export default {
       const active=await verifyOwnerSession(body?.token,env.OWNER_ACCESS_CODE);
       return json({active,mode:active?"owner-test":null});
     }
+
+    if (url.pathname === "/snow/access" || url.pathname === "/snow/create-order" || url.pathname === "/snow/capture-order") {
+      let body; try { body=await request.json(); } catch { return json({error:"Invalid request"},400); }
+      const deviceId=typeof body?.deviceId==="string"?body.deviceId:"";
+      if(!/^[a-f0-9]{64}$/.test(deviceId))return json({error:"Invalid device identifier"},400);
+      if(url.pathname==="/snow/access"){
+        try { const row=await env.DB.prepare("SELECT 1 AS ok FROM snow_radar_unlocks WHERE device_id=? AND status='COMPLETED'").bind(deviceId).first(); return json({unlocked:!!row}); }
+        catch(error){console.error("Snow access lookup failed",error);return json({unlocked:false,error:"Access check unavailable"},503);}
+      }
+      try { if(await rateLimited(request,env,url.pathname,6,900))return json({error:"Too many checkout attempts. Please wait."},429); }
+      catch(error){console.error("Snow checkout rate limit unavailable",error);return json({error:"Checkout temporarily unavailable"},503);}
+      if(!env.PAYPAL_CLIENT_ID||!env.PAYPAL_CLIENT_SECRET)return json({error:"PayPal checkout is not configured"},503);
+      try {
+        const existing=await env.DB.prepare("SELECT 1 AS ok FROM snow_radar_unlocks WHERE device_id=? AND status='COMPLETED'").bind(deviceId).first();
+        if(existing)return json({unlocked:true});
+        const token=await paypalAccessToken(env);
+        if(url.pathname==="/snow/create-order"){
+          const response=await fetch("https://api-m.paypal.com/v2/checkout/orders",{method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},body:JSON.stringify({intent:"CAPTURE",purchase_units:[{custom_id:deviceId,description:"Northstar Snow Radar lifetime access",amount:{currency_code:"GBP",value:"2.99"}}],application_context:{brand_name:"Northstar Weather",user_action:"PAY_NOW"}})});
+          const order=await response.json();if(!response.ok||!order.id)throw new Error("PayPal order creation failed");return json({id:order.id});
+        }
+        const orderId=typeof body?.orderId==="string"?body.orderId:"";
+        if(!/^[A-Z0-9-]{8,64}$/i.test(orderId))return json({error:"Invalid order reference"},400);
+        let response=await fetch("https://api-m.paypal.com/v2/checkout/orders/"+encodeURIComponent(orderId)+"/capture",{method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"}});
+        let result=await response.json();
+        if(!response.ok&&result?.name==="ORDER_ALREADY_CAPTURED"){response=await fetch("https://api-m.paypal.com/v2/checkout/orders/"+encodeURIComponent(orderId),{headers:{authorization:"Bearer "+token,accept:"application/json"}});result=await response.json();}
+        else if(!response.ok)throw new Error("PayPal capture failed");
+        const unit=result.purchase_units?.[0],capture=unit?.payments?.captures?.[0];
+        const verified=result.status==="COMPLETED"&&unit?.custom_id===deviceId&&capture?.status==="COMPLETED"&&capture?.amount?.currency_code==="GBP"&&capture?.amount?.value==="2.99";
+        if(!verified)return json({unlocked:false,error:"PayPal has not confirmed the £2.99 payment."},402);
+        await env.DB.prepare("INSERT INTO snow_radar_unlocks (device_id,paypal_order_id,paypal_capture_id,status) VALUES (?,?,?,'COMPLETED') ON CONFLICT(device_id) DO NOTHING").bind(deviceId,orderId,capture.id).run();
+        return json({unlocked:true});
+      } catch(error){console.error("Snow purchase processing failed",error);return json({error:"PayPal could not verify this purchase yet. Please contact support before paying again."},502);}
+    }
     if (url.pathname !== "/verify") return json({ error: "Not found" }, 404);
     let body;
     try { body = await request.json(); } catch {
