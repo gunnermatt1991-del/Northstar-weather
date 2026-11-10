@@ -767,9 +767,19 @@ async function getCitiesBatch(batch){
  // The Northstar edge proxy can reject larger map batches; use it only as fallback.
  const direct="https://api.open-meteo.com/v1/forecast?"+params.toString();
  const proxy="https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+params.toString();
- let response=await fetch(direct,{cache:"no-store"});
- if(!response.ok)response=await fetch(proxy,{cache:"no-store"});
- if(!response.ok)throw Error("Weather provider returned HTTP "+response.status);
+ let response=null,lastError="";
+ // Smaller batches avoid provider query/response limits and make partial failures recoverable.
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   response=await fetch(direct,{cache:"no-store"});
+   if(response.ok)break;
+   lastError="Open-Meteo HTTP "+response.status;
+   response=await fetch(proxy,{cache:"no-store"});
+   if(response.ok)break;
+   lastError="Weather proxy HTTP "+response.status;
+  }catch(error){lastError=error.message||String(error)}
+ }
+ if(!response||!response.ok)throw Error(lastError||"Weather provider unavailable");
  const raw=await response.json(),items=Array.isArray(raw)?raw:[raw];
  if(items.length!==batch.length)throw Error("Weather provider returned "+items.length+" readings for "+batch.length+" locations");
  return batch.map((city,i)=>{const item=items[i];if(!item||!item.current||!Number.isFinite(Number(item.current.temperature_2m)))throw Error("Missing temperature for "+city[0]);return{name:city[0],lat:city[1],lon:city[2],current:item.current};});
@@ -793,8 +803,8 @@ function addCityMarker(x,bounds){
 }
 (async()=>{
  let count=0,failed=0,firstError="";const bounds=[];
- for(let i=0;i<cities.length;i+=50){
-  const batch=cities.slice(i,i+50);
+ for(let i=0;i<cities.length;i+=10){
+  const batch=cities.slice(i,i+10);
   try{const readings=await getCitiesBatch(batch);for(const x of readings){cityWeather.push(x);addCityMarker(x,bounds);count++;}}
   catch(e){failed+=batch.length;if(!firstError)firstError=e.message||String(e);}
  }
