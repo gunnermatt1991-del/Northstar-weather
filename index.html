@@ -377,6 +377,26 @@ async function northstarJson(primaryUrl,fallbackUrl,timeoutMs=10000){
   }catch(error){lastError=error}
   finally{clearTimeout(timer)}
  }
+ if(primaryUrl?.pathname==="/weather/forecast"&&primaryUrl.searchParams.has("latitude")&&primaryUrl.searchParams.has("longitude")){
+  try{
+   const lat=Number(primaryUrl.searchParams.get("latitude")),lon=Number(primaryUrl.searchParams.get("longitude"));
+   if(!Number.isFinite(lat)||!Number.isFinite(lon))throw Error("Invalid forecast coordinates");
+   const u=new URL("https://api.met.no/weatherapi/locationforecast/2.0/compact");
+   u.searchParams.set("lat",lat.toFixed(4));u.searchParams.set("lon",lon.toFixed(4));
+   const response=await fetch(u,{cache:"no-store"});
+   if(!response.ok)throw Error("Backup weather service returned HTTP "+response.status);
+   const raw=await response.json(),series=raw?.properties?.timeseries;
+   if(!Array.isArray(series)||!series.length)throw Error("Backup weather service returned no forecast");
+   const symbolCode=s=>{const x=String(s||"").toLowerCase();if(x.includes("thunder"))return 95;if(x.includes("snow"))return 71;if(x.includes("sleet"))return 67;if(x.includes("rain"))return 61;if(x.includes("fog"))return 45;if(x.includes("cloudy"))return x.includes("partly")?2:3;if(x.includes("fair"))return 1;return 0};
+   const rows=series.map(item=>{const d=item.data||{},instant=d.instant?.details||{},next=d.next_1_hours||d.next_6_hours||d.next_12_hours||{},details=next.details||{};return{time:item.time,temperature:Number(instant.air_temperature),feels:Number(instant.apparent_temperature??instant.air_temperature),humidity:Number(instant.relative_humidity??70),wind:Number(instant.wind_speed??0)*3.6,direction:Number(instant.wind_from_direction??0),gust:Number(instant.wind_speed_of_gust??instant.wind_speed??0)*3.6,pressure:Number(instant.air_pressure_at_sea_level??1013),cloud:Number(instant.cloud_area_fraction??0),precip:Number(details.precipitation_amount??0),prob:Number(details.probability_of_precipitation??0),code:symbolCode(next.summary?.symbol_code),isDay:!String(next.summary?.symbol_code||"").includes("night")};});
+   const now=Date.now();let currentIndex=rows.findIndex(x=>new Date(x.time).getTime()>=now);if(currentIndex<0)currentIndex=0;const current=rows[currentIndex],hourly=rows.slice(currentIndex);
+   const groups=new Map();for(const x of rows){const key=x.time.slice(0,10);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(x)}
+   const days=[...groups.entries()].slice(0,7),fmtDay=(date,hour)=>date+"T"+hour+":00:00Z";
+   const daily={time:days.map(([date])=>date),temperature_2m_max:days.map(([,v])=>Math.max(...v.map(x=>x.temperature).filter(Number.isFinite))),temperature_2m_min:days.map(([,v])=>Math.min(...v.map(x=>x.temperature).filter(Number.isFinite))),weather_code:days.map(([,v])=>v[Math.floor(v.length/2)]?.code??0),precipitation_probability_max:days.map(([,v])=>Math.max(0,...v.map(x=>x.prob).filter(Number.isFinite))),precipitation_sum:days.map(([,v])=>v.reduce((a,x)=>a+(Number.isFinite(x.precip)?x.precip:0),0)),snowfall_sum:days.map(()=>0),wind_speed_10m_max:days.map(([,v])=>Math.max(0,...v.map(x=>x.wind).filter(Number.isFinite))),sunrise:days.map(([date])=>fmtDay(date,"06")),sunset:days.map(([date])=>fmtDay(date,"18"))};
+   window.__northstarUsingAlternateData=true;
+   return{current:{time:current.time,temperature_2m:current.temperature,apparent_temperature:current.feels,relative_humidity_2m:current.humidity,weather_code:current.code,wind_speed_10m:current.wind,wind_direction_10m:current.direction,wind_gusts_10m:current.gust,pressure_msl:current.pressure,cloud_cover:current.cloud,precipitation:current.precip,is_day:current.isDay?1:0},hourly:{time:hourly.map(x=>x.time),temperature_2m:hourly.map(x=>x.temperature),precipitation_probability:hourly.map(x=>x.prob),precipitation:hourly.map(x=>x.precip),weather_code:hourly.map(x=>x.code),is_day:hourly.map(x=>x.isDay?1:0),visibility:[]},daily,timezone:"UTC",minutely_15:null};
+  }catch(error){lastError=error}
+ }
  throw Error(lastError?.name==="AbortError"?"The weather service timed out. Please try again.":(lastError?.message||"Weather data is temporarily unavailable."));
 }
 
