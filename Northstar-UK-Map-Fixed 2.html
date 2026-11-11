@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="global-live-temperature-shading-20261111-r1">
+<meta name="northstar-map-build" content="live-map-original-clean-20261111-r2">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -217,6 +217,7 @@ body.embed.storm-only .wrap>section.card{margin:0!important;padding:0!important;
 body.embed.storm-only .storm-panel{margin:0!important}
 
 .snow-map-shell{position:relative}.snow-map-shell #map{height:min(76vh,760px);min-height:480px}.snow-map-tools{position:absolute;z-index:900;top:14px;left:14px;display:flex;flex-direction:column;gap:7px}.snow-map-tools button{width:42px;height:42px;border:1px solid #8ba8ce;border-radius:10px;background:#102542ed;color:#fff;font-size:25px;font-weight:700}.snow-map-legend{position:absolute;z-index:900;right:12px;top:14px;width:150px;padding:12px;border:1px solid #8ba8ce;border-radius:14px;background:#07182de8;color:#fff;display:none}.snow-map-shell.snow-active .snow-map-legend{display:block}.snow-map-legend strong{display:block;font-size:13px;margin-bottom:9px}.snow-legend-row{display:flex;align-items:center;gap:9px;font-size:12px;margin:7px 0}.snow-swatch{width:20px;height:20px;border-radius:6px;display:inline-block}.snow-swatch.rain{background:linear-gradient(135deg,#9bcfff,#1763c5)}.snow-swatch.sleet{background:linear-gradient(135deg,#a8f0c9,#13875b)}.snow-swatch.snow{background:linear-gradient(135deg,#ffd1e8,#c72d83)}.snow-timeline{display:none;margin:12px 0 4px;padding:13px;border:1px solid #7898c4;border-radius:14px;background:#0a1d35;color:#eef6ff}.snow-timeline.active{display:block}.snow-timeline-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;margin-bottom:8px}.snow-timeline input{width:100%;accent-color:#53a9ff}.snow-timeline small{display:block;color:#b9c9df;font-size:11px;margin-top:5px}@media(max-width:600px){.snow-map-shell #map{height:68vh;min-height:440px}.snow-map-legend{width:126px;padding:9px;right:8px;top:8px}.snow-map-tools{left:8px;top:8px}.snow-map-tools button{width:38px;height:38px}.snow-legend-row{font-size:11px}}
+#temperatureShadeToggle{display:none!important}
 </style>
 </head>
 <body><div class="wrap">
@@ -678,7 +679,7 @@ function placeVisibleAtZoom(x){
  if(z<=5)return continentalOverviewPlaces.has(x.name);
  return z>=6;
 }
-let temperatureSurfaceLayer=null,temperatureShadingEnabled=true,temperatureSurfaceTimer=null;
+let temperatureSurfaceLayer=null,temperatureShadingEnabled=false,temperatureSurfaceTimer=null;
 const temperaturePalette=[[-10,[35,67,145]],[0,[55,111,190]],[8,[83,157,211]],[16,[130,194,224]],[24,[184,222,237]],[32,[220,239,247]]];
 function temperatureSurfaceColour(value){let a=temperaturePalette[0],b=temperaturePalette[temperaturePalette.length-1];for(let i=0;i<temperaturePalette.length-1;i++){if(value>=temperaturePalette[i][0]&&value<=temperaturePalette[i+1][0]){a=temperaturePalette[i];b=temperaturePalette[i+1];break}}const t=Math.max(0,Math.min(1,(value-a[0])/(b[0]-a[0]||1)));return a[1].map((v,i)=>Math.round(v+(b[1][i]-v)*t))}
 function renderTemperatureSurface(){
@@ -695,9 +696,8 @@ function renderTemperatureSurface(){
 function scheduleTemperatureSurface(){clearTimeout(temperatureSurfaceTimer);temperatureSurfaceTimer=setTimeout(renderTemperatureSurface,120)}
 const temperatureShadeToggle=document.getElementById("temperatureShadeToggle");
 temperatureShadeToggle.addEventListener("click",()=>{temperatureShadingEnabled=!temperatureShadingEnabled;temperatureShadeToggle.textContent=temperatureShadingEnabled?"🌡️ Hide temperature shading":"🌡️ Show temperature shading";temperatureShadeToggle.setAttribute("aria-pressed",String(temperatureShadingEnabled));scheduleTemperatureSurface()});
-map.on("moveend zoomend",scheduleTemperatureSurface);
+// Temperature surface shading intentionally disabled; retain the original clean live map.
 function renderCityMarkers(){
- renderTemperatureSurface();
  // Show temperature-only labels, keeping town names and weather symbols off the radar.
  cityMarkers.clearLayers();
  if(!cityMarkers._map)cityMarkers.addTo(map);
