@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-temperatures-personal-location-20261110-r2">
+<meta name="northstar-map-build" content="global-live-temperature-shading-20261111-r1">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -679,15 +679,15 @@ function placeVisibleAtZoom(x){
  return z>=6;
 }
 let temperatureSurfaceLayer=null,temperatureShadingEnabled=true,temperatureSurfaceTimer=null;
-const temperaturePalette=[[-8,[48,75,171]],[0,[67,119,207]],[5,[91,174,222]],[10,[111,204,216]],[15,[104,190,157]],[20,[211,205,111]],[25,[235,158,91]],[32,[210,91,82]]];
+const temperaturePalette=[[-10,[35,67,145]],[0,[55,111,190]],[8,[83,157,211]],[16,[130,194,224]],[24,[184,222,237]],[32,[220,239,247]]];
 function temperatureSurfaceColour(value){let a=temperaturePalette[0],b=temperaturePalette[temperaturePalette.length-1];for(let i=0;i<temperaturePalette.length-1;i++){if(value>=temperaturePalette[i][0]&&value<=temperaturePalette[i+1][0]){a=temperaturePalette[i];b=temperaturePalette[i+1];break}}const t=Math.max(0,Math.min(1,(value-a[0])/(b[0]-a[0]||1)));return a[1].map((v,i)=>Math.round(v+(b[1][i]-v)*t))}
 function renderTemperatureSurface(){
  if(!temperatureShadingEnabled||cityWeather.length<3){if(temperatureSurfaceLayer){map.removeLayer(temperatureSurfaceLayer);temperatureSurfaceLayer=null}return}
  const bounds=map.getBounds(),north=bounds.getNorth(),south=bounds.getSouth(),west=bounds.getWest(),east=bounds.getEast();
  const points=cityWeather.filter(x=>bounds.contains([x.lat,x.lon])&&Number.isFinite(Number(x.current&&x.current.temperature_2m)));
  if(points.length<3){if(temperatureSurfaceLayer){map.removeLayer(temperatureSurfaceLayer);temperatureSurfaceLayer=null}return}
- const width=150,height=150,canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;const ctx=canvas.getContext("2d"),image=ctx.createImageData(width,height);
- for(let y=0;y<height;y++){const lat=north-(y/(height-1))*(north-south);for(let x=0;x<width;x++){const lon=west+(x/(width-1))*(east-west);let weighted=0,total=0,nearest=Infinity;for(const p of points){const dx=(lon-p.lon)*Math.cos(lat*Math.PI/180),dy=lat-p.lat,d2=dx*dx+dy*dy;nearest=Math.min(nearest,d2);const w=1/Math.pow(d2+.018,1.25);weighted+=Number(p.current.temperature_2m)*w;total+=w}const temp=weighted/total,colour=temperatureSurfaceColour(temp),distance=Math.sqrt(nearest),fade=Math.max(0,Math.min(1,(.95-distance)/.72)),i=(y*width+x)*4;image.data[i]=colour[0];image.data[i+1]=colour[1];image.data[i+2]=colour[2];image.data[i+3]=Math.round(112*fade)}}
+ const width=220,height=220,canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;const ctx=canvas.getContext("2d"),image=ctx.createImageData(width,height);
+ for(let y=0;y<height;y++){const lat=north-(y/(height-1))*(north-south);for(let x=0;x<width;x++){const lon=west+(x/(width-1))*(east-west);let weighted=0,total=0,nearest=Infinity;for(const p of points){const dx=(lon-p.lon)*Math.cos(lat*Math.PI/180),dy=lat-p.lat,d2=dx*dx+dy*dy;nearest=Math.min(nearest,d2);const w=1/Math.pow(d2+.035,1.12);weighted+=Number(p.current.temperature_2m)*w;total+=w}const temp=weighted/total,colour=temperatureSurfaceColour(temp),distance=Math.sqrt(nearest),fade=Math.max(0,Math.min(1,(2.0-distance)/1.45)),i=(y*width+x)*4;image.data[i]=colour[0];image.data[i+1]=colour[1];image.data[i+2]=colour[2];image.data[i+3]=Math.round(158*fade)}}
  ctx.putImageData(image,0,0);const url=canvas.toDataURL("image/png");
  if(temperatureSurfaceLayer)map.removeLayer(temperatureSurfaceLayer);
  temperatureSurfaceLayer=L.imageOverlay(url,bounds,{pane:"temperatureSurfacePane",opacity:.78,interactive:false}).addTo(map);
