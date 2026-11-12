@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-grid-20261112-r9">
+<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-hourly-grid-20261112-r10">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -798,7 +798,7 @@ async function loadGriddedPrecipitation(){
   for(let i=0;i<points.length;i+=10){
    const batch=points.slice(i,i+10),params=new URLSearchParams({
     latitude:batch.map(p=>p.lat).join(","),longitude:batch.map(p=>p.lon).join(","),
-    current:"weather_code,precipitation,rain,showers,snowfall",timezone:"auto"
+    hourly:"weather_code,precipitation,rain,showers,snowfall",forecast_days:"2",timezone:"GMT"
    });
    let raw=null,lastError=null;
    for(const base of ["https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?","https://api.open-meteo.com/v1/forecast?"]){
@@ -807,8 +807,17 @@ async function loadGriddedPrecipitation(){
      if(!response.ok)throw Error("HTTP "+response.status);
      raw=await response.json();if(raw?.error)throw Error(raw.reason||"Weather API error");
      const items=Array.isArray(raw)?raw:[raw];
-     if(items.length!==batch.length||items.some(x=>!x?.current))throw Error("Incomplete grid response");
-     items.forEach((item,j)=>readings.push({...batch[j],current:item.current}));
+     if(items.length!==batch.length||items.some(x=>!x?.hourly?.time?.length))throw Error("Incomplete hourly grid response");
+     items.forEach((item,j)=>{
+      const times=item.hourly.time,now=Date.now();
+      let nearest=0,best=Infinity;
+      times.forEach((stamp,k)=>{const delta=Math.abs(Date.parse(stamp+"Z")-now);if(delta<best){best=delta;nearest=k}});
+      const h=item.hourly;
+      readings.push({...batch[j],current:{
+       weather_code:h.weather_code?.[nearest],precipitation:h.precipitation?.[nearest],
+       rain:h.rain?.[nearest],showers:h.showers?.[nearest],snowfall:h.snowfall?.[nearest]
+      }});
+     });
      lastError=null;break;
     }catch(error){lastError=error}
    }
@@ -829,7 +838,7 @@ async function loadGriddedPrecipitation(){
   griddedPrecipitationLayer.addTo(map);
   gridPrecipitationKey=key;gridPrecipitationLast=Date.now();
   const active=Object.keys(counts).filter(k=>counts[k]).map(k=>k+" "+counts[k]+" grid cells").join(", ");
-  document.getElementById("status").textContent=active?"Radar with gridded precipitation types: "+active+". Orange cells identify modelled showers across the map, not just town markers.":"Radar active; no precipitation types detected in the current grid.";
+  document.getElementById("status").textContent=active?"Radar with gridded precipitation types: "+active+". Orange cells identify shower-type precipitation from the nearest hourly forecast across the map, not just town markers.":"Radar active; no precipitation types detected in the current grid.";
  }catch(error){console.warn("Northstar gridded precipitation scan failed:",error)}
  finally{gridPrecipitationBusy=false}
 }
