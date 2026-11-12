@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-opera-radar-ukv-timeout-fix-20261112-r17">
+<meta name="northstar-map-build" content="live-opera-radar-early-init-20261112-r18">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -1083,7 +1083,7 @@ let rainForecastLayer=null,rainForecastData=[],rainForecastVisible=false;
 const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForecastSlider=document.getElementById("rainForecastSlider"),rainForecastTime=document.getElementById("rainForecastTime");
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
 function stopPlayback(){if(playTimer){clearInterval(playTimer);playTimer=null}play.textContent="▶ Play"}
-function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/2/1_1.png")}
+function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/10/1_1.png")}
 async function fetchLatestRadarFrames(){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);
  let response;try{response=await fetch("https://api.librewxr.net/public/weather-maps.json",{cache:"no-store",signal:controller.signal})}finally{clearTimeout(timeout)}
@@ -1122,6 +1122,9 @@ toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVi
 slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.value))});
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
 latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length-1)});
+// Start observed radar immediately after its controls are wired.
+loadRadar();
+setInterval(()=>{if(radarVisible&&!playTimer)refreshLiveRadar()},5*60*1000);
 async function loadRainForecast(){
  rainForecastToggle.disabled=true;rainForecastToggle.textContent="🌦️ Loading rain forecast…";
  try{
@@ -1319,8 +1322,7 @@ const mapElement=document.getElementById("map");
 if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(scheduleMapResize);mapResizeObserver.observe(mapElement);}
 window.addEventListener("orientationchange",()=>setTimeout(scheduleMapResize,350),{passive:true});
 window.addEventListener("resize",scheduleMapResize,{passive:true});
-loadRadar();
-setInterval(()=>{if(radarVisible&&!playTimer)refreshLiveRadar()},5*60*1000);
+// Radar is initialized beside its own controls so later optional modules cannot prevent it starting.
 
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
