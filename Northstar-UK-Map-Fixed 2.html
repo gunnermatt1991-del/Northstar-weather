@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-grid-20261112-r8">
+<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-grid-20261112-r9">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -781,7 +781,7 @@ function classifyGridPrecip(v){
 }
 async function loadGriddedPrecipitation(){
  if(!radarVisible||gridPrecipitationBusy)return;
- const bounds=map.getBounds(),step=.55;
+ const bounds=map.getBounds(),step=.55;let gridStep=step;
  const south=Math.max(35,Math.floor(bounds.getSouth()/step)*step),north=Math.min(70,Math.ceil(bounds.getNorth()/step)*step);
  const west=Math.max(-15,Math.floor(bounds.getWest()/step)*step),east=Math.min(35,Math.ceil(bounds.getEast()/step)*step);
  const key=[south,north,west,east].join("|");
@@ -789,7 +789,7 @@ async function loadGriddedPrecipitation(){
  const points=[];
  for(let lat=south;lat<=north+.001;lat+=step)for(let lon=west;lon<=east+.001;lon+=step)points.push({lat:Number(lat.toFixed(3)),lon:Number(lon.toFixed(3))});
  if(points.length>180){
-  const factor=Math.sqrt(points.length/180),coarse=step*factor;points.length=0;
+  const factor=Math.sqrt(points.length/180),coarse=step*factor;gridStep=coarse;points.length=0;
   for(let lat=south;lat<=north+.001;lat+=coarse)for(let lon=west;lon<=east+.001;lon+=coarse)points.push({lat:Number(lat.toFixed(3)),lon:Number(lon.toFixed(3))});
  }
  gridPrecipitationBusy=true;
@@ -817,7 +817,7 @@ async function loadGriddedPrecipitation(){
   if(!radarVisible)return;
   if(griddedPrecipitationLayer)map.removeLayer(griddedPrecipitationLayer);
   griddedPrecipitationLayer=L.layerGroup();
-  const half=step/2,counts={rain:0,showers:0,sleet:0,snow:0};
+  const half=gridStep/2,counts={rain:0,showers:0,sleet:0,snow:0};
   readings.forEach(p=>{
    const type=classifyGridPrecip(p.current);if(!type)return;
    counts[type]++;
