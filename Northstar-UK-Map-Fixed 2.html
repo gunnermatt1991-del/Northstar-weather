@@ -700,10 +700,10 @@ function showMetricLayer(k){
   const points=[];
   cityWeather.forEach(x=>{const v=Number(x.current&&x.current[cfg[0]]);if(!Number.isFinite(v)||v<=0)return;let intensity=k==="cloud"?Math.max(.08,Math.min(1,v/100)):Math.min(1,Math.max(.12,v/(k==="snow"?2.5:2.8)));points.push([x.lat,x.lon,intensity])});
   if(points.length&&L.heatLayer){
-   const gradient=k==="snow"?{0.12:"#e7f7ff",0.38:"#b9e2f5",0.66:"#79b9df",1:"#e9fbff"}:k==="precipitation"?{0.12:"#b6e8f8",0.36:"#55b8e8",0.62:"#267ed0",0.84:"#37c8b4",1:"#f4d45c"}:{0.12:"#e6edf4",0.34:"#cbd7e3",0.58:"#9aabbe",0.8:"#71849c",1:"#4b607a"};
+   const gradient=k==="snow"?{0.12:"#fff0f7",0.32:"#ffc2df",0.58:"#f47fba",0.82:"#e04496",1:"#a91568"}:k==="precipitation"?{0.12:"#b6e8f8",0.36:"#55b8e8",0.62:"#267ed0",0.84:"#37c8b4",1:"#f4d45c"}:{0.12:"#e6edf4",0.34:"#cbd7e3",0.58:"#9aabbe",0.8:"#71849c",1:"#4b607a"};
    metricSurfaceLayer=L.heatLayer(points,{radius:k==="cloud"?52:46,blur:k==="cloud"?38:34,maxZoom:11,minOpacity:k==="cloud"?.08:.12,gradient}).addTo(map);
   }
-  document.getElementById("status").textContent=points.length?"Showing an interpolated "+cfg[2].toLowerCase()+" field blended between current town observations. The shaded area is an estimate, not a measured boundary.":"No measurable "+cfg[2].toLowerCase()+" at the sampled locations right now.";
+  document.getElementById("status").textContent=points.length?"Showing an interpolated pink snowfall field blended between current town observations. The shaded area is an estimate, not a measured boundary.":"No measurable "+cfg[2].toLowerCase()+" at the sampled locations right now.";
   return;
  }
  cityWeather.forEach(x=>{const v=x.current[cfg[0]];if(!Number.isFinite(v))return;const n=k==="pressure"||k==="cloud"?Math.round(v):Number(v).toFixed(1),label=n+(k==="cloud"?"%":"");const color=k==="pressure"?(v>=1020?"#f3d27b":v<=1000?"#e89a82":"#a9d6ff"):v>=40?"#f3a36f":v>=20?"#f2d27b":"#9bd7c7";const marker=L.divIcon({className:"pin-wrap",html:'<div class="pin" style="--pin-color:'+color+'">'+label+'</div>',iconSize:[31,20],iconAnchor:[15,10]});const extra=k==="wind"?"<br>Direction: "+Math.round(x.current.wind_direction_10m)+"°":"";L.marker([x.lat,x.lon],{icon:marker}).bindPopup("<strong>"+x.name+"</strong><br>"+cfg[2]+": "+n+cfg[1]+extra).addTo(cityMarkers)});
