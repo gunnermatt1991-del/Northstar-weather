@@ -1,10 +1,10 @@
-<!doctype html>
+<!doc
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-opera-radar-early-init-20261112-r18">
+<meta name="northstar-map-build" content="live-opera-radar-blue-yellow-20261112-r19">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -891,6 +891,7 @@ function setTemperatureStatus(message,canRetry=false){
 map.createPane("fogPane");map.getPane("fogPane").style.zIndex=650;map.getPane("fogPane").style.pointerEvents="none";
 let baseLayer;
 const dayTiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,subdomains:"abc",crossOrigin:"anonymous",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+dayTiles.on("tileerror",()=>{const label=document.getElementById("frameTime");if(label&&label.textContent==="Radar loading…")label.textContent="Base map tiles are retrying…"});
 let cloudCoverLayer=null,cloudCoverVisible=false;
 function setCloudCover(enabled){if(enabled&&!cloudCoverLayer){const points=cityWeather.filter(x=>Number.isFinite(Number(x.current&&x.current.cloud_cover))).map(x=>[x.lat,x.lon,Math.max(.08,Math.min(1,Number(x.current.cloud_cover)/100))]);if(!points.length){document.getElementById("status").textContent="Cloud cover data is still loading. Please try again shortly.";return false;}cloudCoverLayer=L.heatLayer(points,{radius:42,blur:32,maxZoom:11,minOpacity:.09,gradient:{0.12:"#d8e1ec",0.35:"#c0ccd9",0.58:"#a5b4c5",0.78:"#8999ad",1:"#64758b"}});}if(!cloudCoverLayer)return false;if(enabled&&!cloudCoverVisible){cloudCoverLayer.addTo(map);cloudCoverVisible=true;}else if(!enabled&&cloudCoverVisible){map.removeLayer(cloudCoverLayer);cloudCoverVisible=false;}return true;}
 let mapMode="day",nightMode=false,solarLocation=null;
@@ -1083,7 +1084,7 @@ let rainForecastLayer=null,rainForecastData=[],rainForecastVisible=false;
 const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForecastSlider=document.getElementById("rainForecastSlider"),rainForecastTime=document.getElementById("rainForecastTime");
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
 function stopPlayback(){if(playTimer){clearInterval(playTimer);playTimer=null}play.textContent="▶ Play"}
-function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/10/1_1.png")}
+function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/1/1_1.png")}
 async function fetchLatestRadarFrames(){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);
  let response;try{response=await fetch("https://api.librewxr.net/public/weather-maps.json",{cache:"no-store",signal:controller.signal})}finally{clearTimeout(timeout)}
@@ -1104,10 +1105,10 @@ async function refreshLiveRadar(){
 }
 async function loadRadar(){try{
  const newest=await fetchLatestRadarFrames();
- radarLayer=L.tileLayer(radarHost+newest.path+"/256/{z}/{x}/{y}/10/1_1.png",{tileSize:256,opacity:.9,className:"northstar-radar-layer",maxNativeZoom:12,maxZoom:12,crossOrigin:"anonymous",updateWhenIdle:true,keepBuffer:2,attribution:'Radar &copy; <a href="https://librewxr.net/">LibreWXR / EUMETNET OPERA</a>'});
+ radarLayer=L.tileLayer(radarHost+newest.path+"/256/{z}/{x}/{y}/1/1_1.png",{tileSize:256,opacity:.9,className:"northstar-radar-layer",maxNativeZoom:12,maxZoom:12,crossOrigin:"anonymous",updateWhenIdle:true,keepBuffer:2,attribution:'Radar &copy; <a href="https://librewxr.net/">LibreWXR / EUMETNET OPERA</a>'});
  radarLayer.on("tileerror",()=>{timeLabel.textContent="Radar tile error — waiting for next refresh…"});
  radarLayer.on("tileload",()=>{if(timeLabel.textContent.startsWith("Radar tile error"))timeLabel.textContent="Live radar · "+formatFrame(radarFrames[radarFrames.length-1].time)});
- radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");
+ radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");requestAnimationFrame(()=>map.invalidateSize({pan:false}));setTimeout(()=>map.invalidateSize({pan:false}),500);
  showFrame(radarFrames.length-1);timeLabel.textContent="Live radar · "+formatFrame(newest.time);
  const legend=document.getElementById("precipTypeLegend");if(legend)legend.hidden=true;
 }catch(e){console.warn("Northstar radar initial load failed:",e);timeLabel.textContent="Radar unavailable: "+(e.name==="AbortError"?"provider timed out":(e.message||"network error"))+" · Tap Show rain radar to retry";}}
