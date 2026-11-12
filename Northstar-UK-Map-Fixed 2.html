@@ -1000,6 +1000,8 @@ if("ResizeObserver" in window){const mapResizeObserver=new ResizeObserver(schedu
 window.addEventListener("orientationchange",()=>setTimeout(scheduleMapResize,350),{passive:true});
 window.addEventListener("resize",scheduleMapResize,{passive:true});
 loadRadar();
+setInterval(()=>{if(radarVisible&&!playTimer)refreshLiveRadar()},5*60*1000);
+
 
 /* Integrated Premium storm overlays share this page's existing Leaflet map. */
 const stormLocs=[[60,-16,"N Atlantic west"],[57,-15,"N Atlantic"],[54,-15,"Mid Atlantic"],[51,-14,"SW Atlantic"],[60,-10,"NW approaches"],[57,-10,"Western approaches"],[54,-10,"Atlantic approaches"],[51,-10,"SW approaches"],[58.6,-3.5,"N Highlands"],[57.5,-4.2,"Inverness"],[57.1,-2.1,"Aberdeen"],[56.5,-4.2,"Highlands"],[55.95,-3.2,"Edinburgh"],[55,-1.6,"Newcastle"],[54.6,-5.9,"Belfast"],[54,-2.8,"Lake District"],[53.8,-1.55,"Leeds"],[53.4,-3,"Liverpool"],[53,-2.2,"Manchester"],[52.95,-1.15,"Nottingham"],[52.4,-1.9,"Birmingham"],[52.4,-.7,"Kettering"],[52,-4,"Mid Wales"],[51.75,-1.25,"Oxford"],[51.5,-3.2,"Cardiff"],[51.45,-.1,"London"],[51,-1.4,"Southampton"],[50.7,-3.5,"Exeter"],[50.4,-4.1,"Plymouth"],[50.3,-5.2,"Cornwall"],[50.8,.3,"East Sussex"],[51.9,1.2,"Suffolk"],[54.2,-4.5,"Isle of Man"],[56,-4,"Glasgow"],[57,-5.7,"West Highlands"]];
