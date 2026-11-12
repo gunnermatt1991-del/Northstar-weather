@@ -216,6 +216,7 @@ body.embed.storm-only .wrap>header,body.embed.storm-only .wrap>.back,body.embed.
 body.embed.storm-only .wrap>section.card{margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
 body.embed.storm-only .storm-panel{margin:0!important}
 
+.precip-type-legend{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:9px 0 3px;padding:10px 12px;border:1px solid #8ba8ce55;border-radius:12px;background:#0a1d35;color:#eef6ff;font-size:12px}.precip-type-legend[hidden]{display:none!important}.precip-type-legend span{display:inline-flex;align-items:center;gap:6px}.precip-type-legend i{display:inline-block;width:15px;height:15px;border-radius:5px}.precip-type-legend i.rain{background:#3188ee}.precip-type-legend i.sleet{background:#36b978}.precip-type-legend i.snow{background:#e875b7}.precip-type-legend small{color:#b9c9df;font-size:10px}
 .snow-map-shell{position:relative}.snow-map-shell #map{height:min(76vh,760px);min-height:480px}.snow-map-tools{position:absolute;z-index:900;top:14px;left:14px;display:flex;flex-direction:column;gap:7px}.snow-map-tools button{width:42px;height:42px;border:1px solid #8ba8ce;border-radius:10px;background:#102542ed;color:#fff;font-size:25px;font-weight:700}.snow-map-legend{position:absolute;z-index:900;right:12px;top:14px;width:150px;padding:12px;border:1px solid #8ba8ce;border-radius:14px;background:#07182de8;color:#fff;display:none}.snow-map-shell.snow-active .snow-map-legend{display:block}.snow-map-legend strong{display:block;font-size:13px;margin-bottom:9px}.snow-legend-row{display:flex;align-items:center;gap:9px;font-size:12px;margin:7px 0}.snow-swatch{width:20px;height:20px;border-radius:6px;display:inline-block}.snow-swatch.rain{background:linear-gradient(135deg,#9bcfff,#1763c5)}.snow-swatch.sleet{background:linear-gradient(135deg,#a8f0c9,#13875b)}.snow-swatch.snow{background:linear-gradient(135deg,#ffd1e8,#c72d83)}.snow-timeline{display:none;margin:12px 0 4px;padding:13px;border:1px solid #7898c4;border-radius:14px;background:#0a1d35;color:#eef6ff}.snow-timeline.active{display:block}.snow-timeline-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;margin-bottom:8px}.snow-timeline input{width:100%;accent-color:#53a9ff}.snow-timeline small{display:block;color:#b9c9df;font-size:11px;margin-top:5px}@media(max-width:600px){.snow-map-shell #map{height:68vh;min-height:440px}.snow-map-legend{width:126px;padding:9px;right:8px;top:8px}.snow-map-tools{left:8px;top:8px}.snow-map-tools button{width:38px;height:38px}.snow-legend-row{font-size:11px}}
 </style>
 </head>
@@ -235,6 +236,7 @@ body.embed.storm-only .storm-panel{margin:0!important}
 </div>
 
 <div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
+<div id="precipTypeLegend" class="precip-type-legend" hidden aria-label="Precipitation type legend"><span><i class="rain"></i> Rain</span><span><i class="sleet"></i> Sleet</span><span><i class="snow"></i> Snow</span><small>Modelled type overlay</small></div>
  <div class="map-save-row"><button id="saveMapButton" class="map-save-btn" type="button">📸 Save Map Image</button><span id="saveMapStatus" class="map-save-help" role="status">Save the current map view as an image for your Facebook weather posts.</span></div>
 <section class="storm-panel" id="stormPanel" aria-label="Storm intelligence map controls">
  <div class="storm-head"><div><div class="storm-eyebrow">Premium · Storm intelligence</div><strong>Storm systems on this map</strong><p>Switch between model guidance and forecast layers without opening a second map.</p></div><span class="storm-pill">ONE MAP</span></div>
@@ -767,7 +769,42 @@ async function loadRadar(){try{const response=await fetch("https://api.rainviewe
  radarLayer.on("tileerror",()=>{timeLabel.textContent="Radar tile error — retrying RainViewer tiles…"});
  radarLayer.on("tileload",()=>{if(timeLabel.textContent.startsWith("Radar tile error"))timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time)});
  showFrame(radarFrames.length-1);radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time);updateSnowfallObservationLayer()}catch(e){timeLabel.textContent="Radar unavailable"}}
-let snowfallObservationLayer=null;function updateSnowfallObservationLayer(){if(snowfallObservationLayer){map.removeLayer(snowfallObservationLayer);snowfallObservationLayer=null}if(!radarVisible||!cityWeather.length||!L.heatLayer)return;const points=[];cityWeather.forEach(x=>{const v=Number(x.current&&x.current.snowfall);if(Number.isFinite(v)&&v>=0.05)points.push([x.lat,x.lon,Math.min(1,Math.max(.2,v/1.5))])});if(points.length){snowfallObservationLayer=L.heatLayer(points,{radius:34,blur:25,maxZoom:10,minOpacity:.28,gradient:{.15:"#ffd1e8",.5:"#f36ab1",1:"#c72d83"}}).addTo(map);document.getElementById("status").textContent="Rain radar active. Pink shading highlights reported snowfall at sampled locations; coverage between locations is estimated."}}
+let snowfallObservationLayer=null;
+function updateSnowfallObservationLayer(){
+ if(snowfallObservationLayer){map.removeLayer(snowfallObservationLayer);snowfallObservationLayer=null}
+ const legend=document.getElementById("precipTypeLegend");
+ if(legend)legend.hidden=!radarVisible;
+ if(!radarVisible||!cityWeather.length||!L.heatLayer)return;
+ const groups={rain:[],sleet:[],snow:[]};
+ cityWeather.forEach(x=>{
+  const v=x.current||{},code=Number(v.weather_code);
+  const rain=Math.max(0,Number(v.rain)||0)+Math.max(0,Number(v.showers)||0);
+  const snow=Math.max(0,Number(v.snowfall)||0);
+  const total=Math.max(0,Number(v.precipitation)||0);
+  const sleetCodes=[56,57,66,67,68,69];
+  const snowCodes=[71,73,75,77,85,86];
+  const rainCodes=[51,53,55,61,63,65,80,81,82,95,96,99];
+  let type=null,amount=0;
+  if(sleetCodes.includes(code)||(rain>0.03&&snow>0.01)){type="sleet";amount=Math.max(total,rain+snow,.12)}
+  else if(snow>0.01||snowCodes.includes(code)){type="snow";amount=Math.max(snow,.12)}
+  else if(rain>0.03||total>0.03||rainCodes.includes(code)){type="rain";amount=Math.max(rain,total,.12)}
+  if(type){
+   const scale=type==="snow"?1.5:type==="sleet"?1.2:2.5;
+   groups[type].push([x.lat,x.lon,Math.min(1,Math.max(.2,amount/scale))]);
+  }
+ });
+ const layers=[];
+ if(groups.rain.length)layers.push(L.heatLayer(groups.rain,{radius:38,blur:28,maxZoom:10,minOpacity:.25,gradient:{.15:"#b8ddff",.48:"#4b9df0",1:"#1554b0"}}));
+ if(groups.sleet.length)layers.push(L.heatLayer(groups.sleet,{radius:38,blur:28,maxZoom:10,minOpacity:.28,gradient:{.15:"#c8f5d8",.48:"#45c982",1:"#087b48"}}));
+ if(groups.snow.length)layers.push(L.heatLayer(groups.snow,{radius:38,blur:28,maxZoom:10,minOpacity:.3,gradient:{.15:"#ffe0ef",.48:"#f36ab1",1:"#c72d83"}}));
+ if(layers.length){
+  snowfallObservationLayer=L.layerGroup(layers).addTo(map);
+  const active=[groups.rain.length?"blue rain":"",groups.sleet.length?"green sleet":"",groups.snow.length?"pink snow":""].filter(Boolean).join(", ");
+  document.getElementById("status").textContent="Precipitation type shading: "+active+". Based on current model readings at sampled locations; coverage between locations is estimated.";
+ }else{
+  document.getElementById("status").textContent="Rain radar active. No rain, sleet or snow is currently reported at the sampled locations.";
+ }
+}
 toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVisible;if(radarVisible){radarLayer.addTo(map);toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");updateSnowfallObservationLayer()}else{map.removeLayer(radarLayer);toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active");if(snowfallObservationLayer){map.removeLayer(snowfallObservationLayer);snowfallObservationLayer=null}}});
 slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.value))});
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
@@ -906,6 +943,7 @@ async function loadCityWeather(){
      result.failed.forEach(name=>failedNames.add(name));
      failed=failedNames.size;
      renderCityMarkers();
+     updateSnowfallObservationLayer();
      const visibleCount=cityWeather.filter(x=>placeVisibleAtZoom(x)&&bounds.contains([x.lat,x.lon])).length;
      setTemperatureStatus("Live temperatures: "+visibleCount+" visible locations loaded"+(failed?" · "+failed+" need retry.":"."));
     }catch(error){
