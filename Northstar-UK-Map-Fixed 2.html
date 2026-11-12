@@ -280,7 +280,7 @@ body.embed.storm-only .storm-panel{margin:0!important}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script>
  // Keep the last successful map forecast available when Open-Meteo rate-limits requests.
- (function(){const nativeFetch=window.fetch.bind(window),inflight=new Map();window.fetch=async function(input,init){const raw=typeof input==="string"?input:(input&&input.url)||"";let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}if(url.hostname!=="api.open-meteo.com"||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);const key="northstarOpenMeteo:"+url.href,ttl=30*60*1000,staleLimit=48*60*60*1000;let stale=null;try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved),age=Date.now()-item.time;if(item&&typeof item.body==="string"&&age>=0&&age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});if(item&&typeof item.body==="string"&&age>=0&&age<staleLimit)stale=item;}}catch(e){}if(inflight.has(key)){try{return new Response(await inflight.get(key),{status:200,headers:{"content-type":"application/json","x-northstar-cache":"SHARED"}})}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}}const task=(async()=>{const response=await nativeFetch(input,init);if(response.ok){const body=await response.clone().text();try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return {response,body}}if(stale)return {response:new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}}),body:stale.body};return {response,body:null}})();inflight.set(key,task.then(x=>{if(!x.response.ok)throw Error("HTTP "+x.response.status);return x.body}));try{return (await task).response}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}finally{inflight.delete(key)}}})();
+ (function(){const nativeFetch=window.fetch.bind(window),inflight=new Map();window.fetch=async function(input,init){const raw=typeof input==="string"?input:(input&&input.url)||"";let url;try{url=new URL(raw,location.href)}catch{return nativeFetch(input,init)}if((url.hostname!=="api.open-meteo.com"&&!(url.hostname==="northstar-weather-alerts.gunnermatt1991.workers.dev"&&url.pathname==="/weather/forecast"))||((init&&init.method)||"GET").toUpperCase()!=="GET")return nativeFetch(input,init);const key="northstarMapForecastV3:"+url.href,ttl=10*60*1000,staleLimit=48*60*60*1000;let stale=null;try{const saved=localStorage.getItem(key);if(saved){const item=JSON.parse(saved),age=Date.now()-item.time;if(item&&typeof item.body==="string"&&age>=0&&age<ttl)return new Response(item.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"HIT"}});if(item&&typeof item.body==="string"&&age>=0&&age<staleLimit)stale=item;}}catch(e){}if(inflight.has(key)){try{return new Response(await inflight.get(key),{status:200,headers:{"content-type":"application/json","x-northstar-cache":"SHARED"}})}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}}const task=(async()=>{const response=await nativeFetch(input,init);if(response.ok){const body=await response.clone().text();try{localStorage.setItem(key,JSON.stringify({time:Date.now(),body}))}catch(e){}return {response,body}}if(stale)return {response:new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}}),body:stale.body};return {response,body:null}})();inflight.set(key,task.then(x=>{if(!x.response.ok)throw Error("HTTP "+x.response.status);return x.body}));try{return (await task).response}catch(e){if(stale)return new Response(stale.body,{status:200,headers:{"content-type":"application/json","x-northstar-cache":"STALE"}});throw e}finally{inflight.delete(key)}}})();
 
 const pageView=new URLSearchParams(location.search).get("view");
 if(new URLSearchParams(location.search).get("embed")==="1"){document.body.classList.add("embed");if(pageView==="map")document.body.classList.add("map-only");if(pageView==="storm")document.body.classList.add("storm-only");}else location.replace("./index.html#weather-map");
@@ -859,7 +859,7 @@ async function getCitiesBatch(batch){
   latitude:batch.map(city=>city[1]).join(","),
   longitude:batch.map(city=>city[2]).join(","),
   current:"temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,cloud_cover,pressure_msl,precipitation,rain,showers,snowfall",
-  hourly:"visibility",timezone:"auto"
+  timezone:"auto"
  });
  const query=params.toString();
  const urls=[
@@ -876,8 +876,7 @@ async function getCitiesBatch(batch){
  // against the shared free weather API.
  if(batch.length>1){
   const middle=Math.ceil(batch.length/2);
-  const left=await getCitiesBatch(batch.slice(0,middle));
-  const right=await getCitiesBatch(batch.slice(middle));
+  const [left,right]=await Promise.all([getCitiesBatch(batch.slice(0,middle)),getCitiesBatch(batch.slice(middle))]);
   return{readings:left.readings.concat(right.readings),failed:left.failed.concat(right.failed)};
  }
  return{readings:[],failed:[batch[0][0]]};
@@ -922,7 +921,7 @@ async function loadCityWeather(){
    if(!pending.length)continue;
    setTemperatureStatus("Loading live temperatures: "+pending.length+" locations across the visible map…");
    const batches=[];
-   for(let i=0;i<pending.length;i+=10)batches.push(pending.slice(i,i+10));
+   for(let i=0;i<pending.length;i+=20)batches.push(pending.slice(i,i+20));
    for(let batchIndex=0;batchIndex<batches.length;batchIndex++){
     const batch=batches[batchIndex];
     batch.forEach(city=>attemptedCityKeys.add(cityWeatherKey(city)));
