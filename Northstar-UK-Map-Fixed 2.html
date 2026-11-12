@@ -863,8 +863,10 @@ async function getCitiesBatch(batch){
  });
  const query=params.toString();
  const urls=[
-  "https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+query,
-  "https://api.open-meteo.com/v1/forecast?"+query
+  // Open-Meteo supports true multi-coordinate responses. Use it first so
+  // a single-location mirror response cannot invalidate the entire batch.
+  "https://api.open-meteo.com/v1/forecast?"+query,
+  "https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?"+query
  ];
  const errors=[];
  for(const url of urls){
