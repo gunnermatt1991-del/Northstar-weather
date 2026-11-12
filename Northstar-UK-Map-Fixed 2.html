@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-hourly-grid-20261112-r10">
+<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-soft-grid-20261112-r11">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -826,13 +826,20 @@ async function loadGriddedPrecipitation(){
   if(!radarVisible)return;
   if(griddedPrecipitationLayer)map.removeLayer(griddedPrecipitationLayer);
   griddedPrecipitationLayer=L.layerGroup();
-  const half=gridStep/2,counts={rain:0,showers:0,sleet:0,snow:0};
+  const counts={rain:0,showers:0,sleet:0,snow:0};
   readings.forEach(p=>{
    const type=classifyGridPrecip(p.current);if(!type)return;
    counts[type]++;
    const colors={rain:"#3188ee",showers:"#f2a33a",sleet:"#36b978",snow:"#e875b7"};
-   L.rectangle([[p.lat-half,p.lon-half],[p.lat+half,p.lon+half]],{
-    stroke:false,fillColor:colors[type],fillOpacity:type==="showers"?.34:.22,interactive:false
+   // Render sampled forecast cells as soft, capped circles rather than geographic rectangles.
+   // This prevents coarse grid spacing at zoomed-out views from creating giant square blocks.
+   const center=map.latLngToContainerPoint([p.lat,p.lon]);
+   const neighbour=map.latLngToContainerPoint([p.lat+gridStep,p.lon]);
+   const cellPixels=Math.abs(neighbour.y-center.y);
+   const radius=Math.max(5,Math.min(17,cellPixels*.42));
+   L.circleMarker([p.lat,p.lon],{
+    radius,stroke:false,fillColor:colors[type],
+    fillOpacity:type==="showers"?.28:.14,interactive:false
    }).addTo(griddedPrecipitationLayer);
   });
   griddedPrecipitationLayer.addTo(map);
