@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
-<meta name="northstar-map-build" content="live-temperatures-personal-location-showers-soft-grid-20261112-r11">
+<meta name="northstar-map-build" content="live-rainviewer-observed-radar-only-20261112-r12">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -765,131 +765,40 @@ const rainForecastToggle=document.getElementById("rainForecastToggle"),rainForec
 function formatFrame(ts){return new Date(ts*1000).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit",day:"numeric",month:"short"})}
 function stopPlayback(){if(playTimer){clearInterval(playTimer);playTimer=null}play.textContent="▶ Play"}
 function showFrame(index){if(!radarFrames.length)return;index=Math.max(0,Math.min(index,radarFrames.length-1));slider.value=String(index);const frame=radarFrames[index];timeLabel.textContent="Observed · "+formatFrame(frame.time);if(radarLayer)radarLayer.setUrl(radarHost+frame.path+"/256/{z}/{x}/{y}/2/1_1.png")}
-async function loadRadar(){try{const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});if(!response.ok)throw Error();const data=await response.json();radarHost=data.host;const past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-8).map(frame=>({...frame,forecast:false}));radarFrames=past;if(!radarFrames.length)throw Error();slider.min="0";slider.max=String(radarFrames.length-1);slider.value=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;radarLayer=L.tileLayer(radarHost+radarFrames[radarFrames.length-1].path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.9,className:"northstar-radar-layer",maxNativeZoom:7,maxZoom:11,crossOrigin:"anonymous",attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});
- radarLayer.on("tileerror",()=>{timeLabel.textContent="Radar tile error — retrying RainViewer tiles…"});
- radarLayer.on("tileload",()=>{if(timeLabel.textContent.startsWith("Radar tile error"))timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time)});
- showFrame(radarFrames.length-1);radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");timeLabel.textContent="Latest observed · "+formatFrame(radarFrames[radarFrames.length-1].time);updateSnowfallObservationLayer();scheduleGriddedPrecipitation()}catch(e){timeLabel.textContent="Radar unavailable"}}
-let snowfallObservationLayer=null;
-let griddedPrecipitationLayer=null,gridPrecipitationBusy=false,gridPrecipitationTimer=null,gridPrecipitationKey="",gridPrecipitationLast=0;
-function classifyGridPrecip(v){
- const code=Number(v.weather_code),rain=Math.max(0,Number(v.rain)||0),showers=Math.max(0,Number(v.showers)||0),snow=Math.max(0,Number(v.snowfall)||0),total=Math.max(0,Number(v.precipitation)||0);
- if([56,57,66,67,68,69].includes(code)||(rain>.03&&snow>.01))return "sleet";
- if(snow>.01||[71,73,75,77,85,86].includes(code))return "snow";
- if([80,81,82].includes(code)||showers>.03)return "showers";
- if(rain>.03||total>.03||[51,53,55,61,63,65,95,96,99].includes(code))return "rain";
- return null;
+async function fetchLatestRadarFrames(){
+ const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});
+ if(!response.ok)throw Error("RainViewer manifest HTTP "+response.status);
+ const data=await response.json(),past=(data.radar&&Array.isArray(data.radar.past)?data.radar.past:[]).slice(-12);
+ if(!data.host||!past.length)throw Error("RainViewer returned no recent radar frames");
+ radarHost=data.host;radarFrames=past.map(frame=>({...frame,forecast:false}));
+ slider.min="0";slider.max=String(radarFrames.length-1);slider.disabled=false;play.disabled=false;latest.disabled=false;
+ return radarFrames[radarFrames.length-1];
 }
-async function loadGriddedPrecipitation(){
- if(!radarVisible||gridPrecipitationBusy)return;
- const bounds=map.getBounds(),step=.55;let gridStep=step;
- const south=Math.max(35,Math.floor(bounds.getSouth()/step)*step),north=Math.min(70,Math.ceil(bounds.getNorth()/step)*step);
- const west=Math.max(-15,Math.floor(bounds.getWest()/step)*step),east=Math.min(35,Math.ceil(bounds.getEast()/step)*step);
- const key=[south,north,west,east].join("|");
- if(key===gridPrecipitationKey&&Date.now()-gridPrecipitationLast<8*60*1000)return;
- const points=[];
- for(let lat=south;lat<=north+.001;lat+=step)for(let lon=west;lon<=east+.001;lon+=step)points.push({lat:Number(lat.toFixed(3)),lon:Number(lon.toFixed(3))});
- if(points.length>180){
-  const factor=Math.sqrt(points.length/180),coarse=step*factor;gridStep=coarse;points.length=0;
-  for(let lat=south;lat<=north+.001;lat+=coarse)for(let lon=west;lon<=east+.001;lon+=coarse)points.push({lat:Number(lat.toFixed(3)),lon:Number(lon.toFixed(3))});
- }
- gridPrecipitationBusy=true;
+async function refreshLiveRadar(){
+ if(!radarLayer||!radarVisible||playTimer)return;
  try{
-  const readings=[];
-  for(let i=0;i<points.length;i+=10){
-   const batch=points.slice(i,i+10),params=new URLSearchParams({
-    latitude:batch.map(p=>p.lat).join(","),longitude:batch.map(p=>p.lon).join(","),
-    hourly:"weather_code,precipitation,rain,showers,snowfall",forecast_days:"2",timezone:"GMT"
-   });
-   let raw=null,lastError=null;
-   for(const base of ["https://northstar-weather-alerts.gunnermatt1991.workers.dev/weather/forecast?","https://api.open-meteo.com/v1/forecast?"]){
-    try{
-     const response=await fetch(base+params.toString(),{cache:"no-store"});
-     if(!response.ok)throw Error("HTTP "+response.status);
-     raw=await response.json();if(raw?.error)throw Error(raw.reason||"Weather API error");
-     const items=Array.isArray(raw)?raw:[raw];
-     if(items.length!==batch.length||items.some(x=>!x?.hourly?.time?.length))throw Error("Incomplete hourly grid response");
-     items.forEach((item,j)=>{
-      const times=item.hourly.time,now=Date.now();
-      let nearest=0,best=Infinity;
-      times.forEach((stamp,k)=>{const delta=Math.abs(Date.parse(stamp+"Z")-now);if(delta<best){best=delta;nearest=k}});
-      const h=item.hourly;
-      readings.push({...batch[j],current:{
-       weather_code:h.weather_code?.[nearest],precipitation:h.precipitation?.[nearest],
-       rain:h.rain?.[nearest],showers:h.showers?.[nearest],snowfall:h.snowfall?.[nearest]
-      }});
-     });
-     lastError=null;break;
-    }catch(error){lastError=error}
-   }
-   if(lastError)throw lastError;
-  }
-  if(!radarVisible)return;
-  if(griddedPrecipitationLayer)map.removeLayer(griddedPrecipitationLayer);
-  griddedPrecipitationLayer=L.layerGroup();
-  const counts={rain:0,showers:0,sleet:0,snow:0};
-  readings.forEach(p=>{
-   const type=classifyGridPrecip(p.current);if(!type)return;
-   counts[type]++;
-   const colors={rain:"#3188ee",showers:"#f2a33a",sleet:"#36b978",snow:"#e875b7"};
-   // Render sampled forecast cells as soft, capped circles rather than geographic rectangles.
-   // This prevents coarse grid spacing at zoomed-out views from creating giant square blocks.
-   const center=map.latLngToContainerPoint([p.lat,p.lon]);
-   const neighbour=map.latLngToContainerPoint([p.lat+gridStep,p.lon]);
-   const cellPixels=Math.abs(neighbour.y-center.y);
-   const radius=Math.max(5,Math.min(17,cellPixels*.42));
-   L.circleMarker([p.lat,p.lon],{
-    radius,stroke:false,fillColor:colors[type],
-    fillOpacity:type==="showers"?.28:.14,interactive:false
-   }).addTo(griddedPrecipitationLayer);
-  });
-  griddedPrecipitationLayer.addTo(map);
-  gridPrecipitationKey=key;gridPrecipitationLast=Date.now();
-  const active=Object.keys(counts).filter(k=>counts[k]).map(k=>k+" "+counts[k]+" grid cells").join(", ");
-  document.getElementById("status").textContent=active?"Radar with gridded precipitation types: "+active+". Orange cells identify shower-type precipitation from the nearest hourly forecast across the map, not just town markers.":"Radar active; no precipitation types detected in the current grid.";
- }catch(error){console.warn("Northstar gridded precipitation scan failed:",error)}
- finally{gridPrecipitationBusy=false}
+  const newest=await fetchLatestRadarFrames();
+  showFrame(radarFrames.length-1);
+  timeLabel.textContent="Live radar · "+formatFrame(newest.time);
+ }catch(error){console.warn("Northstar radar refresh failed:",error);timeLabel.textContent="Radar refresh unavailable — showing last received frame"}
 }
-function scheduleGriddedPrecipitation(){
- if(gridPrecipitationTimer)clearTimeout(gridPrecipitationTimer);
- gridPrecipitationTimer=setTimeout(loadGriddedPrecipitation,500);
-}
-map.on("moveend",()=>{if(radarVisible)scheduleGriddedPrecipitation()});
+async function loadRadar(){try{
+ const newest=await fetchLatestRadarFrames();
+ radarLayer=L.tileLayer(radarHost+newest.path+"/256/{z}/{x}/{y}/2/1_1.png",{tileSize:256,opacity:.9,className:"northstar-radar-layer",maxNativeZoom:7,maxZoom:11,crossOrigin:"anonymous",updateWhenIdle:true,keepBuffer:2,attribution:'Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'});
+ radarLayer.on("tileerror",()=>{timeLabel.textContent="Radar tile error — waiting for next refresh…"});
+ radarLayer.on("tileload",()=>{if(timeLabel.textContent.startsWith("Radar tile error"))timeLabel.textContent="Live radar · "+formatFrame(radarFrames[radarFrames.length-1].time)});
+ radarLayer.addTo(map);radarVisible=true;toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");
+ showFrame(radarFrames.length-1);timeLabel.textContent="Live radar · "+formatFrame(newest.time);
+ const legend=document.getElementById("precipTypeLegend");if(legend)legend.hidden=true;
+}catch(e){console.warn("Northstar radar initial load failed:",e);timeLabel.textContent="Radar unavailable — retrying shortly";}}
+// Live precipitation display uses observed RainViewer radar tiles only.
+// Modelled town/grid overlays are disabled to avoid false or oversized rain patches.
 function updateSnowfallObservationLayer(){
+ const legend=document.getElementById("precipTypeLegend");if(legend)legend.hidden=true;
  if(snowfallObservationLayer){map.removeLayer(snowfallObservationLayer);snowfallObservationLayer=null}
- const legend=document.getElementById("precipTypeLegend");
- if(legend)legend.hidden=!radarVisible;
- if(!radarVisible||!cityWeather.length||!L.heatLayer)return;
- const groups={rain:[],showers:[],sleet:[],snow:[]};
- const sleetCodes=[56,57,66,67,68,69],snowCodes=[71,73,75,77,85,86];
- const showerCodes=[80,81,82],rainCodes=[51,53,55,61,63,65,95,96,99];
- cityWeather.forEach(x=>{
-  const v=x.current||{},code=Number(v.weather_code);
-  const rain=Math.max(0,Number(v.rain)||0),showers=Math.max(0,Number(v.showers)||0);
-  const snow=Math.max(0,Number(v.snowfall)||0),total=Math.max(0,Number(v.precipitation)||0);
-  let type=null,amount=0;
-  if(sleetCodes.includes(code)||(rain>0.03&&snow>0.01)){type="sleet";amount=Math.max(total,rain+showers+snow,.12)}
-  else if(snow>0.01||snowCodes.includes(code)){type="snow";amount=Math.max(snow,total,.12)}
-  else if(showerCodes.includes(code)||showers>0.03){type="showers";amount=Math.max(showers,rain,total,.12)}
-  else if(rain>0.03||total>0.03||rainCodes.includes(code)){type="rain";amount=Math.max(rain,total,.12)}
-  if(type){
-   const scale=type==="snow"?1.5:type==="sleet"?1.2:type==="showers"?1.8:2.5;
-   groups[type].push([x.lat,x.lon,Math.min(1,Math.max(.2,amount/scale))]);
-  }
- });
- const layers=[];
- if(groups.rain.length)layers.push(L.heatLayer(groups.rain,{radius:38,blur:28,maxZoom:10,minOpacity:.25,gradient:{.15:"#b8ddff",.48:"#4b9df0",1:"#1554b0"}}));
- if(groups.showers.length)layers.push(L.heatLayer(groups.showers,{radius:34,blur:25,maxZoom:10,minOpacity:.3,gradient:{.15:"#ffe2ad",.48:"#f2a33a",1:"#b85d08"}}));
- if(groups.sleet.length)layers.push(L.heatLayer(groups.sleet,{radius:38,blur:28,maxZoom:10,minOpacity:.28,gradient:{.15:"#c8f5d8",.48:"#45c982",1:"#087b48"}}));
- if(groups.snow.length)layers.push(L.heatLayer(groups.snow,{radius:38,blur:28,maxZoom:10,minOpacity:.3,gradient:{.15:"#ffe0ef",.48:"#f36ab1",1:"#c72d83"}}));
- if(layers.length){
-  snowfallObservationLayer=L.layerGroup(layers).addTo(map);
-  const active=[groups.rain.length?"blue rain":"",groups.showers.length?"orange showers":"",groups.sleet.length?"green sleet":"",groups.snow.length?"pink snow":""].filter(Boolean).join(", ");
-  document.getElementById("status").textContent="Precipitation type shading: "+active+". Showers are separated from steadier rain using current weather codes and precipitation readings at sampled locations; coverage between locations is estimated.";
- }else{
-  document.getElementById("status").textContent="Rain radar active. No rain, showers, sleet or snow is currently reported at the sampled locations.";
- }
+ if(griddedPrecipitationLayer){map.removeLayer(griddedPrecipitationLayer);griddedPrecipitationLayer=null}
 }
-toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVisible;if(radarVisible){radarLayer.addTo(map);toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");updateSnowfallObservationLayer()}else{map.removeLayer(radarLayer);toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active");if(snowfallObservationLayer){map.removeLayer(snowfallObservationLayer);snowfallObservationLayer=null}}});
+toggle.addEventListener("click",()=>{if(!radarLayer)return;radarVisible=!radarVisible;if(radarVisible){radarLayer.addTo(map);toggle.textContent="☁️ Hide rain radar";toggle.classList.add("active");refreshLiveRadar()}else{map.removeLayer(radarLayer);toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}});
 slider.addEventListener("input",()=>{stopPlayback();showFrame(Number(slider.value))});
 play.addEventListener("click",()=>{if(!radarFrames.length)return;if(playTimer){stopPlayback();return}if(Number(slider.value)>=radarFrames.length-1)showFrame(0);play.textContent="Ⅱ Pause";playTimer=setInterval(()=>{let next=Number(slider.value)+1;if(next>=radarFrames.length){stopPlayback();return}showFrame(next)},750)});
 latest.addEventListener("click",()=>{stopPlayback();showFrame(radarFrames.length-1)});
