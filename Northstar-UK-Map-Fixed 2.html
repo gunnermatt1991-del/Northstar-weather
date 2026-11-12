@@ -4,6 +4,246 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#081225">
+<meta name="northstar-map-build" content="live-opera-radar-ukv-model-20261112-r15">
+<title>Northstar Weather — UK & Europe Weather Map</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<style>
+:root{color-scheme:dark;--bg:#081225;--muted:#a8b7cf;--text:#f5f8ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -18%,#344a70 0,#142443 34%,var(--bg) 75%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 16px 35px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.logo{width:44px;height:44px;border-radius:15px;overflow:hidden;display:grid;place-items:center}.logo img{width:100%;height:100%;object-fit:cover}.brand{font-weight:750;font-size:18px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.16em}
+a.back{display:inline-block;color:#c7e2ff;text-decoration:none;border:1px solid #ffffff20;border-radius:99px;padding:9px 14px;margin:0 0 14px}
+.card{background:linear-gradient(145deg,#192b4bef,#101c34f2);border:1px solid #ffffff20;border-radius:23px;padding:18px;box-shadow:0 18px 50px #0002}
+h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+.layer-menu{position:relative;margin:0 0 10px;z-index:700}.layer-menu-toggle{width:100%;display:flex;justify-content:space-between;border:1px solid #8bbfff55;border-radius:15px;padding:13px 15px;background:linear-gradient(145deg,#29466c,#142b49);color:#f5f8ff;font:inherit;font-weight:750;text-align:left}.layer-menu-toggle span{color:#b9c9df;font-size:11px;font-weight:500}.layer-menu-panel{position:absolute;top:calc(100% + 7px);left:0;width:min(100%,390px);max-height:65vh;overflow:auto;padding:10px;border:1px solid #8bbfff55;border-radius:17px;background:#09172af5;box-shadow:0 16px 42px #0009}.layer-menu-panel[hidden]{display:none}.layer-choice{display:block;width:100%;padding:12px;text-align:left;border:1px solid transparent;border-radius:11px;background:transparent;color:#f5f8ff;font:inherit}.layer-choice.active{background:#5c91c52c;border-color:#83c5ff66}.layer-choice.unavailable{opacity:.45}.controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px;padding:12px;border:1px solid #8bbfff30;border-radius:18px;background:linear-gradient(145deg,#ffffff12,#ffffff06);box-shadow:inset 0 1px #ffffff0b,0 10px 28px #0002;backdrop-filter:blur(14px)}
+.controls button{border:1px solid #a9cfff38;border-radius:999px;background:linear-gradient(145deg,#29466c,#192f50);color:#f5f8ff;padding:10px 14px;font:inherit;font-size:13px;font-weight:700;box-shadow:0 3px 10px #0003;transition:background .2s,border-color .2s,transform .2s}
+.controls button:active{transform:scale(.97)}.controls button:disabled{opacity:.45}.controls button.active{background:linear-gradient(145deg,#3b78aa,#244c79);border-color:#a9d8ff;box-shadow:0 0 0 2px #86c4ff20}
+.controls input{flex:1;min-width:110px;accent-color:#86c4ff}#frameTime,#rainForecastTime{font-size:12px;color:#d4e6ff;min-width:125px;text-align:right}
+#map{height:min(78vh,850px);min-height:520px;border-radius:18px;overflow:hidden;border:1px solid #7fc9f0aa;background:#245a7e;box-shadow:0 14px 38px #0004}
+.leaflet-tile-pane{filter:saturate(1.12) contrast(1.02) brightness(.96)}
+.northstar-radar-layer{filter:saturate(1.32) contrast(1.12) brightness(1.02)}#map.night-map .leaflet-tile-pane{filter:saturate(.78) contrast(1.04) brightness(1.02)}.leaflet-container{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#245a7e}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#142440;color:#f5f8ff;border:1px solid #8ebfff35;box-shadow:0 12px 32px #0008}.leaflet-popup-content{margin:12px 15px;line-height:1.6}.leaflet-popup-content strong{font-size:14px;color:#fff}.leaflet-control-attribution{font-size:9px!important;background:#0b1728d9!important;color:#9eafc7!important}.leaflet-control-attribution a{color:#a9d5ff!important}.leaflet-bar a{background:#142440!important;color:#eff7ff!important;border-color:#ffffff20!important}.leaflet-control-zoom{border:1px solid #ffffff20!important;box-shadow:0 5px 18px #0006!important;overflow:hidden;border-radius:12px!important}
+.pin{background:var(--pin-color,#a8ed61);border:1px solid #ffffffd9;border-radius:5px;color:#10202a;text-align:center;font-weight:850;box-shadow:0 1px 5px #10202a66;white-space:nowrap;padding:1px 4px;font-size:10px;letter-spacing:-.02em;min-width:27px;text-shadow:none}.pin-wrap{filter:drop-shadow(0 1px 2px #10202a55)}.personal-pin{outline:2px solid #ffffff;border-color:#132e50;box-shadow:0 0 0 2px #4aa8ff,0 2px 8px #06132699}.temperature-status{padding:6px 9px;border:1px solid #9bcaff55;border-radius:9px;background:#0b1a30e8;color:#eff7ff;font:700 10px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 3px 12px #0005;pointer-events:auto}.temperature-status button{display:block;margin-top:5px;padding:4px 7px;border:1px solid #9bcaff88;border-radius:7px;background:#24466d;color:#fff;font:inherit}.place-pin{display:flex;align-items:center;justify-content:center;gap:2px;width:38px;max-width:38px;min-width:38px;height:21px;padding:1px 2px;background:var(--pin-color,#37bee1);color:#10202a;border:1px solid #ffffffed;border-radius:7px;font-size:9px;line-height:17px;box-shadow:0 2px 7px #06132699;white-space:nowrap;overflow:hidden}.place-pin>*{display:block!important}.place-pin .place-name,.place-pin .town-name,.place-pin .city-name{display:none!important}.place-pin .place-weather-icon{flex:0 0 13px;width:13px;font-size:11px;line-height:13px;text-align:center}.place-pin b{flex:0 0 auto;color:#10202a;background:transparent;border-radius:0;padding:0;font-size:9px;line-height:15px}
+.marker-cluster div{background:linear-gradient(145deg,#3979ad,#183a62)!important;color:#fff!important;border:1px solid #a9d8ff!important;box-shadow:0 4px 16px #0008,inset 0 1px #ffffff35!important;font:800 12px/26px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.marker-cluster{background:#86c4ff35!important;border-radius:50%!important}
+.legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.status{color:var(--muted);font-size:12px;margin:12px 2px 0}.note{color:#b9c9df;font-size:11px;margin:8px 2px 0}.footer{text-align:center;color:#8191aa;font-size:11px;margin:17px 0 0}.footer a{color:#b8d8ff}
+@media(max-width:600px){.wrap{padding-left:12px;padding-right:12px}.card{padding:13px}h1{font-size:21px}#map{height:70vh;min-height:440px}.controls{gap:7px;padding:10px}.controls button{padding:9px 11px;font-size:12px}#frameTime{width:100%;text-align:left}}
+
+/* Automatic day/night presentation */
+body.day{color:#17263d;background:radial-gradient(ellipse at 50% -18%,#e8f4ff 0,#dceaf7 38%,#cbd9e8 100%)}
+body.day .card{background:linear-gradient(145deg,#ffffffef,#edf4fbf5);border-color:#7895b555;box-shadow:0 14px 38px #233b5520}
+body.day .brand small,body.day .sub,body.day .status,body.day .legend,body.day .note{color:#52657d}
+body.day a.back{color:#24558a;border-color:#6686aa55}
+body.day .layer-menu-toggle{background:linear-gradient(145deg,#e5f1fc,#cbdff2);color:#183451;border-color:#86a9ca}
+body.day .layer-menu-toggle span{color:#506985}
+body.day .layer-menu-panel{background:#f5f9ff;border-color:#9bb6d2;box-shadow:0 16px 42px #233b5530}
+body.day .layer-choice{color:#203852}
+body.day .layer-choice.active{background:#dcecff;border-color:#83a9d1}
+body.day .controls{background:linear-gradient(145deg,#ffffffd9,#e6eff9d9);border-color:#91abc755;box-shadow:inset 0 1px #fff,0 8px 22px #233b5515}
+body.day .controls button{background:linear-gradient(145deg,#e4f0fc,#cbdff2);color:#183451;border-color:#8eabc9;box-shadow:0 3px 10px #233b5520}
+body.day .controls button.active{background:linear-gradient(145deg,#b8d9f5,#8fbce5);border-color:#5488b8}
+body.day #frameTime,body.day #rainForecastTime{color:#405a77}body.day #map{border-color:#86a9c8}
+body.day .leaflet-popup-content-wrapper,body.day .leaflet-popup-tip{background:#fff;color:#1b2c43;border-color:#9ab4d0;box-shadow:0 12px 32px #233b5530}
+body.day .leaflet-popup-content strong{color:#152a43}
+body.day .leaflet-control-attribution{background:#ffffffdf!important;color:#40536b!important}
+body.day .leaflet-control-attribution a{color:#245f9b!important}
+body.day .leaflet-bar a{background:#fff!important;color:#1b3551!important;border-color:#c5d3e2!important}
+#modeToggle{margin-left:auto}@media(max-width:600px){#modeToggle{margin-left:0}}
+
+body.embed .wrap{max-width:none;padding:8px 0 16px}body.embed header,body.embed .back,body.embed footer{display:none!important}body.embed .card{padding:10px;margin:0;border:0;box-shadow:none;background:transparent}body.embed h1,body.embed .sub{display:none!important}body.embed #map{height:64vh;min-height:470px;max-height:720px}body.embed .controls{gap:6px}body.embed .layer-menu-panel{z-index:1200}
+
+.storm-panel{margin:14px 0 12px;padding:14px;border:1px solid #a78bfa55;border-radius:18px;background:linear-gradient(145deg,#172844f2,#0d1b31f5);box-shadow:0 12px 30px #0003}.storm-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.storm-head strong{font-size:17px}.storm-head p{margin:4px 0 0;color:#a8b7cf;font-size:12px}.storm-eyebrow{font-size:10px;letter-spacing:.16em;color:#c4a5ff;font-weight:800;margin-bottom:3px}.storm-pill{font-size:9px;letter-spacing:.12em;border:1px solid #a78bfa77;border-radius:99px;padding:5px 8px;color:#d9caff;white-space:nowrap}.storm-controls{display:grid;grid-template-columns:1fr 1.4fr;gap:9px;margin:12px 0}.storm-controls label{display:flex;flex-direction:column;gap:5px;color:#a8b7cf;font-size:11px}.storm-controls select{width:100%;border:1px solid #a9cfff38;border-radius:10px;background:#193252;color:#f5f8ff;padding:9px;font:inherit;font-size:12px}.storm-time{grid-column:1/-1;display:grid!important;grid-template-columns:1fr auto;align-items:center}.storm-time input{grid-column:1/-1;width:100%;accent-color:#c4a5ff}.storm-time strong{color:#f5f8ff;font-size:12px}.storm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.storm-stats>div{padding:8px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff12}.storm-stats small{display:block;color:#a8b7cf;font-size:9px;line-height:1.3}.storm-stats strong{display:block;font-size:16px;margin-top:2px}.storm-status,.storm-summary{font-size:11px;color:#b9c9df;margin-top:10px}.storm-summary{padding:9px;border-left:3px solid #a78bfa;background:#ffffff08;border-radius:8px;line-height:1.5}.storm-locked{margin-top:9px;padding:10px;border-radius:10px;border:1px solid #ffd58a55;background:#a66b2018;color:#ffe1aa;font-size:12px}.storm-locked a{color:#fff}.storm-foot{font-size:10px;line-height:1.5;color:#91a3bd;margin:10px 0 0}@media(max-width:600px){.storm-stats{grid-template-columns:repeat(2,1fr)}.storm-controls{grid-template-columns:1fr}.storm-time{grid-column:1}}
+body.day .storm-panel{background:linear-gradient(145deg,#f2f6ff,#e5edf9);border-color:#a7a0d5}.storm-panel .storm-stats>div{background:#ffffff09}body.day .storm-head p,body.day .storm-controls label,body.day .storm-stats small,body.day .storm-status,body.day .storm-summary,body.day .storm-foot{color:#52657d}body.day .storm-controls select{background:#fff;color:#203852;border-color:#9bb6d2}body.day .storm-time strong{color:#203852}body.day .storm-summary{background:#eaf0fa}
+.storm-map-alert{background:#142440f2;border:1px solid #a78bfa;border-left:4px solid #a78bfa;border-radius:12px;padding:10px 14px;color:#f5f8ff;font:700 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px #0008;max-width:240px;text-align:center}.storm-map-alert.active{border-color:#ff9a82;border-left-color:#ff9a82}body.day .storm-map-alert{background:#fff;color:#203852;box-shadow:0 8px 24px #233b5530}
+ .map-save-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px}.map-save-btn{border:1px solid #8fc7ff;border-radius:999px;background:linear-gradient(145deg,#3478ad,#1d4c78);color:#fff;padding:12px 18px;font:700 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;box-shadow:0 5px 16px #0003}.map-save-btn:disabled{opacity:.6}.map-save-help{color:var(--muted);font-size:11px}body.embed .map-save-row{padding:0 4px}
+
+/* Premium map refinement: restrained overlays, clearer labels and responsive storm dashboard. */
+.pin{min-width:42px!important;height:24px!important;padding:0 5px!important;font-size:10px!important;border-radius:7px!important;box-shadow:0 2px 7px #07142655!important}
+.storm-panel{padding:16px!important;border-color:#9f8bff66!important;background:linear-gradient(150deg,#172a48f7,#0c1a30fa)!important;box-shadow:0 14px 34px #0004!important}
+.storm-head{align-items:center!important}.storm-eyebrow{font-size:10px!important;letter-spacing:.18em!important}.storm-controls{gap:10px!important}.storm-controls select{min-height:42px!important;background:#142b49!important;border-color:#8eaff044!important}.storm-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.storm-stats>div{padding:10px!important;background:linear-gradient(145deg,#ffffff0d,#ffffff05)!important;border-color:#9bb9dc20!important;min-width:0!important}.storm-stats small{font-size:10px!important;letter-spacing:.02em!important}.storm-stats strong{font-size:17px!important;font-variant-numeric:tabular-nums!important}.storm-status{line-height:1.5!important}.storm-summary{line-height:1.6!important;background:#a78bfa0c!important}.storm-map-alert{max-width:205px!important;padding:8px 11px!important;font-size:11px!important;backdrop-filter:blur(8px)!important;background:#10213aeF!important}
+@media(min-width:700px){.storm-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:480px){.storm-panel{padding:12px!important;border-radius:15px!important}.storm-controls{grid-template-columns:1fr!important}.storm-time{grid-column:1!important}.storm-map-alert{max-width:165px!important;font-size:10px!important;padding:7px 9px!important}.pin{min-width:38px!important;height:22px!important;font-size:9px!important}}
+
+/* Premium mobile control and layer-selector redesign */
+.layer-menu{position:relative;z-index:2500;margin:0 0 12px;isolation:isolate}
+.layer-menu-toggle{min-height:48px;padding:13px 16px;border-radius:14px;background:linear-gradient(135deg,#294f79,#142b49);border:1px solid #8dc8ff75;box-shadow:0 5px 18px #020a1680;font-size:14px;letter-spacing:.01em}
+.layer-menu-toggle:focus-visible,.layer-choice:focus-visible{outline:3px solid #8fd3ff;outline-offset:2px}
+.layer-menu-panel{position:absolute;z-index:2600;top:calc(100% + 8px);left:0;right:0;width:100%;max-width:none;max-height:min(64vh,560px);overflow-y:auto;overscroll-behavior:contain;padding:12px;border:1px solid #7197c4;border-radius:18px;background:#071426!important;opacity:1!important;backdrop-filter:blur(18px) saturate(125%);-webkit-backdrop-filter:blur(18px) saturate(125%);box-shadow:0 22px 60px #000e,inset 0 1px #ffffff16}
+.layer-menu-panel::before{content:"MAP LAYERS";display:block;padding:4px 10px 9px;color:#a9c6e8;font-size:10px;font-weight:850;letter-spacing:.18em;border-bottom:1px solid #ffffff18;margin-bottom:6px}
+.layer-choice{display:flex;align-items:center;min-height:48px;padding:11px 12px;margin:2px 0;border-radius:11px;border:1px solid transparent;color:#f4f8ff;background:transparent;font-size:14px;line-height:1.35;transition:background .16s,border-color .16s}
+.layer-choice.active{background:linear-gradient(100deg,#326ca044,#a78bfa20);border-color:#91c9ff75;box-shadow:inset 3px 0 #8ccaff}
+.layer-choice.unavailable{color:#8494aa;background:#ffffff05}
+.layer-menu-panel[hidden]{display:none!important}
+.storm-panel{margin:14px 0 14px;padding:17px;border-radius:19px;border:1px solid #a78bfa70;background:linear-gradient(155deg,#172b49 0%,#0b192e 100%);box-shadow:0 16px 38px #0005,inset 0 1px #ffffff12}
+.storm-head strong{font-size:18px;letter-spacing:-.02em}
+.storm-head p{font-size:12px;line-height:1.55;max-width:42rem}
+.storm-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.storm-controls select{min-height:44px;padding:10px 12px;border-radius:11px;background:#102541;border-color:#8bbfff55}
+.storm-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.storm-stats>div{min-height:68px;padding:11px;border-radius:12px;background:linear-gradient(145deg,#ffffff10,#ffffff05);border-color:#a9cfff25}
+.storm-stats small{font-size:10px;line-height:1.4;letter-spacing:.025em}
+.storm-stats strong{font-size:18px;font-variant-numeric:tabular-nums}
+.storm-status,.storm-summary,.storm-foot{line-height:1.6}
+.storm-summary{padding:12px;border-radius:11px;border-left:3px solid #a78bfa;background:#a78bfa10}
+.storm-map-alert{max-width:190px;padding:9px 12px;border-radius:13px;background:#08172cf5;border:1px solid #a78bfa;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:11px}
+@media(min-width:700px){.storm-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.layer-menu-panel{max-width:430px}}
+@media(max-width:480px){.layer-menu-panel{max-height:58vh;padding:10px;border-radius:15px}.layer-choice{min-height:46px;font-size:13px;padding:10px}.storm-panel{padding:13px;border-radius:16px}.storm-controls{grid-template-columns:1fr}.storm-time{grid-column:1}.storm-map-alert{max-width:150px;font-size:10px}.storm-stats>div{min-height:62px;padding:9px}}
+
+/* NORTHSTAR PREMIUM EXPERIENCE — mobile-first visual system */
+.night-map.satellite-mode .leaflet-tile-pane{filter:none!important}
+.night-map.satellite-mode .leaflet-overlay-pane{filter:none!important}
+.satellite-mode .leaflet-tile-pane{image-rendering:auto!important}
+.layer-menu{z-index:1800!important}
+.layer-menu-toggle{min-height:50px!important;border-radius:14px!important;background:linear-gradient(135deg,#24466f,#10233d)!important;border-color:#8ec5ff66!important;box-shadow:0 7px 20px #0003!important}
+.layer-menu-toggle span{font-size:11px!important}
+.layer-menu-panel{z-index:3000!important;width:min(100%,520px)!important;max-height:min(54vh,460px)!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:13px!important;border:1px solid #759ac4!important;border-radius:18px!important;background:#071426!important;background-color:rgb(7,20,38)!important;opacity:1!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:0 22px 60px #000e,0 0 0 1px #ffffff12!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}
+.layer-menu-panel[hidden]{display:none!important}
+.layer-menu-heading{grid-column:1/-1!important;padding:3px 5px 8px!important;color:#a9c9ee!important;font-size:10px!important;letter-spacing:.18em!important;font-weight:850!important;border-bottom:1px solid #ffffff18!important}
+.layer-choice{min-width:0!important;min-height:46px!important;padding:10px 9px!important;border:1px solid #ffffff10!important;border-radius:11px!important;background:#10233b!important;color:#edf5ff!important;font-size:12px!important;line-height:1.25!important;white-space:normal!important}
+.layer-choice.active{background:linear-gradient(135deg,#244b77,#183451)!important;border-color:#7fc3ff!important;box-shadow:inset 0 0 0 1px #7fc3ff22!important}
+.layer-choice.unavailable{grid-column:1/-1!important;background:#101b2b!important}
+.storm-panel{margin:16px 0!important;padding:16px!important;border-radius:20px!important;border:1px solid #9b83ff66!important;background:linear-gradient(155deg,#172b49 0%,#0b192e 100%)!important;box-shadow:0 18px 44px #0005,inset 0 1px #ffffff10!important}
+.storm-head{align-items:center!important;gap:14px!important}
+.storm-head strong{font-size:18px!important;letter-spacing:-.02em!important}
+.storm-head p{font-size:12px!important;line-height:1.5!important;max-width:42ch!important}
+.storm-pill{background:#9c7bff16!important;border-color:#b9a2ff77!important;padding:7px 10px!important}
+.storm-controls{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:16px 0!important}
+.storm-controls label{font-size:11px!important;letter-spacing:.02em!important}
+.storm-controls select{min-height:44px!important;padding:10px 12px!important;border-radius:12px!important;background:#102640!important;border-color:#83b7e544!important}
+.storm-time{grid-column:1/-1!important}
+.storm-time input{height:24px!important}
+.storm-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+.storm-stats>div{min-height:68px!important;padding:11px!important;border-radius:13px!important;background:linear-gradient(145deg,#ffffff0d,#ffffff06)!important;border:1px solid #a9c8eb20!important}
+.storm-stats small{font-size:10px!important;line-height:1.35!important;letter-spacing:.015em!important}
+.storm-stats strong{font-size:18px!important;font-weight:780!important;letter-spacing:-.02em!important;font-variant-numeric:tabular-nums!important}
+.storm-status{font-size:11px!important;line-height:1.55!important}
+.storm-summary{margin-top:12px!important;padding:12px!important;border-radius:12px!important;border-left:3px solid #a78bfa!important;background:#a78bfa0d!important;font-size:12px!important;line-height:1.65!important}
+.storm-foot{font-size:10px!important;line-height:1.65!important}
+.storm-map-alert{max-width:190px!important;padding:9px 11px!important;border-radius:13px!important;font-size:11px!important;line-height:1.4!important;backdrop-filter:blur(10px)!important}
+#map{border-radius:20px!important;border:1px solid #80b9e677!important;box-shadow:0 18px 42px #0005!important}
+.controls{padding:12px!important;border-radius:16px!important;background:#10223aeF!important;border-color:#8db9e533!important}
+.controls button{min-height:40px!important}
+#status{font-size:12px!important;line-height:1.55!important;padding:9px 11px!important;border-radius:10px!important;background:#ffffff08!important}
+@media(min-width:700px){.storm-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}.layer-menu-panel{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:480px){.layer-menu-panel{max-height:48vh!important;padding:10px!important;gap:5px!important}.layer-choice{min-height:44px!important;font-size:11px!important;padding:9px 7px!important}.storm-panel{padding:13px!important}.storm-controls{grid-template-columns:1fr!important}.storm-time{grid-column:1!important}.storm-stats>div{min-height:64px!important;padding:9px!important}.storm-stats strong{font-size:16px!important}.storm-head strong{font-size:16px!important}.storm-map-alert{max-width:155px!important;font-size:10px!important}}
+
+
+/* Premium imagery provider setup and map controls */
+.layer-choice.provider-setup{grid-column:1/-1!important;border:1px solid #9f83ff66!important;background:linear-gradient(120deg,#31265b,#152b49)!important;color:#e7ddff!important;font-weight:750!important;min-height:48px!important}
+#map.satellite-mode{background:#0b1728!important}
+#map.satellite-mode .leaflet-tile-pane{filter:none!important}
+
+/* Northstar Premium Atlantic and visibility refinements */
+.layer-menu-panel{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-height:52vh!important;overflow-y:auto!important;background:#071426!important;opacity:1!important;backdrop-filter:none!important}
+.layer-menu-heading{grid-column:1/-1!important}
+.layer-choice{min-height:46px!important;padding:10px!important;border-radius:11px!important;background:#10243d!important;border:1px solid #ffffff16!important;font-size:12px!important;white-space:normal!important}
+.layer-choice.active{background:linear-gradient(135deg,#28527e,#173553)!important;border-color:#8acbff!important}
+.storm-panel{background:linear-gradient(155deg,#172b49,#0a182d)!important;border:1px solid #9c87ff70!important;border-radius:20px!important;box-shadow:0 18px 44px #0005!important}
+.storm-summary{border-left:3px solid #a78bfa!important;background:#a78bfa12!important;padding:12px!important;line-height:1.65!important}
+#map .leaflet-overlay-pane{pointer-events:auto}
+@media(max-width:480px){.layer-menu-panel{max-height:46vh!important}.layer-choice{font-size:11px!important;padding:9px 7px!important}.storm-panel{padding:13px!important}}
+
+/* Atlantic storm approach intelligence card */
+.atlantic-approach{margin:12px 0 16px;padding:15px;border:1px solid #58b7d477;border-radius:17px;background:linear-gradient(145deg,#102d49,#0a1b31 78%);box-shadow:0 12px 30px #0004,inset 0 1px #ffffff12;color:#eaf5ff}.atlantic-approach-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9bc9ed;font-size:10px;font-weight:850;letter-spacing:.15em}.atlantic-stage{padding:6px 9px;border-radius:99px;background:#1d5270;color:#c9f1ff;font-size:9px;letter-spacing:.08em}.atlantic-headline{margin:12px 0;font-size:16px;line-height:1.35;font-weight:800;color:#fff}.atlantic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.atlantic-grid>div{padding:10px;border:1px solid #a7c9e51c;border-radius:11px;background:#ffffff08;min-width:0}.atlantic-grid small{display:block;color:#a9bfd4;font-size:10px;line-height:1.35}.atlantic-grid strong{display:block;margin-top:5px;color:#fff;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.atlantic-track{height:7px;margin:13px 0 9px;border-radius:9px;background:#ffffff16;overflow:hidden}.atlantic-track>div{height:100%;border-radius:9px;background:linear-gradient(90deg,#55c7d9,#b6a0ff);transition:width .3s}.atlantic-detail{font-size:11px;line-height:1.6;color:#d2e1ef}.atlantic-foot{margin-top:9px;padding-top:9px;border-top:1px solid #ffffff18;font-size:9px;line-height:1.55;color:#94aac0}@media(min-width:700px){.atlantic-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Northstar cartography polish — compact, legible weather markers. */
+.pin{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-width:27px!important;width:auto!important;height:18px!important;padding:0 3px!important;
+  border:1px solid #eaf6ff!important;border-radius:5px!important;
+  color:#102033!important;font-size:8px!important;font-weight:800!important;
+  line-height:16px!important;letter-spacing:-.025em!important;
+  box-shadow:0 1px 3px #06132666,0 0 0 1px #06132624!important;
+  background:var(--pin-color,#a8ed61)!important;
+}
+.pin-wrap{filter:drop-shadow(0 1px 1px #06132655)!important}
+#map .leaflet-marker-icon{transition:filter .15s ease}
+#map .leaflet-marker-icon:active{filter:brightness(1.12)}
+.night-map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.78) brightness(.86) contrast(1.02)!important}
+@media(max-width:600px){
+ .pin{min-width:25px!important;height:17px!important;padding:0 3px!important;font-size:7.5px!important;line-height:15px!important;border-radius:4px!important}
+}
+
+
+/* Collision-aware town markers — matching compact rounded-rectangle temperature labels. */
+.northstar-city-cluster{background:transparent!important;border:0!important}
+.northstar-city-cluster span{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ min-width:30px!important;width:auto!important;height:20px!important;padding:0 6px!important;
+ border-radius:6px!important;color:#102033!important;
+ font:800 9px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+ background:linear-gradient(145deg,#65c9df,#31a8c8)!important;
+ border:1px solid #eaf8ff!important;box-shadow:0 1px 4px #06132677!important;
+ text-shadow:none!important
+}
+.northstar-city-cluster.medium span{min-width:34px!important;height:21px!important;padding:0 7px!important;font-size:9px!important;background:linear-gradient(145deg,#57c4d5,#248cae)!important}
+.northstar-city-cluster.large span{min-width:38px!important;height:22px!important;padding:0 8px!important;font-size:10px!important;background:linear-gradient(145deg,#70b8df,#347eae)!important}
+.leaflet-markercluster-icon{background:transparent!important}
+.northstar-city-cluster.zoomed-out span{min-width:58px!important;width:58px!important;height:24px!important;padding:0 5px!important;font-size:9px!important;letter-spacing:.1px!important;white-space:nowrap!important;background:linear-gradient(145deg,#4f9dbd,#286e91)!important;color:#fff!important;border:1px solid #d9f1ff!important;box-shadow:0 2px 6px #06132688!important}
+@media(max-width:600px){
+ .northstar-city-cluster span{min-width:27px!important;height:18px!important;padding:0 5px!important;font-size:8px!important;line-height:16px!important;border-radius:5px!important}
+ .northstar-city-cluster.medium span{min-width:31px!important;height:19px!important}
+ .northstar-city-cluster.large span{min-width:35px!important;height:20px!important}
+}
+
+/* Professional meteorological basemap: clean light cartography with crisp coastlines and labels. */
+#map{background:#e8f0f6!important;border-color:#a8bdce!important}
+#map .leaflet-tile-pane{filter:none!important}
+#map .leaflet-overlay-pane{mix-blend-mode:normal}
+#map .leaflet-control-attribution{background:#f4f8fbe8!important;color:#526477!important}
+#map .leaflet-control-attribution a{color:#315d7d!important}
+#map .leaflet-bar a{background:#f7fafc!important;color:#29445d!important;border-color:#c5d2dd!important}
+#map .leaflet-control-zoom{border-color:#b8c8d6!important;box-shadow:0 2px 9px #233b5525!important}
+#map.night-map .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.58) brightness(.76) contrast(1.06)!important}
+
+
+/* Dedicated meteorological basemap: keep geographic context clean in both day and night app modes. */
+#map{background:#e7eff7!important}
+#map .leaflet-tile-pane{filter:saturate(.76) contrast(1.04) brightness(1.015)!important}
+#map.night-map .leaflet-tile-pane{filter:saturate(.76) contrast(1.04) brightness(1.015)!important}
+#map .leaflet-overlay-pane{mix-blend-mode:normal}
+#map .leaflet-control-attribution{background:#f5f8fbdc!important;color:#586879!important;border-radius:5px 0 0 0}
+#map .leaflet-control-attribution a{color:#315d80!important}
+
+/* Northstar weather surfaces: subtle translucent fields over the basemap. */
+#map .leaflet-overlay-pane canvas{mix-blend-mode:multiply}
+#map .leaflet-marker-pane{filter:drop-shadow(0 1px 1px #ffffff55)}
+
+
+/* Embedded views: keep the interactive radar on the Radar tab and Premium storm tools on Charts. */
+body.embed.map-only .storm-panel{display:none!important}
+body.embed.storm-only .wrap>header,body.embed.storm-only .wrap>.back,body.embed.storm-only .wrap>section.card>h1,body.embed.storm-only .wrap>section.card>.sub,body.embed.storm-only .wrap>section.card>.layer-menu,body.embed.storm-only .wrap>section.card>.controls,body.embed.storm-only .wrap>section.card>.temp-legend,body.embed.storm-only .wrap>section.card>#map,body.embed.storm-only .wrap>section.card>.map-save-row,body.embed.storm-only .wrap>section.card>.legend,body.embed.storm-only .wrap>section.card>#status,body.embed.storm-only .wrap>section.card>.note,body.embed.storm-only .wrap>.footer{display:none!important}
+body.embed.storm-only .wrap>section.card{margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+body.embed.storm-only .storm-panel{margin:0!important}
+
+.ukv-forecast-panel{margin:10px 0 4px;padding:12px;border:1px solid #8ba8ce66;border-radius:14px;background:#0a1d35;color:#eef6ff}.ukv-forecast-panel[hidden]{display:none!important}.ukv-panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:13px}.ukv-panel-head span,.ukv-valid-time{color:#bcd2ed;font-size:12px}.ukv-type-legend{display:flex;flex-wrap:wrap;gap:12px;margin:9px 0;font-size:11px}.ukv-type-legend span{display:flex;align-items:center;gap:5px}.ukv-type-legend i{width:12px;height:12px;border-radius:4px}.ukv-rain{background:#3188ee}.ukv-sleet{background:#36b978}.ukv-snow{background:#e875b7}.ukv-time-row{display:flex;align-items:center;gap:8px}.ukv-time-row input{flex:1;min-width:60px;accent-color:#8bc8ff}.ukv-time-row button{border:1px solid #8ba8ce;border-radius:9px;background:#19385d;color:#fff;padding:7px 10px}.ukv-disclaimer{font-size:10px;color:#9fb4d1;margin:8px 0 0}
+.precip-type-legend{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:9px 0 3px;padding:10px 12px;border:1px solid #8ba8ce55;border-radius:12px;background:#0a1d35;color:#eef6ff;font-size:12px}.precip-type-legend[hidden]{display:none!important}.precip-type-legend span{display:inline-flex;align-items:center;gap:6px}.precip-type-legend i{display:inline-block;width:15px;height:15px;border-radius:5px}.precip-type-legend i.rain{background:#3188ee}.precip-type-legend i.sleet{background:#36b978}.precip-type-legend i.snow{background:#e875b7}.precip-type-legend i.showers{background:#f2a33a}.precip-type-legend small{color:#b9c9df;font-size:10px}
+.snow-map-shell{position:relative}.snow-map-shell #map{height:min(76vh,760px);min-height:480px}.snow-map-tools{position:absolute;z-index:900;top:14px;left:14px;display:flex;flex-direction:column;gap:7px}.snow-map-tools button{width:42px;height:42px;border:1px solid #8ba8ce;border-radius:10px;background:#102542ed;color:#fff;font-size:25px;font-weight:700}.snow-map-legend{position:absolute;z-index:900;right:12px;top:14px;width:150px;padding:12px;border:1px solid #8ba8ce;border-radius:14px;background:#07182de8;color:#fff;display:none}.snow-map-shell.snow-active .snow-map-legend{display:block}.snow-map-legend strong{display:block;font-size:13px;margin-bottom:9px}.snow-legend-row{display:flex;align-items:center;gap:9px;font-size:12px;margin:7px 0}.snow-swatch{width:20px;height:20px;border-radius:6px;display:inline-block}.snow-swatch.rain{background:linear-gradient(135deg,#9bcfff,#1763c5)}.snow-swatch.sleet{background:linear-gradient(135deg,#a8f0c9,#13875b)}.snow-swatch.snow{background:linear-gradient(135deg,#ffd1e8,#c72d83)}.snow-timeline{display:none;margin:12px 0 4px;padding:13px;border:1px solid #7898c4;border-radius:14px;background:#0a1d35;color:#eef6ff}.snow-timeline.active{display:block}.snow-timeline-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;margin-bottom:8px}.snow-timeline input{width:100%;accent-color:#53a9ff}.snow-timeline small{display:block;color:#b9c9df;font-size:11px;margin-top:5px}@media(max-width:600px){.snow-map-shell #map{height:68vh;min-height:440px}.snow-map-legend{width:126px;padding:9px;right:8px;top:8px}.snow-map-tools{left:8px;top:8px}.snow-map-tools button{width:38px;height:38px}.snow-legend-row{font-size:11px}}
+</style>
+</head>
+<body><div class="wrap">
+<header><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div class="brand">Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></header>
+<a class="back" href="./">← Back to Northstar Weather</a>
+<section class="card">
+<h1>UK & Europe weather map</h1>
+<p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. View individual location readings, recent radar and short-range forecast layers on one interactive map.</p>
+<div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose a layer · menu closes after selection</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="ukv" type="button">❄️ UKV 2km model forecast</button><button class="layer-choice" data-layer="warnings" type="button">⚠️ Official warning areas</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall forecast</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button></div></div><div class="controls" aria-label="Weather map controls">
+
+<button id="ukvDirectButton" type="button">❄️ UKV 2km Model</button><button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="fogToggle" type="button" aria-pressed="false">🌫️ Show fog shading</button><button id="warningToggle" type="button" aria-pressed="false">⚠️ Show official warnings</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
+<button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
+<button id="latestButton" type="button" disabled>Latest</button>
+<input id="frameSlider" type="range" min="0" max="0" value="0" disabled aria-label="Radar time">
+<span id="frameTime">Radar loading…</span>
+</div>
+
+
+<div id="map" role="application" aria-label="Interactive UK and Ireland weather map"></div>
+<div id="precipTypeLegend" class="precip-type-legend" hidden aria-label="Precipitation type legend"><span><i class="rain"></i> Rain</span><span><i class="showers"></i> Showers</span><span><i class="sleet"></i> Sleet</span><span><i class="snow"></i> Snow</span><small>Modelled type overlay</small></div>ype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#081225">
 <meta name="northstar-map-build" content="live-opera-radar-ukv-model-20261112-r14">
 <title>Northstar Weather — UK & Europe Weather Map</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -229,7 +469,7 @@ body.embed.storm-only .storm-panel{margin:0!important}
 <p class="sub">Live temperatures and detailed weather conditions across hundreds of locations in the UK and Europe. View individual location readings, recent radar and short-range forecast layers on one interactive map.</p>
 <div class="layer-menu"><button id="layerMenuToggle" class="layer-menu-toggle" type="button" aria-expanded="false">☰ Weather layers <span>Choose a layer · menu closes after selection</span></button><div id="layerMenuPanel" class="layer-menu-panel" hidden><div class="layer-menu-heading">MAP LAYERS</div><button class="layer-choice" data-layer="rain" type="button">🌧️ Rainfall radar</button><button class="layer-choice" data-layer="ukv" type="button">❄️ UKV 2km model forecast</button><button class="layer-choice" data-layer="warnings" type="button">⚠️ Official warning areas</button><button class="layer-choice" data-layer="snow" type="button">❄️ Snowfall forecast</button><button class="layer-choice" data-layer="precipitation" type="button">💧 Precipitation</button><button class="layer-choice" data-layer="pressure" type="button">🌀 Weather / pressure</button><button class="layer-choice" data-layer="cloud" type="button">☁️ Cloud cover</button><button class="layer-choice" data-layer="wind" type="button">💨 Wind</button><button class="layer-choice" data-layer="fog" type="button">🌫️ Fog & visibility</button></div></div><div class="controls" aria-label="Weather map controls">
 
-<button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="fogToggle" type="button" aria-pressed="false">🌫️ Show fog shading</button><button id="warningToggle" type="button" aria-pressed="false">⚠️ Show official warnings</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
+<button id="ukvDirectButton" type="button">❄️ UKV 2km Model</button><button id="radarToggle" type="button">🌧️ Show rain radar</button><button id="fogToggle" type="button" aria-pressed="false">🌫️ Show fog shading</button><button id="warningToggle" type="button" aria-pressed="false">⚠️ Show official warnings</button><button id="rainForecastToggle" type="button">🌦️ Rain on the way</button><input id="rainForecastSlider" type="range" min="0" max="6" value="1" disabled aria-label="Rain forecast time"><span id="rainForecastTime" style="font-size:12px;color:#d4e6ff">Next few hours</span>
 <button id="playButton" type="button" disabled>▶ Play</button><button id="modeToggle" type="button" aria-label="Map appearance">🌗 Auto day/night</button>
 <button id="latestButton" type="button" disabled>Latest</button>
 <input id="frameSlider" type="range" min="0" max="0" value="0" disabled aria-label="Radar time">
@@ -777,6 +1017,7 @@ async function loadUKVForecast(){
  }catch(error){console.error("Northstar UKV forecast failed",error);ukvStatus.textContent="UKV model unavailable: "+(error.message||"network error");ukvValidTime.textContent="Try selecting the UKV model layer again shortly"}
  finally{ukvLoading=false}
 }
+document.getElementById("ukvDirectButton").addEventListener("click",()=>{setSatelliteMode(false);showUKVForecastLayer();});
 function showUKVForecastLayer(){
  ukvPanel.hidden=false;
  if(radarVisible&&radarLayer){map.removeLayer(radarLayer);radarVisible=false;toggle.textContent="🌧️ Show rain radar";toggle.classList.remove("active")}
