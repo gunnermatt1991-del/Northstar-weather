@@ -598,7 +598,8 @@ async function loadOfficialWarnings(){
    const details=group.items.map(item=>escapeWarningText(decodeWarningEntities((item.description||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ")).trim())).filter(Boolean);
    const desc=details.join(" · ");
    const when=group.items.map(item=>item.pubDate?new Date(item.pubDate).toLocaleString([],{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"").filter(Boolean)[0]||"Latest feed update";
-   const href=group.items.map(item=>item.link||"").find(link=>/^https:\/\//.test(link))||officialUrl;
+   // Use the canonical HTTPS warnings page instead of RSS item URLs, which can redirect mobile browsers to a blocked HTTP endpoint.
+   const href=officialUrl;
    return '<a class="official-warning-card '+group.level+'" href="'+href+'" target="_blank" rel="noopener"><span class="official-warning-label">Official Met Office warning · '+group.level+'</span><span class="official-warning-top"><span class="official-warning-sign">⚠</span>'+escapeWarningText(heading)+'</span><p>'+desc+'</p><span class="official-warning-meta">Feed update: '+when+'</span><span class="official-warning-source">View full warning at Met Office ↗</span></a>';
   }).join("");
  }catch(error){
