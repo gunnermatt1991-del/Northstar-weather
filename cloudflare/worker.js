@@ -102,11 +102,14 @@ export default {
     // Avoid third-party RSS conversion services, which can serve stale items.
     if (request.method === "GET" && url.pathname === "/warnings/rss") {
       try {
-        const upstream = await fetch("https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK", {
-          headers: { "accept": "application/rss+xml, application/xml, text/xml" },
-          cf: { cacheTtl: 60, cacheEverything: true }
+        const upstream = await fetch("https://www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK", {
+          headers: {
+            "accept": "application/rss+xml, application/xml, text/xml",
+            "user-agent": "NorthstarWeather/1.0 (+https://github.com/gunnermatt1991-del/Northstar-weather)",
+            "referer": "https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings"
+          }
         });
-        if (!upstream.ok) throw new Error("Met Office RSS returned " + upstream.status);
+        if (!upstream.ok) throw new Error("Met Office RSS returned HTTP " + upstream.status);
         return new Response(await upstream.text(), { status: 200, headers: {
           "content-type": "application/rss+xml; charset=utf-8",
           "cache-control": "public, max-age=60",
