@@ -576,7 +576,7 @@ async function loadOfficialWarnings(){
   let response;try{response=await fetch(endpoint,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Feed unavailable");
   const payload={status:"ok",items:parseMetOfficeWarningRss(await response.text())};if(!payload.items.length)throw Error("No warning items in official feed");
-  const items=payload.items.filter(item=>{const validity=parseMetOfficeWarningValidity(item);return !!validity&&validity.validTo.getTime()>Date.now()});
+  // The Met Office RSS contains both active and scheduled warnings. Do not discard future-start warnings: they must be visible in the UK-wide list before they come into force.\n  const items=payload.items;
   if(!items.length){box.innerHTML='<div class="official-warning-empty">✓ No current Met Office warnings are in force anywhere in the UK. <span style="display:block;margin-top:5px"><a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Check all UK warnings ↗</a></span></div>';return}
   // Combine regional versions of the same warning (for example, the four
   // regional fog alerts) into one clean warning card.
