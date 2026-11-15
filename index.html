@@ -211,7 +211,7 @@ img,svg,canvas{max-width:100%}
  <div class="section-head"><div><h3 style="margin:0">UK warning map</h3><p class="muted" style="margin:4px 0 0;font-size:12px">Official Met Office warning areas</p></div><span id="warningMapCount" class="tag">Checking…</span></div>
  <div id="northstar-leaflet-map" role="application" aria-label="Interactive map of UK weather warning areas" style="width:100%;height:430px;border-radius:14px;overflow:hidden;background:#dbe5ef"></div>
  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:11px;color:#c4d2e4"><span>🟡 Yellow</span><span>🟠 Amber</span><span>🔴 Red</span></div>
- <p class="muted" style="font-size:10px;margin:8px 0 0">Geographic UK outline with approximate warning-region markers. Exact warning boundaries are not supplied by the RSS feed.</p>
+ <p class="muted" style="font-size:10px;margin:8px 0 0">OpenStreetMap base map with approximate regional warning markers; exact warning boundaries are not supplied by the RSS feed.</p>
 </div><div id="officialWarnings" class="official-warning-feed"><div class="official-warning-loading">⚠️ Checking Met Office warnings…</div></div><div class="alerts" id="alerts"><div class="muted">Checking forecast…</div></div></section>
 
 <section class="section card fog-panel" id="fogWatch" data-view="warnings"><div class="section-head"><div><h2>🌫️ Fog &amp; Visibility</h2><p class="muted" style="margin:4px 0 0">Local visibility outlook · next 36 hours</p></div><span class="tag">All users</span></div><div id="fogStatus" class="fog-status"><strong>Checking visibility…</strong><p class="muted">Loading local visibility forecast.</p></div><div id="fogDetails" class="fog-details"></div><p class="muted" style="font-size:11px;margin:12px 0 0">Forecast guidance based on Open-Meteo visibility and fog codes. Conditions can change quickly; this is not an official warning. Never rely on this forecast alone when travelling.</p></section>
@@ -607,11 +607,16 @@ async function renderNorthstarWarningMap(items){
  const colors={yellow:"#eab308",amber:"#f59e0b",red:"#dc2626"};
  window.northstarWarningMarkers=found.map(r=>L.circleMarker([r.lat,r.lon],{radius:10,color:"#fff",weight:2,fillColor:colors[r.level],fillOpacity:.9}).addTo(map).bindPopup('<strong>'+escapeWarningText(r.name)+'</strong><br>'+escapeWarningText(r.title)+'<br><span style="text-transform:capitalize">'+r.level+' warning</span>'));
  count.textContent=found.length+" affected region"+(found.length===1?"":"s");
- const note=document.querySelector("#northstar-warning-map .muted:last-child");
+ const note=el.parentElement.querySelector("p.muted");
  if(note)note.textContent="OpenStreetMap base map · warning markers show approximate affected-region locations from Met Office RSS, not exact warning boundaries.";
- if(found.length){const bounds=L.latLngBounds(found.map(r=>[r.lat,r.lon]));map.fitBounds(bounds.pad(.25),{maxZoom:6});}
- else map.setView([54.5,-3.2],5);
- setTimeout(()=>map.invalidateSize(),120);
+ map.setMaxBounds([[49.5,-11.5],[59.8,3.5]]);
+ map.setMinZoom(4);
+ map.setView([54.5,-3.2],5,{animate:false});
+ [100,350,800].forEach(delay=>setTimeout(()=>map.invalidateSize({pan:false}),delay));
+ if(window.ResizeObserver&&!window.northstarMapResizeObserver){
+  window.northstarMapResizeObserver=new ResizeObserver(()=>map.invalidateSize({pan:false}));
+  window.northstarMapResizeObserver.observe(el);
+ }
 }
 async function loadOfficialWarnings(){
  const box=$("officialWarnings");if(!box)return;
