@@ -94,8 +94,31 @@ export default {
     // browser navigation (some mobile browsers attach an Origin header even to
     // top-level navigations). All state-changing endpoints remain origin-locked.
     const readOnlyHealth = request.method === "GET" && url.pathname === "/health";
+    const readOnlyWarningsFeed = request.method === "GET" && url.pathname === "/warnings/rss";
     const readOnlyPublicKey = request.method === "GET" && url.pathname === "/vapid-public-key" && !origin;
-    if (!allowed(request) && !readOnlyHealth && !readOnlyPublicKey) return fail("Origin not allowed.", 403);
+    if (!allowed(request) && !readOnlyHealth && !readOnlyPublicKey && !readOnlyWarningsFeed) return fail("Origin not allowed.", 403);
+
+    // Fresh proxy for the official Met Office UK warning RSS feed.
+    // Avoid third-party RSS conversion services, which can serve stale items.
+    if (request.method === "GET" && url.pathname === "/warnings/rss") {
+      try {
+        const upstream = await fetch("https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK", {
+          headers: { "accept": "application/rss+xml, application/xml, text/xml" },
+          cf: { cacheTtl: 60, cacheEverything: true }
+        });
+        if (!upstream.ok) throw new Error("Met Office RSS returned " + upstream.status);
+        return new Response(await upstream.text(), { status: 200, headers: {
+          "content-type": "application/rss+xml; charset=utf-8",
+          "cache-control": "public, max-age=60",
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, OPTIONS",
+          "vary": "Origin"
+        }});
+      } catch (error) {
+        console.error("Met Office warning RSS proxy failed", error);
+        return json({ error: "The live Met Office warning feed could not be reached." }, 502);
+      }
+    }
 
     if (request.method === "GET" && (url.pathname === "/health" || url.pathname === "/")) {
       return json({
