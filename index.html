@@ -572,43 +572,42 @@ function renderFog(d){const box=$("fogStatus"),details=$("fogDetails"),h=d.hourl
 async function renderNorthstarWarningMap(items){
  const el=document.getElementById("northstar-leaflet-map"),count=document.getElementById("warningMapCount");
  if(!el||!count)return;
- if(!window.L){count.textContent="Map unavailable";el.innerHTML='<div style="padding:18px;color:#334155">Map library could not load. Warning details remain listed below.</div>';return;}
+ if(!window.L){count.textContent="Map unavailable";return;}
  if(!window.northstarWarningLeaflet){
   const map=L.map(el,{scrollWheelZoom:false,zoomControl:true}).setView([54.5,-3.2],5);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
   window.northstarWarningLeaflet=map;
-  setTimeout(()=>map.invalidateSize(),100);
  }
  const map=window.northstarWarningLeaflet;
  const regions=[
-  {re:/highlands|eilean siar|highland/i,name:"Highlands & Islands",lat:57.3,lon:-4.6},
-  {re:/grampian|aberdeen|moray/i,name:"Grampian",lat:57.2,lon:-2.5},
-  {re:/tayside|fife|perth|dundee|angus|stirling/i,name:"Tayside & Fife",lat:56.4,lon:-3.5},
-  {re:/strathclyde|lanarkshire|ayrshire/i,name:"Strathclyde",lat:55.6,lon:-4.1},
-  {re:/dumfries|galloway|lothian|borders/i,name:"South Scotland",lat:55.3,lon:-3.8},
-  {re:/north east england|durham|northumberland/i,name:"North East England",lat:54.9,lon:-1.8},
-  {re:/north west england|cumbria/i,name:"North West England",lat:54.6,lon:-3.0},
-  {re:/yorkshire|humber/i,name:"Yorkshire & Humber",lat:53.9,lon:-1.4},
-  {re:/east midlands|nottingham|derby|leicester/i,name:"East Midlands",lat:52.9,lon:-1.2},
-  {re:/west midlands|birmingham|stafford/i,name:"West Midlands",lat:52.5,lon:-2.2},
-  {re:/east of england|norfolk|suffolk|cambridgeshire/i,name:"East of England",lat:52.3,lon:0.7},
-  {re:/london|south east england|kent|sussex|surrey/i,name:"South East England",lat:51.2,lon:0.2},
-  {re:/south west england|devon|cornwall|somerset|dorset/i,name:"South West England",lat:50.9,lon:-3.8},
-  {re:/wales|gwynedd|powys|dyfed/i,name:"Wales",lat:52.3,lon:-3.7},
-  {re:/northern ireland|antrim|armagh|down|tyrone|fermanagh|derry/i,name:"Northern Ireland",lat:54.6,lon:-6.7}
+  {re:/highlands|eilean siar|highland/i,name:"Highlands & Islands",poly:[[58.65,-6.8],[58.55,-4.8],[58.2,-3.0],[57.7,-2.7],[57.3,-3.2],[56.9,-4.1],[57.0,-5.8],[57.5,-6.6]]},
+  {re:/grampian|aberdeen|moray/i,name:"Grampian",poly:[[57.9,-3.6],[57.8,-1.8],[57.0,-1.6],[56.7,-2.3],[56.8,-3.6],[57.3,-4.0]]},
+  {re:/tayside|fife|perth|dundee|angus|stirling/i,name:"Tayside & Fife",poly:[[56.9,-4.4],[56.8,-2.4],[56.3,-2.4],[56.0,-3.2],[56.1,-4.5],[56.5,-4.8]]},
+  {re:/strathclyde|lanarkshire|ayrshire/i,name:"Strathclyde",poly:[[56.1,-5.8],[56.0,-3.8],[55.5,-3.5],[55.1,-4.0],[55.2,-5.3],[55.6,-5.9]]},
+  {re:/dumfries|galloway|lothian|borders/i,name:"South Scotland",poly:[[55.8,-4.0],[55.7,-2.0],[55.1,-1.8],[54.8,-3.0],[54.9,-4.3],[55.3,-4.6]]},
+  {re:/north east england|durham|northumberland/i,name:"North East England",poly:[[55.8,-2.4],[55.6,-1.2],[54.7,-1.1],[54.4,-1.8],[54.8,-2.5]]},
+  {re:/north west england|cumbria/i,name:"North West England",poly:[[55.0,-3.4],[54.9,-2.3],[54.0,-2.2],[53.7,-3.2],[54.1,-3.7]]},
+  {re:/yorkshire|humber/i,name:"Yorkshire & Humber",poly:[[54.4,-2.2],[54.3,-0.5],[53.5,0.0],[53.3,-1.1],[53.7,-2.2]]},
+  {re:/east midlands|nottingham|derby|leicester/i,name:"East Midlands",poly:[[53.5,-2.0],[53.5,-0.3],[52.7,0.0],[52.5,-1.1],[52.8,-2.0]]},
+  {re:/west midlands|birmingham|stafford/i,name:"West Midlands",poly:[[53.1,-3.2],[53.0,-1.7],[52.2,-1.6],[52.0,-2.8],[52.4,-3.3]]},
+  {re:/east of england|norfolk|suffolk|cambridgeshire/i,name:"East of England",poly:[[52.9,-0.5],[52.8,1.8],[51.8,1.7],[51.7,0.1],[52.1,-0.5]]},
+  {re:/london|south east england|kent|sussex|surrey/i,name:"South East England",poly:[[52.0,-1.2],[51.9,1.4],[50.7,1.3],[50.6,-0.4],[51.0,-1.4]]},
+  {re:/south west england|devon|cornwall|somerset|dorset/i,name:"South West England",poly:[[51.7,-5.4],[51.6,-2.0],[50.8,-1.4],[50.0,-2.8],[50.1,-5.2]]},
+  {re:/wales|gwynedd|powys|dyfed/i,name:"Wales",poly:[[53.4,-5.4],[53.3,-2.8],[51.4,-2.7],[51.3,-4.9],[52.0,-5.3]]},
+  {re:/northern ireland|antrim|armagh|down|tyrone|fermanagh|derry/i,name:"Northern Ireland",poly:[[55.3,-8.2],[55.2,-5.4],[54.0,-5.4],[54.0,-8.0]]}
  ];
  const found=[];
  (items||[]).forEach(item=>{
   const text=((item.title||"")+" "+(item.description||"")).replace(/<[^>]*>/g," ");
   const level=/\bred\b/i.test(text)?"red":/\bamber\b/i.test(text)?"amber":"yellow";
-  regions.forEach(r=>{if(r.re.test(text)&&!found.some(x=>x.name===r.name&&x.level===level))found.push({...r,level,title:item.title||"Met Office weather warning",description:item.description||""});});
+  regions.forEach(r=>{if(r.re.test(text)&&!found.some(x=>x.name===r.name&&x.level===level))found.push({...r,level,title:item.title||"Met Office weather warning"});});
  });
- if(window.northstarWarningMarkers)window.northstarWarningMarkers.forEach(m=>m.remove());
- const colors={yellow:"#eab308",amber:"#f59e0b",red:"#dc2626"};
- window.northstarWarningMarkers=found.map(r=>L.circleMarker([r.lat,r.lon],{radius:10,color:"#fff",weight:2,fillColor:colors[r.level],fillOpacity:.9}).addTo(map).bindPopup('<strong>'+escapeWarningText(r.name)+'</strong><br>'+escapeWarningText(r.title)+'<br><span style="text-transform:capitalize">'+r.level+' warning</span>'));
- count.textContent=found.length+" affected region"+(found.length===1?"":"s");
+ if(window.northstarWarningShapes)window.northstarWarningShapes.forEach(layer=>layer.remove());
+ const colors={yellow:"#facc15",amber:"#f59e0b",red:"#ef4444"};
+ window.northstarWarningShapes=found.map(r=>L.polygon(r.poly,{color:colors[r.level],weight:2,opacity:.95,fillColor:colors[r.level],fillOpacity:.38}).addTo(map).bindPopup('<strong>'+escapeWarningText(r.name)+'</strong><br>'+escapeWarningText(r.title)+'<br><span style="text-transform:capitalize">'+r.level+' warning</span>'));
+ count.textContent=found.length+" highlighted region"+(found.length===1?"":"s");
  const note=el.parentElement.querySelector("p.muted");
- if(note)note.textContent="OpenStreetMap base map · warning markers show approximate affected-region locations from Met Office RSS, not exact warning boundaries.";
+ if(note)note.textContent="Shaded regions indicate approximate areas mentioned in Met Office warning text; they are illustrative, not official warning boundaries.";
  map.setMaxBounds([[49.5,-11.5],[59.8,3.5]]);
  map.setMinZoom(4);
  map.setView([54.5,-3.2],5,{animate:false});
