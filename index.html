@@ -488,11 +488,11 @@ async function loadHomeWarning(){
   // Northstar's warnings page. Its affected-local-authority list is more
   // reliable for county-wide warnings than point-in-polygon matching alone.
   const feed="https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
-  const endpoint="https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(feed);
+  const endpoint="https://northstar-weather-alerts.gunnermatt1991.workers.dev/warnings/rss";
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
   let response;try{response=await fetch(endpoint,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Met Office warning feed unavailable");
-  const payload=await response.json();if(payload.status!=="ok"||!Array.isArray(payload.items))throw Error("Met Office warning feed returned no items");
+  const payload={status:"ok",items:parseMetOfficeWarningRss(await response.text())};if(!payload.items.length)throw Error("No warning items in official feed");
   const normalize=s=>String(s||"").replace(/&amp;/gi,"&").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
   const candidates=[place.name,place.admin2,place.admin3,place.admin4].filter(Boolean);
   const locationText=normalize(candidates.join(" "));
@@ -571,11 +571,11 @@ async function loadOfficialWarnings(){
 
  try{
   const feed="https://weather.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK";
-  const endpoint="https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(feed);
+  const endpoint="https://northstar-weather-alerts.gunnermatt1991.workers.dev/warnings/rss";
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   let response;try{response=await fetch(endpoint,{signal:controller.signal,cache:"no-store"})}finally{clearTimeout(timer)}
   if(!response.ok)throw Error("Feed unavailable");
-  const payload=await response.json();if(payload.status!=="ok"||!Array.isArray(payload.items))throw Error("No warning feed data");
+  const payload={status:"ok",items:parseMetOfficeWarningRss(await response.text())};if(!payload.items.length)throw Error("No warning items in official feed");
   const items=payload.items.filter(item=>{const validity=parseMetOfficeWarningValidity(item);return !!validity&&validity.validTo.getTime()>Date.now()});
   if(!items.length){box.innerHTML='<div class="official-warning-empty">✓ No current Met Office warnings are in force anywhere in the UK. <span style="display:block;margin-top:5px"><a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Check all UK warnings ↗</a></span></div>';return}
   // Combine regional versions of the same warning (for example, the four
@@ -603,6 +603,17 @@ async function loadOfficialWarnings(){
  }catch(error){
   box.innerHTML='<div class="official-warning-error">⚠️ Official warning feed could not be refreshed just now. Forecast-based alerts are shown below; check the <a href="'+officialUrl+'" target="_blank" rel="noopener" style="color:var(--blue)">Met Office warning service ↗</a> for the authoritative latest warnings.</div>';
  }
+}
+function parseMetOfficeWarningRss(xml){
+ const doc=new DOMParser().parseFromString(String(xml||""),"application/xml");
+ if(doc.querySelector("parsererror"))throw Error("Official Met Office RSS is not valid XML");
+ return Array.from(doc.querySelectorAll("channel > item")).map(node=>({
+  title:node.querySelector("title")?.textContent?.trim()||"",
+  description:node.querySelector("description")?.textContent?.trim()||"",
+  content:node.querySelector("description")?.textContent?.trim()||"",
+  link:node.querySelector("link")?.textContent?.trim()||"",
+  pubDate:node.querySelector("pubDate")?.textContent?.trim()||""
+ })).filter(item=>item.title||item.description);
 }
 function parseMetOfficeWarningValidity(item){
  const description=String(item?.description||item?.content||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ");
