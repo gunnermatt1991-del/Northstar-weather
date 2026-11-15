@@ -199,7 +199,8 @@ img,svg,canvas{max-width:100%}
  .northstar-dock{bottom:5px}
  body{padding-bottom:75px}
 }
-</style></head>
+</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</head>
 <body><div class="wrap">
 <header><div class="brand"><div class="logo"><img src="./icon.svg" alt="" aria-hidden="true"></div><div>Northstar Weather<small>FORECASTS · PATTERNS · PERSPECTIVE</small></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">☀ Light mode</button><a href="./premium.html" style="color:#d8eaff;text-decoration:none;border:1px solid #8bbfff55;border-radius:99px;padding:9px 14px;background:#203252">✦ Premium</a></div><form class="search" id="searchForm"><input id="locationInput" value="Kettering" aria-label="Search town or city" placeholder="Search a town or city"><button type="button" class="location-button" id="useCurrentLocation" aria-label="Use my current location" title="Use my current location">◎</button><button type="submit">Search</button></form></header>
 <div class="notice" id="notice" role="status"></div>
@@ -208,16 +209,7 @@ img,svg,canvas{max-width:100%}
 <aside class="card"><h2 class="side-title">Daylight & conditions</h2><div class="sunrow"><span>☀ Sunrise <b id="sunrise">—</b></span><span>Sunset <b id="sunset">—</b> ☾</span></div><div class="sunbar"><i id="sunbar"></i></div><div class="mini-stat"><span>Rain chance today</span><strong id="rainChance">—</strong></div><div class="mini-stat"><span>Cloud cover</span><strong id="cloud">—</strong></div><div class="mini-stat"><span>Wind direction</span><strong id="windDir">—</strong></div><div class="mini-stat"><span>Visibility</span><strong id="visibility">Not supplied</strong></div><div class="daily-briefing-inline" id="stationObservations" style="margin-top:16px"><div class="section-head"><h2>Met Office station</h2><span class="tag">Observed</span></div><div id="stationObservationBody" class="muted" aria-live="polite">Checking the nearest observation station…</div><p class="muted" style="font-size:10px;margin:8px 0 0">Hourly station readings, not a live measurement at your exact location. Powered by Met Office data.</p></div><div class="daily-briefing-inline"><div class="section-head"><h2>Daily weather briefing</h2><span class="tag">Your day at a glance</span></div><div id="dailyBriefing" style="font-size:14px;line-height:1.65">Preparing today's briefing…</div></div></aside></section>
 <section class="section card" id="weather-warnings" data-view="warnings"><div class="section-head"><h2>Weather alerts</h2><span class="tag">Official warnings &amp; forecast alerts</span></div><div id="northstar-warning-map" class="card" style="margin:14px 0;padding:12px;background:rgba(10,25,48,.72);border:1px solid rgba(130,170,220,.25);border-radius:18px">
  <div class="section-head"><div><h3 style="margin:0">UK warning map</h3><p class="muted" style="margin:4px 0 0;font-size:12px">Official Met Office warning areas</p></div><span id="warningMapCount" class="tag">Checking…</span></div>
- <svg viewBox="0 0 360 430" role="img" aria-label="Geographic outline map of the United Kingdom with official weather warning locations" style="display:block;width:100%;max-height:390px;margin:auto">
- <defs>
-  <linearGradient id="ukLand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#405c7e"/><stop offset="1" stop-color="#263d5b"/></linearGradient>
-  <pattern id="ukGrid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#29415f" stroke-width=".6"/></pattern>
-  <filter id="markerGlow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
- </defs>
- <rect x="0" y="0" width="360" height="430" fill="url(#ukGrid)" opacity=".5"/>
- <g id="ukGeography"></g>
- <g id="warningMapMarkers"></g>
-</svg>
+ <div id="northstar-leaflet-map" role="application" aria-label="Interactive map of UK weather warning areas" style="width:100%;height:430px;border-radius:14px;overflow:hidden;background:#dbe5ef"></div>
  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:11px;color:#c4d2e4"><span>🟡 Yellow</span><span>🟠 Amber</span><span>🔴 Red</span></div>
  <p class="muted" style="font-size:10px;margin:8px 0 0">Geographic UK outline with approximate warning-region markers. Exact warning boundaries are not supplied by the RSS feed.</p>
 </div><div id="officialWarnings" class="official-warning-feed"><div class="official-warning-loading">⚠️ Checking Met Office warnings…</div></div><div class="alerts" id="alerts"><div class="muted">Checking forecast…</div></div></section>
@@ -578,40 +570,48 @@ async function loadStationObservations(){
 }
 function renderFog(d){const box=$("fogStatus"),details=$("fogDetails"),h=d.hourly||{},c=d.current||{},now=new Date(c.time||Date.now()),times=h.time||[],vis=h.visibility||[],codes=h.weather_code||[],temps=h.temperature_2m||[];const start=times.findIndex(t=>new Date(t)>=now);const offset=start<0?0:start;const rows=[];for(let i=offset;i<Math.min(times.length,offset+36);i++){const v=vis[i]==null?NaN:Number(vis[i]),code=Number(codes[i]),temp=temps[i]==null?NaN:Number(temps[i]);const byVisibility=Number.isFinite(v)&&v<2000;const byCode=code===45||code===48;if(byVisibility||byCode)rows.push({time:times[i],visibility:Number.isFinite(v)?v:null,code,temp,freezing:temp<=0});}const currentVis=Number(c.visibility);const currentCode=Number(c.weather_code);const currentFog=(Number.isFinite(currentVis)&&currentVis<2000)||currentCode===45||currentCode===48;const minRow=rows.filter(x=>x.visibility!==null).sort((a,b)=>a.visibility-b.visibility)[0];let level="clear",headline="No fog signal detected",copy="Visibility is currently good and the next 36 hours show no clear fog signal in the forecast.",when="None forecast",minimum="—";if(currentFog){const v=Number.isFinite(currentVis)?currentVis:(minRow&&minRow.visibility);level=v!==null&&v<200?"severe":v!==null&&v<400?"dense":"watch";headline=level==="severe"?"Very poor visibility now":level==="dense"?"Dense fog indicated now":v!==null&&v>=1000?"Mist or reduced visibility now":"Fog or reduced visibility now";copy=Number.isFinite(currentVis)?"Current visibility is about "+(currentVis>=1000?(currentVis/1000).toFixed(1)+" km":Math.round(currentVis)+" m")+". This indicates reduced visibility"+(currentVis>=1000?" (mist)":" (fog)")+". Take extra care if travelling.":"The current weather code indicates fog. Visibility measurement is unavailable.";when="Now";}else if(rows.length){const peak=rows.filter(x=>x.visibility!==null).sort((a,b)=>a.visibility-b.visibility)[0];const codeOnly=rows[0];const v=peak?peak.visibility:null;level=v!==null&&v<200?"severe":v!==null&&v<400?"dense":"watch";headline=level==="severe"?"Very poor visibility possible":level==="dense"?"Dense fog possible":"Fog or reduced visibility possible";when=new Date((peak||codeOnly).time).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"});minimum=v===null?"Visibility not supplied":v>=1000?(v/1000).toFixed(1)+" km":Math.round(v)+" m";copy="Forecast indicates a possible fog period. The lowest modelled visibility is "+minimum+". Timing and local conditions may differ.";if(rows.some(x=>x.freezing))copy+=" Freezing temperatures overlap the fog signal; watch for possible icy surfaces.";}else{const v=Number.isFinite(currentVis)?currentVis:null;if(v!==null)minimum=v>=1000?(v/1000).toFixed(1)+" km":Math.round(v)+" m";}box.className="fog-status fog-"+level;box.innerHTML="<strong>"+headline+"</strong><p>"+copy+"</p>";const currentText=Number.isFinite(currentVis)?(currentVis>=1000?(currentVis/1000).toFixed(1)+" km":Math.round(currentVis)+" m"):"Not available";const freezing=rows.some(x=>x.freezing)?"Possible overlap":"No signal";details.innerHTML='<div class="fog-stat"><span>Current visibility</span><strong>'+currentText+'</strong></div><div class="fog-stat"><span>Next fog window</span><strong>'+when+'</strong></div><div class="fog-stat"><span>Freezing fog risk</span><strong>'+freezing+'</strong></div>';}
 async function renderNorthstarWarningMap(items){
- const geo=document.getElementById("ukGeography"),group=document.getElementById("warningMapMarkers"),count=document.getElementById("warningMapCount");
- if(!geo||!group||!count)return;
- const project=([lon,lat])=>[+(18+(lon+7.65)*34).toFixed(1),+(18+(59-lat)*41).toFixed(1)];
- const path=ring=>"M"+ring.map(project).map(p=>p.join(" ")).join(" L")+" Z";
- try{
-  const response=await fetch("https://northstar-weather-alerts.gunnermatt1991.workers.dev/warnings/geojson",{cache:"no-store"});
-  if(!response.ok)throw new Error("Official polygon service unavailable ("+response.status+")");
-  const data=await response.json();
-  if(data.type!=="FeatureCollection"||!Array.isArray(data.features))throw new Error("Invalid warning geometry");
-  const features=data.features.filter(f=>f&&f.geometry&&f.geometry.coordinates);
-  const shapes=[];
-  features.forEach(feature=>{
-   const props=feature.properties||{};
-   const level=String(props.warningLevel||props.warning_level||props.level||"yellow").toLowerCase();
-   const fill=level.includes("red")?"#ef4444":level.includes("amber")?"#f59e0b":"#facc15";
-   const geom=feature.geometry;
-   const polygons=geom.type==="Polygon"?[geom.coordinates]:geom.type==="MultiPolygon"?geom.coordinates:[];
-   polygons.forEach(poly=>poly.forEach(ring=>{if(ring.length>2)shapes.push({d:path(ring),fill,title:String(props.headline||props.warningTitle||props.title||"Met Office weather warning")+" · "+level});}));
-  });
-  if(!shapes.length)throw new Error("No warning polygons in current snapshot");
-  geo.innerHTML=shapes.map(shape=>'<path d="'+shape.d+'" fill="'+shape.fill+'" fill-opacity=".42" stroke="'+shape.fill+'" stroke-width="1.6" stroke-linejoin="round"><title>'+escapeWarningText(shape.title)+'</title></path>').join("");
-  group.innerHTML="";
-  count.textContent=features.length+" warning"+(features.length===1?"":"s");
-  const note=document.querySelector("#northstar-warning-map .muted:last-child");
-  if(note)note.textContent="Official Met Office warning boundaries · updated "+(data.updatedAt?new Date(data.updatedAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"just now");
- }catch(error){
-  // Keep the map honest: do not substitute guessed dots when exact geometry is unavailable.
-  geo.innerHTML="";
-  group.innerHTML="";
-  count.textContent="Map unavailable";
-  const note=document.querySelector("#northstar-warning-map .muted:last-child");
-  if(note)note.textContent="Exact warning boundaries could not be loaded. Check the official warning cards below.";
-  console.warn("Northstar warning polygons unavailable",error);
+ const el=document.getElementById("northstar-leaflet-map"),count=document.getElementById("warningMapCount");
+ if(!el||!count)return;
+ if(!window.L){count.textContent="Map unavailable";el.innerHTML='<div style="padding:18px;color:#334155">Map library could not load. Warning details remain listed below.</div>';return;}
+ if(!window.northstarWarningLeaflet){
+  const map=L.map(el,{scrollWheelZoom:false,zoomControl:true}).setView([54.5,-3.2],5);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+  window.northstarWarningLeaflet=map;
+  setTimeout(()=>map.invalidateSize(),100);
  }
+ const map=window.northstarWarningLeaflet;
+ const regions=[
+  {re:/highlands|eilean siar|highland/i,name:"Highlands & Islands",lat:57.3,lon:-4.6},
+  {re:/grampian|aberdeen|moray/i,name:"Grampian",lat:57.2,lon:-2.5},
+  {re:/tayside|fife|perth|dundee|angus|stirling/i,name:"Tayside & Fife",lat:56.4,lon:-3.5},
+  {re:/strathclyde|lanarkshire|ayrshire/i,name:"Strathclyde",lat:55.6,lon:-4.1},
+  {re:/dumfries|galloway|lothian|borders/i,name:"South Scotland",lat:55.3,lon:-3.8},
+  {re:/north east england|durham|northumberland/i,name:"North East England",lat:54.9,lon:-1.8},
+  {re:/north west england|cumbria/i,name:"North West England",lat:54.6,lon:-3.0},
+  {re:/yorkshire|humber/i,name:"Yorkshire & Humber",lat:53.9,lon:-1.4},
+  {re:/east midlands|nottingham|derby|leicester/i,name:"East Midlands",lat:52.9,lon:-1.2},
+  {re:/west midlands|birmingham|stafford/i,name:"West Midlands",lat:52.5,lon:-2.2},
+  {re:/east of england|norfolk|suffolk|cambridgeshire/i,name:"East of England",lat:52.3,lon:0.7},
+  {re:/london|south east england|kent|sussex|surrey/i,name:"South East England",lat:51.2,lon:0.2},
+  {re:/south west england|devon|cornwall|somerset|dorset/i,name:"South West England",lat:50.9,lon:-3.8},
+  {re:/wales|gwynedd|powys|dyfed/i,name:"Wales",lat:52.3,lon:-3.7},
+  {re:/northern ireland|antrim|armagh|down|tyrone|fermanagh|derry/i,name:"Northern Ireland",lat:54.6,lon:-6.7}
+ ];
+ const found=[];
+ (items||[]).forEach(item=>{
+  const text=((item.title||"")+" "+(item.description||"")).replace(/<[^>]*>/g," ");
+  const level=/\bred\b/i.test(text)?"red":/\bamber\b/i.test(text)?"amber":"yellow";
+  regions.forEach(r=>{if(r.re.test(text)&&!found.some(x=>x.name===r.name&&x.level===level))found.push({...r,level,title:item.title||"Met Office weather warning",description:item.description||""});});
+ });
+ if(window.northstarWarningMarkers)window.northstarWarningMarkers.forEach(m=>m.remove());
+ const colors={yellow:"#eab308",amber:"#f59e0b",red:"#dc2626"};
+ window.northstarWarningMarkers=found.map(r=>L.circleMarker([r.lat,r.lon],{radius:10,color:"#fff",weight:2,fillColor:colors[r.level],fillOpacity:.9}).addTo(map).bindPopup('<strong>'+escapeWarningText(r.name)+'</strong><br>'+escapeWarningText(r.title)+'<br><span style="text-transform:capitalize">'+r.level+' warning</span>'));
+ count.textContent=found.length+" affected region"+(found.length===1?"":"s");
+ const note=document.querySelector("#northstar-warning-map .muted:last-child");
+ if(note)note.textContent="OpenStreetMap base map · warning markers show approximate affected-region locations from Met Office RSS, not exact warning boundaries.";
+ if(found.length){const bounds=L.latLngBounds(found.map(r=>[r.lat,r.lon]));map.fitBounds(bounds.pad(.25),{maxZoom:6});}
+ else map.setView([54.5,-3.2],5);
+ setTimeout(()=>map.invalidateSize(),120);
 }
 async function loadOfficialWarnings(){
  const box=$("officialWarnings");if(!box)return;
