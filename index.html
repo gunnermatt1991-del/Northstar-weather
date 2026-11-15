@@ -208,16 +208,18 @@ img,svg,canvas{max-width:100%}
 <aside class="card"><h2 class="side-title">Daylight & conditions</h2><div class="sunrow"><span>☀ Sunrise <b id="sunrise">—</b></span><span>Sunset <b id="sunset">—</b> ☾</span></div><div class="sunbar"><i id="sunbar"></i></div><div class="mini-stat"><span>Rain chance today</span><strong id="rainChance">—</strong></div><div class="mini-stat"><span>Cloud cover</span><strong id="cloud">—</strong></div><div class="mini-stat"><span>Wind direction</span><strong id="windDir">—</strong></div><div class="mini-stat"><span>Visibility</span><strong id="visibility">Not supplied</strong></div><div class="daily-briefing-inline" id="stationObservations" style="margin-top:16px"><div class="section-head"><h2>Met Office station</h2><span class="tag">Observed</span></div><div id="stationObservationBody" class="muted" aria-live="polite">Checking the nearest observation station…</div><p class="muted" style="font-size:10px;margin:8px 0 0">Hourly station readings, not a live measurement at your exact location. Powered by Met Office data.</p></div><div class="daily-briefing-inline"><div class="section-head"><h2>Daily weather briefing</h2><span class="tag">Your day at a glance</span></div><div id="dailyBriefing" style="font-size:14px;line-height:1.65">Preparing today's briefing…</div></div></aside></section>
 <section class="section card" id="weather-warnings" data-view="warnings"><div class="section-head"><h2>Weather alerts</h2><span class="tag">Official warnings &amp; forecast alerts</span></div><div id="northstar-warning-map" class="card" style="margin:14px 0;padding:12px;background:rgba(10,25,48,.72);border:1px solid rgba(130,170,220,.25);border-radius:18px">
  <div class="section-head"><div><h3 style="margin:0">UK warning map</h3><p class="muted" style="margin:4px 0 0;font-size:12px">Official Met Office warning areas</p></div><span id="warningMapCount" class="tag">Checking…</span></div>
- <svg viewBox="0 0 360 430" role="img" aria-label="Schematic map of the United Kingdom showing approximate locations of official weather warning regions" style="display:block;width:100%;max-height:430px;margin:auto">
-  <defs><linearGradient id="ukLand" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#59718f"/><stop offset="1" stop-color="#344b69"/></linearGradient></defs>
-  <path d="M174 22 L190 30 185 47 197 58 188 72 198 88 187 102 193 116 180 130 185 145 173 160 181 176 168 192 174 207 160 220 164 238 151 250 158 265 145 278 151 293 136 308 141 323 126 337 114 329 119 313 108 302 117 287 104 275 113 260 103 247 115 233 108 218 123 205 117 189 131 177 125 160 140 149 135 132 150 119 146 102 161 89 157 72 171 60 165 45 Z" fill="url(#ukLand)" stroke="#9bb2cc" stroke-width="2"/>
-  <path d="M82 252 L96 258 100 275 91 291 98 307 87 319 73 309 76 292 66 279 72 263 Z" fill="url(#ukLand)" stroke="#9bb2cc" stroke-width="2"/>
-  <path d="M164 348 L177 355 172 367 183 379 176 393 160 389 155 375 145 365 151 352 Z" fill="url(#ukLand)" stroke="#9bb2cc" stroke-width="2"/>
-  <text x="205" y="83" fill="#dce8f5" font-size="11">Scotland</text><text x="204" y="224" fill="#dce8f5" font-size="11">England</text><text x="26" y="286" fill="#dce8f5" font-size="11">Northern</text><text x="26" y="299" fill="#dce8f5" font-size="11">Ireland</text><text x="188" y="374" fill="#dce8f5" font-size="11">Wales</text>
-  <g id="warningMapMarkers"></g>
- </svg>
+ <svg viewBox="0 0 360 430" role="img" aria-label="Geographic outline map of the United Kingdom with official weather warning locations" style="display:block;width:100%;max-height:390px;margin:auto">
+ <defs>
+  <linearGradient id="ukLand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#405c7e"/><stop offset="1" stop-color="#263d5b"/></linearGradient>
+  <pattern id="ukGrid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#29415f" stroke-width=".6"/></pattern>
+  <filter id="markerGlow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ </defs>
+ <rect x="0" y="0" width="360" height="430" fill="url(#ukGrid)" opacity=".5"/>
+ <g id="ukGeography"></g>
+ <g id="warningMapMarkers"></g>
+</svg>
  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;font-size:11px;color:#c4d2e4"><span>🟡 Yellow</span><span>🟠 Amber</span><span>🔴 Red</span></div>
- <p class="muted" style="font-size:10px;margin:8px 0 0">Schematic regional markers, not exact warning boundaries. Select a warning card below for affected areas and official details.</p>
+ <p class="muted" style="font-size:10px;margin:8px 0 0">Geographic UK outline with approximate warning-region markers. Exact warning boundaries are not supplied by the RSS feed.</p>
 </div><div id="officialWarnings" class="official-warning-feed"><div class="official-warning-loading">⚠️ Checking Met Office warnings…</div></div><div class="alerts" id="alerts"><div class="muted">Checking forecast…</div></div></section>
 
 <section class="section card fog-panel" id="fogWatch" data-view="warnings"><div class="section-head"><div><h2>🌫️ Fog &amp; Visibility</h2><p class="muted" style="margin:4px 0 0">Local visibility outlook · next 36 hours</p></div><span class="tag">All users</span></div><div id="fogStatus" class="fog-status"><strong>Checking visibility…</strong><p class="muted">Loading local visibility forecast.</p></div><div id="fogDetails" class="fog-details"></div><p class="muted" style="font-size:11px;margin:12px 0 0">Forecast guidance based on Open-Meteo visibility and fog codes. Conditions can change quickly; this is not an official warning. Never rely on this forecast alone when travelling.</p></section>
@@ -576,24 +578,30 @@ async function loadStationObservations(){
 }
 function renderFog(d){const box=$("fogStatus"),details=$("fogDetails"),h=d.hourly||{},c=d.current||{},now=new Date(c.time||Date.now()),times=h.time||[],vis=h.visibility||[],codes=h.weather_code||[],temps=h.temperature_2m||[];const start=times.findIndex(t=>new Date(t)>=now);const offset=start<0?0:start;const rows=[];for(let i=offset;i<Math.min(times.length,offset+36);i++){const v=vis[i]==null?NaN:Number(vis[i]),code=Number(codes[i]),temp=temps[i]==null?NaN:Number(temps[i]);const byVisibility=Number.isFinite(v)&&v<2000;const byCode=code===45||code===48;if(byVisibility||byCode)rows.push({time:times[i],visibility:Number.isFinite(v)?v:null,code,temp,freezing:temp<=0});}const currentVis=Number(c.visibility);const currentCode=Number(c.weather_code);const currentFog=(Number.isFinite(currentVis)&&currentVis<2000)||currentCode===45||currentCode===48;const minRow=rows.filter(x=>x.visibility!==null).sort((a,b)=>a.visibility-b.visibility)[0];let level="clear",headline="No fog signal detected",copy="Visibility is currently good and the next 36 hours show no clear fog signal in the forecast.",when="None forecast",minimum="—";if(currentFog){const v=Number.isFinite(currentVis)?currentVis:(minRow&&minRow.visibility);level=v!==null&&v<200?"severe":v!==null&&v<400?"dense":"watch";headline=level==="severe"?"Very poor visibility now":level==="dense"?"Dense fog indicated now":v!==null&&v>=1000?"Mist or reduced visibility now":"Fog or reduced visibility now";copy=Number.isFinite(currentVis)?"Current visibility is about "+(currentVis>=1000?(currentVis/1000).toFixed(1)+" km":Math.round(currentVis)+" m")+". This indicates reduced visibility"+(currentVis>=1000?" (mist)":" (fog)")+". Take extra care if travelling.":"The current weather code indicates fog. Visibility measurement is unavailable.";when="Now";}else if(rows.length){const peak=rows.filter(x=>x.visibility!==null).sort((a,b)=>a.visibility-b.visibility)[0];const codeOnly=rows[0];const v=peak?peak.visibility:null;level=v!==null&&v<200?"severe":v!==null&&v<400?"dense":"watch";headline=level==="severe"?"Very poor visibility possible":level==="dense"?"Dense fog possible":"Fog or reduced visibility possible";when=new Date((peak||codeOnly).time).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"});minimum=v===null?"Visibility not supplied":v>=1000?(v/1000).toFixed(1)+" km":Math.round(v)+" m";copy="Forecast indicates a possible fog period. The lowest modelled visibility is "+minimum+". Timing and local conditions may differ.";if(rows.some(x=>x.freezing))copy+=" Freezing temperatures overlap the fog signal; watch for possible icy surfaces.";}else{const v=Number.isFinite(currentVis)?currentVis:null;if(v!==null)minimum=v>=1000?(v/1000).toFixed(1)+" km":Math.round(v)+" m";}box.className="fog-status fog-"+level;box.innerHTML="<strong>"+headline+"</strong><p>"+copy+"</p>";const currentText=Number.isFinite(currentVis)?(currentVis>=1000?(currentVis/1000).toFixed(1)+" km":Math.round(currentVis)+" m"):"Not available";const freezing=rows.some(x=>x.freezing)?"Possible overlap":"No signal";details.innerHTML='<div class="fog-stat"><span>Current visibility</span><strong>'+currentText+'</strong></div><div class="fog-stat"><span>Next fog window</span><strong>'+when+'</strong></div><div class="fog-stat"><span>Freezing fog risk</span><strong>'+freezing+'</strong></div>';}
 function renderNorthstarWarningMap(items){
- const group=document.getElementById("warningMapMarkers"),count=document.getElementById("warningMapCount");
- if(!group||!count)return;
+ const geo=document.getElementById("ukGeography"),group=document.getElementById("warningMapMarkers"),count=document.getElementById("warningMapCount");
+ if(!geo||!group||!count)return;
+ // Natural Earth public-domain UK coastline coordinates (longitude, latitude).
+ const gb=[[-3.005,58.635],[-4.074,57.553],[-3.055,57.690],[-1.959,57.685],[-2.220,56.870],[-3.119,55.974],[-2.085,55.910],[-2.006,55.805],[-1.115,54.625],[-.430,54.464],[.185,53.325],[.470,52.930],[1.682,52.740],[1.560,52.100],[1.051,51.807],[1.450,51.289],[.550,50.766],[-.788,50.775],[-2.490,50.500],[-2.956,50.697],[-3.617,50.228],[-4.543,50.342],[-5.245,49.960],[-5.777,50.160],[-4.310,51.210],[-3.415,51.426],[-4.984,51.593],[-5.267,51.991],[-4.222,52.301],[-4.770,52.840],[-4.580,53.495],[-3.094,53.405],[-2.945,53.985],[-3.615,54.601],[-3.630,54.615],[-4.844,54.791],[-5.083,55.062],[-4.719,55.508],[-5.048,55.784],[-5.586,55.311],[-5.645,56.275],[-6.150,56.785],[-5.787,57.819],[-5.010,58.630],[-4.211,58.551],[-3.005,58.635]];
+ const ni=[[-5.662,54.555],[-6.198,53.868],[-6.954,54.074],[-7.572,54.060],[-7.366,54.596],[-7.572,55.132],[-6.734,55.173],[-5.662,54.555]];
+ const project=([lon,lat])=>[+(18+(lon+7.65)*34).toFixed(1),+(18+(59-lat)*41).toFixed(1)];
+ const path=points=>"M"+points.map(project).map(p=>p.join(" ")).join(" L")+" Z";
+ geo.innerHTML='<path d="'+path(gb)+'" fill="url(#ukLand)" stroke="#a8bfd9" stroke-width="2.2" stroke-linejoin="round"/><path d="'+path(ni)+'" fill="url(#ukLand)" stroke="#a8bfd9" stroke-width="2.2" stroke-linejoin="round"/><text x="185" y="102" fill="#e2edf9" font-size="12" font-weight="600">SCOTLAND</text><text x="205" y="265" fill="#e2edf9" font-size="12" font-weight="600">ENGLAND</text><text x="202" y="350" fill="#e2edf9" font-size="11">WALES</text><text x="8" y="260" fill="#e2edf9" font-size="10">NORTHERN</text><text x="8" y="273" fill="#e2edf9" font-size="10">IRELAND</text>';
  const regions=[
-  {match:/dumfries|galloway|lothian|borders/i,x:160,y:145,label:"SW Scotland"},
-  {match:/grampian|aberdeen|moray/i,x:172,y:94,label:"Grampian"},
-  {match:/highlands|eilean siar|highland/i,x:164,y:57,label:"Highlands"},
-  {match:/north east england|durham|northumberland/i,x:179,y:201,label:"North East"},
-  {match:/north west england|cumbria/i,x:151,y:202,label:"North West"},
-  {match:/central.*tayside|fife|perth|dundee|angus|stirling/i,x:171,y:127,label:"Tayside & Fife"},
-  {match:/strathclyde|lanarkshire|ayrshire/i,x:146,y:164,label:"Strathclyde"}
+  {match:/dumfries|galloway|lothian|borders/i,at:[-4.2,55.25],label:"South Scotland"},
+  {match:/grampian|aberdeen|moray/i,at:[-2.6,57.25],label:"Grampian"},
+  {match:/highlands|eilean siar|highland/i,at:[-4.5,57.45],label:"Highlands"},
+  {match:/north east england|durham|northumberland/i,at:[-1.7,54.9],label:"North East England"},
+  {match:/north west england|cumbria/i,at:[-3.0,54.55],label:"North West England"},
+  {match:/central.*tayside|fife|perth|dundee|angus|stirling/i,at:[-3.4,56.35],label:"Tayside & Fife"},
+  {match:/strathclyde|lanarkshire|ayrshire/i,at:[-4.1,55.75],label:"Strathclyde"}
  ];
  const hits=[];
  (items||[]).forEach(item=>{
-  const text=((item.title||"")+" "+(item.description||"")).replace(/<[^>]*>/g," ");
-  const level=/red/i.test(text)?"#ef4444":/amber/i.test(text)?"#f59e0b":"#facc15";
-  regions.forEach(r=>{if(r.match.test(text)&&!hits.some(h=>h.label===r.label&&h.level===level))hits.push({...r,level});});
+  const raw=((item.title||"")+" "+(item.description||"")).replace(/<[^>]*>/g," ");
+  const level=/red/i.test(raw)?"#ef4444":/amber/i.test(raw)?"#f59e0b":"#facc15";
+  regions.forEach(r=>{if(r.match.test(raw)&&!hits.some(h=>h.label===r.label&&h.level===level))hits.push({...r,level});});
  });
- group.innerHTML=hits.map(h=>'<g><circle cx="'+h.x+'" cy="'+h.y+'" r="12" fill="'+h.level+'" fill-opacity=".28" stroke="'+h.level+'" stroke-width="2"/><circle cx="'+h.x+'" cy="'+h.y+'" r="5" fill="'+h.level+'" stroke="#17263b" stroke-width="1.5"/><title>'+h.label+' warning area (approximate location)</title></g>').join("");
+ group.innerHTML=hits.map(h=>{const p=project(h.at);return '<g filter="url(#markerGlow)"><circle cx="'+p[0]+'" cy="'+p[1]+'" r="11" fill="'+h.level+'" fill-opacity=".22" stroke="'+h.level+'" stroke-width="2"/><circle cx="'+p[0]+'" cy="'+p[1]+'" r="4.5" fill="'+h.level+'" stroke="#10213a" stroke-width="1.5"/><title>'+h.label+' — approximate warning location</title></g>';}).join("");
  count.textContent=hits.length+" region"+(hits.length===1?"":"s");
 }
 async function loadOfficialWarnings(){
